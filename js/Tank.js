@@ -10,10 +10,10 @@ export class Tank {
         this.turretImg = turretImg;
 
         // Размеры картинок при отрисовке (можешь поменять под свои)
-        this.hullWidth = 80;
-        this.hullHeight = 60;
-        this.turretWidth = 80;
-        this.turretHeight = 60;
+        this.hullWidth = 60;
+        this.hullHeight = 45;
+        this.turretWidth = 60;
+        this.turretHeight = 45;
 
         // Характеристики Корпуса
         this.hullSpeed = 100;
@@ -92,7 +92,7 @@ export class Tank {
         
         ctx.drawImage(
             this.turretImg, 
-            -this.turretWidth / 2 , // "+ 5" смещает башню чуть назад, если центр вращения башни не ровно по центру картинки (поэкспериментируй с этой цифрой)
+            -this.turretWidth / 2 +10, // "+ 5" смещает башню чуть назад, если центр вращения башни не ровно по центру картинки (поэкспериментируй с этой цифрой)
             -this.turretHeight / 2, 
             this.turretWidth, 
             this.turretHeight
@@ -100,5 +100,6 @@ export class Tank {
         ctx.restore();
     }
 }
+
 
 
