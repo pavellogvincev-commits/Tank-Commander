@@ -5,36 +5,57 @@ import { Tank } from './Tank.js';
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Задаем размер арены
 canvas.width = 800;
 canvas.height = 600;
 
-// Инициализация систем
 const input = new Input(canvas);
 const arena = new Arena(canvas.width, canvas.height);
-const playerTank = new Tank(400, 300); // Спавн в центре
 
+// 1. Создаем объекты изображений
+const hullImage = new Image();
+const turretImage = new Image();
+
+// Переменная для хранения самого танка
+let playerTank;
 let lastTime = 0;
 
+// 2. Функция игрового цикла (та же самая)
 function gameLoop(timestamp) {
-    // Вычисляем Delta Time (в секундах) для независимости от FPS
     let dt = (timestamp - lastTime) / 1000;
     if (isNaN(dt)) dt = 0;
     lastTime = timestamp;
 
-    // Обновление логики
     playerTank.update(dt, input, arena);
 
-    // Очистка экрана
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Отрисовка
     arena.draw(ctx);
     playerTank.draw(ctx);
 
-    // Запрашиваем следующий кадр
     requestAnimationFrame(gameLoop);
 }
 
-// Запускаем игру
-requestAnimationFrame(gameLoop);
+// 3. Создаем систему предзагрузки
+let imagesLoaded = 0;
+
+// Эта функция сработает каждый раз, когда загружается одна картинка
+function onImageLoad() {
+    imagesLoaded++;
+    // У нас 2 картинки. Если загрузились обе — стартуем!
+    if (imagesLoaded === 2) {
+        // Создаем танк и передаем ему загруженные картинки
+        playerTank = new Tank(400, 300, hullImage, turretImage);
+        
+        // Запускаем игру
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+// Привязываем функцию к событию загрузки картинок
+hullImage.onload = onImageLoad;
+turretImage.onload = onImageLoad;
+
+// 4. Указываем пути к файлам картинок
+// Как только мы присвоим src, браузер начнет их скачивать из папки assets
+hullImage.src = 'assets/hull.png';
+turretImage.src = 'assets/turret.png';
