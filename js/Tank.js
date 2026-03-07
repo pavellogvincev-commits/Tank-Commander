@@ -1,58 +1,65 @@
 export class Tank {
-    constructor(x, y) {
+    // 1. Добавляем картинки в аргументы конструктора
+    constructor(x, y, hullImg, turretImg) {
         this.x = x;
         this.y = y;
-        this.radius = 20; // Радиус для коллизий
+        this.radius = 20;
 
-        // Характеристики Корпуса (Hull)
-        this.hullSpeed = 150; // пикселей в секунду
-        this.hullRotationSpeed = 3; // радиан в секунду
-        this.hullAngle = 0; // 0 смотрит вправо
+        // Сохраняем картинки внутри танка
+        this.hullImg = hullImg;
+        this.turretImg = turretImg;
 
-        // Характеристики Башни (Turret)
-        this.turretRotationSpeed = 4; // радиан в секунду
+        // Размеры картинок при отрисовке (можешь поменять под свои)
+        this.hullWidth = 80;
+        this.hullHeight = 60;
+        this.turretWidth = 80;
+        this.turretHeight = 60;
+
+        // Характеристики Корпуса
+        this.hullSpeed = 100;
+        this.hullRotationSpeed = 1;
+        this.hullAngle = 0;
+
+        // Характеристики Башни
+        this.turretRotationSpeed = 4;
         this.turretAngle = 0;
     }
 
+    // Метод update ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ, его не трогаем
     update(dt, input, arena) {
+        /* ... весь старый код движения и поворота ... */
+        // (Оставь его как было)
         // --- ДВИЖЕНИЕ КОРПУСА ---
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
 
         let moveSpeed = 0;
         if (input.isForward()) moveSpeed = this.hullSpeed;
-        if (input.isBackward()) moveSpeed = -this.hullSpeed * 0.6; // Назад едем медленнее
+        if (input.isBackward()) moveSpeed = -this.hullSpeed * 0.6; 
 
         if (moveSpeed !== 0) {
             let nextX = this.x + Math.cos(this.hullAngle) * moveSpeed * dt;
             let nextY = this.y + Math.sin(this.hullAngle) * moveSpeed * dt;
 
-            // Проверка коллизий перед перемещением
             if (!arena.checkCollision(nextX, nextY, this.radius)) {
                 this.x = nextX;
                 this.y = nextY;
             } else if (!arena.checkCollision(nextX, this.y, this.radius)) {
-                this.x = nextX; // Скольжение по оси X
+                this.x = nextX;
             } else if (!arena.checkCollision(this.x, nextY, this.radius)) {
-                this.y = nextY; // Скольжение по оси Y
+                this.y = nextY; 
             }
         }
 
         // --- ПОВОРОТ БАШНИ ---
-        // Целевой угол (куда смотрит мышь)
         let targetTurretAngle = Math.atan2(input.mouseY - this.y, input.mouseX - this.x);
-        
-        // Вычисляем разницу между текущим и целевым углом
         let angleDiff = targetTurretAngle - this.turretAngle;
-        
-        // Нормализуем угол, чтобы башня крутилась по кратчайшему пути (-PI до PI)
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
 
-        // Плавно поворачиваем башню
         if (Math.abs(angleDiff) > 0.01) {
             let rotationStep = this.turretRotationSpeed * dt;
             if (Math.abs(angleDiff) < rotationStep) {
-                this.turretAngle = targetTurretAngle; // Защелкиваем на цели
+                this.turretAngle = targetTurretAngle; 
             } else {
                 this.turretAngle += Math.sign(angleDiff) * rotationStep;
             }
@@ -62,17 +69,20 @@ export class Tank {
     draw(ctx) {
         // Отрисовка КОРПУСА
         ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.hullAngle);
+        ctx.translate(this.x, this.y); // Перемещаем центр координат в центр танка
+        ctx.rotate(this.hullAngle);    // Поворачиваем холст
         
-        // ЗАМЕНА НА КАРТИНКУ:
-        // ctx.drawImage(imgHull, -width/2, -height/2, width, height);
-        ctx.fillStyle = '#445522';
-        ctx.fillRect(-25, -15, 50, 30); // Рисуем простой прямоугольник корпуса
-        
-        // Маркер переда корпуса
-        ctx.fillStyle = '#223311';
-        ctx.fillRect(15, -15, 10, 30); 
+        // Рисуем картинку корпуса.
+        // Почему минус половина ширины и высоты? 
+        // Потому что точка отрисовки у картинки - это верхний левый угол. 
+        // Смещая на половину влево и вверх, мы центрируем картинку.
+        ctx.drawImage(
+            this.hullImg, 
+            -this.hullWidth / 2, 
+            -this.hullHeight / 2, 
+            this.hullWidth, 
+            this.hullHeight
+        );
         ctx.restore();
 
         // Отрисовка БАШНИ
@@ -80,16 +90,13 @@ export class Tank {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.turretAngle);
         
-        // ЗАМЕНА НА КАРТИНКУ:
-        // ctx.drawImage(imgTurret, -width/2, -height/2, width, height);
-        ctx.fillStyle = '#667733';
-        ctx.beginPath();
-        ctx.arc(0, 0, 12, 0, Math.PI * 2); // Круглая башня
-        ctx.fill();
-        
-        // Ствол
-        ctx.fillStyle = '#111';
-        ctx.fillRect(0, -3, 35, 6); 
+        ctx.drawImage(
+            this.turretImg, 
+            -this.turretWidth / 2 + 5, // "+ 5" смещает башню чуть назад, если центр вращения башни не ровно по центру картинки (поэкспериментируй с этой цифрой)
+            -this.turretHeight / 2, 
+            this.turretWidth, 
+            this.turretHeight
+        );
         ctx.restore();
     }
 }
