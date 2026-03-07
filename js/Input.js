@@ -3,35 +3,32 @@ export class Input {
         this.keys = {};
         this.mouseX = 0;
         this.mouseY = 0;
+        this.mouseDown = false; // <-- НОВОЕ
 
-        window.addEventListener('keydown', (e) => {
-            this.keys[e.code] = true;
-        });
-
-        window.addEventListener('keyup', (e) => {
-            this.keys[e.code] = false;
-        });
+        window.addEventListener('keydown', (e) => this.keys[e.code] = true);
+        window.addEventListener('keyup', (e) => this.keys[e.code] = false);
 
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             this.mouseX = e.clientX - rect.left;
             this.mouseY = e.clientY - rect.top;
         });
+
+        // --- НОВОЕ: Обработка мыши ---
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) this.mouseDown = true; // 0 - левая кнопка
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) this.mouseDown = false;
+        });
     }
 
-    isForward() {
-        return this.keys['KeyW'] || this.keys['ArrowUp'];
-    }
-
-    isBackward() {
-        return this.keys['KeyS'] || this.keys['ArrowDown'];
-    }
-
-    isLeft() {
-        return this.keys['KeyA'] || this.keys['ArrowLeft'];
-    }
-
-    isRight() {
-        return this.keys['KeyD'] || this.keys['ArrowRight'];
-    }
+    isForward() { return this.keys['KeyW'] || this.keys['ArrowUp']; }
+    isBackward() { return this.keys['KeyS'] || this.keys['ArrowDown']; }
+    isLeft() { return this.keys['KeyA'] || this.keys['ArrowLeft']; }
+    isRight() { return this.keys['KeyD'] || this.keys['ArrowRight']; }
+    
+    // --- НОВОЕ: Проверка стрельбы ---
+    isShooting() { return this.mouseDown; }
 }
