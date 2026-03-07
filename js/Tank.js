@@ -7,91 +7,77 @@ export class Tank {
         this.hullImg = hullImg;
         this.turretImg = turretImg;
 
+        // ТВОИ РАЗМЕРЫ
         this.hullWidth = 60;
         this.hullHeight = 45;
         this.turretWidth = 60;
         this.turretHeight = 45;
 
-        // --- НОВАЯ ФИЗИКА КОРПУСА ---
-        this.currentSpeed = 0;       // Текущая скорость
-        this.maxForwardSpeed = 50;  // Макс. скорость вперед
-        this.maxReverseSpeed = -25;  // Макс. скорость назад (в 2 раза меньше)
-        
-        this.acceleration = 80;     // Набор скорости (пикселей в сек за сек)
-        this.friction = 100;         // Трение (как быстро останавливается сам)
-        this.brakePower = 160;       // Сила торможения (когда жмешь в противоположную сторону)
+        // ТВОЯ ФИЗИКА
+        this.currentSpeed = 0;       
+        this.maxForwardSpeed = 50;  
+        this.maxReverseSpeed = -25;  
+        this.acceleration = 80;     
+        this.friction = 100;         
+        this.brakePower = 160;       
 
         this.hullRotationSpeed = 1;
         this.hullAngle = 0;
 
-        // Характеристики Башни
-        this.turretRotationSpeed = 2;
+        this.turretRotationSpeed = 1;
         this.turretAngle = 0;
 
-        // --- СИСТЕМА ЧАСТИЦ (ДЫМ) ---
         this.particles = [];
         this.particleTimer = 0;
+
+        // --- НОВОЕ: ОРУЖИЕ ---
+        this.fireRate = 1.0;     // Время перезарядки (1 секунда между выстрелами)
+        this.fireCooldown = 0;   // Текущий таймер перезарядки
+        this.recoil = 0;         // Смещение башни при отдаче
     }
 
     update(dt, input, arena) {
-        // --- ПОВОРОТ КОРПУСА ---
+        // --- ДВИЖЕНИЕ ---
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
 
-        // --- ФИЗИКА ДВИЖЕНИЯ (Ускорение и Торможение) ---
-        let isEngineRunning = false; // Флажок, чтобы знать, газует ли игрок
+        let isEngineRunning = false;
 
         if (input.isForward()) {
             isEngineRunning = true;
-            if (this.currentSpeed < 0) {
-                // Если ехали назад, а жмем вперед -> Резко тормозим
-                this.currentSpeed += this.brakePower * dt;
-            } else {
-                // Плавно разгоняемся вперед
-                this.currentSpeed += this.acceleration * dt;
-            }
+            if (this.currentSpeed < 0) this.currentSpeed += this.brakePower * dt;
+            else this.currentSpeed += this.acceleration * dt;
         } 
         else if (input.isBackward()) {
             isEngineRunning = true;
-            if (this.currentSpeed > 0) {
-                // Если ехали вперед, а жмем назад -> Резко тормозим
-                this.currentSpeed -= this.brakePower * dt;
-            } else {
-                // Плавно разгоняемся назад
-                this.currentSpeed -= this.acceleration * dt;
-            }
+            if (this.currentSpeed > 0) this.currentSpeed -= this.brakePower * dt;
+            else this.currentSpeed -= this.acceleration * dt;
         } 
         else {
-            // Если ничего не нажато -> Трение (плавная остановка)
             if (this.currentSpeed > 0) {
                 this.currentSpeed -= this.friction * dt;
-                if (this.currentSpeed < 0) this.currentSpeed = 0; // Чтобы не покатился назад
+                if (this.currentSpeed < 0) this.currentSpeed = 0; 
             } else if (this.currentSpeed < 0) {
                 this.currentSpeed += this.friction * dt;
                 if (this.currentSpeed > 0) this.currentSpeed = 0;
             }
         }
 
-        // Ограничитель максимальной скорости
         if (this.currentSpeed > this.maxForwardSpeed) this.currentSpeed = this.maxForwardSpeed;
         if (this.currentSpeed < this.maxReverseSpeed) this.currentSpeed = this.maxReverseSpeed;
 
-        // --- ПРИМЕНЕНИЕ СКОРОСТИ И КОЛЛИЗИИ ---
         if (Math.abs(this.currentSpeed) > 0.1) {
             let nextX = this.x + Math.cos(this.hullAngle) * this.currentSpeed * dt;
             let nextY = this.y + Math.sin(this.hullAngle) * this.currentSpeed * dt;
 
             if (!arena.checkCollision(nextX, nextY, this.radius)) {
-                this.x = nextX;
-                this.y = nextY;
+                this.x = nextX; this.y = nextY;
             } else if (!arena.checkCollision(nextX, this.y, this.radius)) {
-                this.x = nextX;
-                this.currentSpeed *= 0.9; // Слегка теряем скорость при трении о стену боком
+                this.x = nextX; this.currentSpeed *= 0.9; 
             } else if (!arena.checkCollision(this.x, nextY, this.radius)) {
-                this.y = nextY;
-                this.currentSpeed *= 0.9;
+                this.y = nextY; this.currentSpeed *= 0.9;
             } else {
-                this.currentSpeed = 0; // Полная остановка при лобовом столкновении
+                this.currentSpeed = 0; 
             }
         }
 
@@ -109,79 +95,80 @@ export class Tank {
             }
         }
 
-        // --- ОБНОВЛЕНИЕ ДЫМА ---
+        // --- НОВОЕ: ТАЙМЕРЫ ОРУЖИЯ ---
+        if (this.fireCooldown > 0) {
+            this.fireCooldown -= dt; // Уменьшаем таймер перезарядки
+        }
+        
+        // Возврат башни на место после выстрела (пружинный эффект)
+        if (this.recoil > 0) {
+            this.recoil -= 30 * dt; 
+            if (this.recoil < 0) this.recoil = 0;
+        }
+
         this.updateSmoke(dt, isEngineRunning);
+    }
+
+    // --- НОВОЕ: МЕТОД ПОПЫТКИ ВЫСТРЕЛА ---
+    tryShoot() {
+        if (this.fireCooldown <= 0) {
+            this.fireCooldown = this.fireRate; // Сбрасываем кулдаун
+            this.recoil = 8;                   // Башня дергается на 8 пикселей назад
+            return true;                       // Разрешаем выстрел
+        }
+        return false; // Идет перезарядка
     }
 
     updateSmoke(dt, isEngineRunning) {
         this.particleTimer += dt;
-        
-        // Если газуем - дым идет чаще, если стоим - редко
         let spawnRate = isEngineRunning ? 0.05 : 0.2; 
 
         if (this.particleTimer > spawnRate) {
             this.particleTimer = 0;
-
-            // Вычисляем координаты выхлопной трубы (задняя часть танка)
-            // Используем синус и косинус, чтобы дым всегда был сзади, как бы танк ни повернулся
             let rearOffset = this.hullWidth / 2 - 5; 
             let rearX = this.x - Math.cos(this.hullAngle) * rearOffset;
             let rearY = this.y - Math.sin(this.hullAngle) * rearOffset;
 
-            // Создаем новую частицу дыма
             this.particles.push({
-                x: rearX + (Math.random() - 0.5) * 10, // Легкий разброс координат
+                x: rearX + (Math.random() - 0.5) * 10, 
                 y: rearY + (Math.random() - 0.5) * 10,
-                life: 1.0,      // Частица живет 1 секунду
-                maxLife: 1.0,
-                size: 3 + Math.random() * 4, // Начальный размер
-                // Медленный случайный дрейф дыма в стороны
-                vx: (Math.random() - 0.5) * 15,
-                vy: (Math.random() - 0.5) * 15
+                life: 1.0, maxLife: 1.0,
+                size: 3 + Math.random() * 4,
+                vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15
             });
         }
 
-        // Обновляем существующие частицы
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
             p.life -= dt;
-            
-            if (p.life <= 0) {
-                this.particles.splice(i, 1); // Удаляем мертвые частицы
-            } else {
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-                p.size += 15 * dt; // Дым расширяется со временем
+            if (p.life <= 0) this.particles.splice(i, 1);
+            else {
+                p.x += p.vx * dt; p.y += p.vy * dt;
+                p.size += 15 * dt; 
             }
         }
     }
 
     draw(ctx) {
-        // --- ОТРИСОВКА ДЫМА ---
-        // Рисуем дым ДО танка, чтобы он стелился по земле и танк его не перекрывал
         for (let p of this.particles) {
-            // Высчитываем прозрачность: чем меньше жизни осталось, тем прозрачнее
             let alpha = (p.life / p.maxLife) * 0.5; 
-            ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`; // Серый цвет с альфа-каналом
-            
+            ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`; 
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Отрисовка КОРПУСА
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.hullAngle);
         ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight);
         ctx.restore();
 
-        // Отрисовка БАШНИ
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.turretAngle);
-        ctx.drawImage(this.turretImg, -this.turretWidth / 2 + 5, -this.turretHeight / 2, this.turretWidth, this.turretHeight);
+        // НОВОЕ: вычитаем this.recoil по оси X, чтобы башня сдвигалась назад при выстреле
+        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight);
         ctx.restore();
     }
 }
-
