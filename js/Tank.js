@@ -14,12 +14,12 @@ export class Tank {
 
         // --- НОВАЯ ФИЗИКА КОРПУСА ---
         this.currentSpeed = 0;       // Текущая скорость
-        this.maxForwardSpeed = 150;  // Макс. скорость вперед
-        this.maxReverseSpeed = -75;  // Макс. скорость назад (в 2 раза меньше)
+        this.maxForwardSpeed = 50;  // Макс. скорость вперед
+        this.maxReverseSpeed = -25;  // Макс. скорость назад (в 2 раза меньше)
         
-        this.acceleration = 200;     // Набор скорости (пикселей в сек за сек)
+        this.acceleration = 80;     // Набор скорости (пикселей в сек за сек)
         this.friction = 100;         // Трение (как быстро останавливается сам)
-        this.brakePower = 400;       // Сила торможения (когда жмешь в противоположную сторону)
+        this.brakePower = 160;       // Сила торможения (когда жмешь в противоположную сторону)
 
         this.hullRotationSpeed = 1;
         this.hullAngle = 0;
@@ -184,3 +184,4 @@ export class Tank {
         ctx.restore();
     }
 }
+
