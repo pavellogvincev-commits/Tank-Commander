@@ -92,7 +92,7 @@ export class Tank {
         
         ctx.drawImage(
             this.turretImg, 
-            -this.turretWidth / 2 +10, // "+ 5" смещает башню чуть назад, если центр вращения башни не ровно по центру картинки (поэкспериментируй с этой цифрой)
+            -this.turretWidth / 2 + 15, // "+ 5" смещает башню чуть назад, если центр вращения башни не ровно по центру картинки (поэкспериментируй с этой цифрой)
             -this.turretHeight / 2, 
             this.turretWidth, 
             this.turretHeight
@@ -100,6 +100,7 @@ export class Tank {
         ctx.restore();
     }
 }
+
 
 
 
