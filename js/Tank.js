@@ -2,7 +2,7 @@ export class Tank {
     constructor(x, y, hullImg, turretImg) {
         this.x = x;
         this.y = y;
-        this.radius = 20;
+        this.radius = 18;
 
         this.hullImg = hullImg;
         this.turretImg = turretImg;
@@ -11,6 +11,9 @@ export class Tank {
         this.hullHeight = 45;
         this.turretWidth = 60;
         this.turretHeight = 45;
+
+        this.hitboxWidth = 50;  
+        this.hitboxHeight = 33; 
 
         // Здоровье
         this.maxHp = 200;
@@ -132,8 +135,8 @@ export class Tank {
         let localX = dx * cos - dy * sin;
         let localY = dx * sin + dy * cos;
 
-        let halfW = this.hullWidth / 2;
-        let halfH = this.hullHeight / 2;
+        let halfW = this.hitboxWidth / 2;
+        let halfH = this.hitboxHeight / 2;
 
         if (localX > -halfW && localX < halfW && localY > -halfH && localY < halfH) {
             let distFront = Math.abs(halfW - localX);  
@@ -265,5 +268,6 @@ export class Tank {
         ctx.fillRect(this.x - 25, this.y - 40, hpWidth, 5);
     }
 }
+
 
 
