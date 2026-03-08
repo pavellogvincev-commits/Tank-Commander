@@ -31,7 +31,7 @@ const bounceSound = new Audio('assets/sounds/bounce.mp3');
 // Можно сразу настроить громкость (от 0.0 до 1.0), чтобы звуки не оглушали
 shootSound.volume = 0.6;
 hitSound.volume = 0.6;
-bounceSound.volume = 0.4;
+bounceSound.volume = 0.2;
 
 // Специальная функция для правильного проигрывания звуков (с наложением)
 function playSound(audioObject) {
@@ -236,6 +236,7 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
 
 
 
