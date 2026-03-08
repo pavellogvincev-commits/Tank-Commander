@@ -121,7 +121,7 @@ export class Tank {
         return false; 
     }
 
-        checkHit(bullet) {
+            checkHit(bullet) {
         if (this.hp <= 0) return { hit: false };
 
         let dx = bullet.x - this.x;
@@ -143,14 +143,12 @@ export class Tank {
 
             let minDist = Math.min(distFront, distRear, distSide1, distSide2);
             let hitZone = '';
-            // Локальные нормали (относительно танка)
             let normalX = 0, normalY = 0;
 
             if (minDist === distFront) { hitZone = 'front'; normalX = 1; normalY = 0; }
             else if (minDist === distRear) { hitZone = 'rear'; normalX = -1; normalY = 0; }
             else { hitZone = 'side'; normalX = 0; normalY = minDist === distSide1 ? 1 : -1; }
 
-            // Вычисляем угол попадания
             let localVx = bullet.vx * cos - bullet.vy * sin;
             let localVy = bullet.vx * sin + bullet.vy * cos;
             let speed = Math.sqrt(localVx*localVx + localVy*localVy);
@@ -161,20 +159,13 @@ export class Tank {
             dot = Math.max(-1, Math.min(1, dot));
             let angleDeg = Math.acos(dot) * (180 / Math.PI); 
 
-            // --- НОВОЕ: Переводим локальную нормаль брони обратно в глобальные координаты ---
-            // Это нужно пуле, чтобы правильно отскочить!
             let cosHull = Math.cos(this.hullAngle);
             let sinHull = Math.sin(this.hullAngle);
             let worldNx = normalX * cosHull - normalY * sinHull;
             let worldNy = normalX * sinHull + normalY * cosHull;
 
             let hitResult = { 
-                hit: true, 
-                zone: hitZone, 
-                x: bullet.x, 
-                y: bullet.y,
-                nx: worldNx, // Передаем нормаль пуле
-                ny: worldNy
+                hit: true, zone: hitZone, x: bullet.x, y: bullet.y, nx: worldNx, ny: worldNy
             };
 
             if (angleDeg > 90) angleDeg = 90; 
@@ -187,11 +178,18 @@ export class Tank {
                 let finalDamage = Math.floor(baseDamage + (Math.random() * variation * 2 - variation));
                 if (finalDamage < 1) finalDamage = 1; 
 
+                // --- НОВОЕ: Проверяем, стал ли этот урон смертельным ---
+                let isDestroyed = false;
+                if (this.hp > 0 && this.hp - finalDamage <= 0) {
+                    isDestroyed = true;
+                }
+
                 this.hp -= finalDamage;
                 if (this.hp < 0) this.hp = 0;
                 
                 hitResult.type = 'penetration';
                 hitResult.damage = finalDamage;
+                hitResult.destroyed = isDestroyed; // Передаем флаг смерти!
             } else {
                 let armorDamage = Math.floor(bullet.penetration * 0.1); 
                 this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - armorDamage);
@@ -267,4 +265,5 @@ export class Tank {
         ctx.fillRect(this.x - 25, this.y - 40, hpWidth, 5);
     }
 }
+
 
