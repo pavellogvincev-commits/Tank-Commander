@@ -80,6 +80,7 @@ function gameLoop(timestamp) {
             const sx = playerTank.x + Math.cos(playerTank.turretAngle) * 35;
             const sy = playerTank.y + Math.sin(playerTank.turretAngle) * 35;
             bullets.push(new Bullet(sx, sy, playerTank.turretAngle, 'player'));
+            playSound(shootSound);
         }
     }
 
@@ -92,6 +93,7 @@ function gameLoop(timestamp) {
                 const sx = enemy.x + Math.cos(enemy.turretAngle) * 35;
                 const sy = enemy.y + Math.sin(enemy.turretAngle) * 35;
                 bullets.push(new Bullet(sx, sy, enemy.turretAngle, 'enemy'));
+                playSound(shootSound);
             }
         } else {
             enemies.splice(i, 1); // Удаляем мертвых
@@ -117,10 +119,12 @@ function gameLoop(timestamp) {
                 if (hit.type === 'penetration') {
                     b.toDestroy = true; 
                     spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
+                    playSound(hitSound);
                 } else {
                     // Рикошет: пуля отскакивает от брони
                     b.bounce(hit.nx, hit.ny);
                     spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
+                    playSound(bounceSound);
                 }
             }
         }
@@ -133,10 +137,12 @@ function gameLoop(timestamp) {
                     if (hit.type === 'penetration') {
                         b.toDestroy = true;
                         spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
+                        playSound(hitSound);
                     } else {
                         // Рикошет от врага
                         b.bounce(hit.nx, hit.ny);
                         spawnSparks(hit.x, hit.y, hit.nx, hit.ny);
+                        playSound(bounceSound);
                     }
                     break; // В двух врагов одновременно пуля попасть не может
                 }
@@ -230,5 +236,6 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
 
 
