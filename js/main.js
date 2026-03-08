@@ -169,7 +169,7 @@ function gameLoop(timestamp) {
     for (let enemy of enemies) enemy.draw(ctx);
 
     // Всплывающий текст урона (жирный шрифт с белой обводкой)
-    ctx.font = '900 28px Arial, sans-serif'; // 900 - самый жирный вес
+    ctx.font = '900 18px Arial, sans-serif'; // 900 - самый жирный вес
     ctx.textAlign = 'center';
     
     for (let ft of floatingTexts) {
@@ -177,7 +177,7 @@ function gameLoop(timestamp) {
         ctx.globalAlpha = alpha;
         
         // 1. Белая обводка (толщина 4px)
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 2;
         ctx.strokeStyle = '#ffffff';
         ctx.strokeText(ft.text, ft.x, ft.y);
         
@@ -212,3 +212,4 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
