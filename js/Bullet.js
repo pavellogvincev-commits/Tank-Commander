@@ -48,6 +48,7 @@ export class Bullet {
             if (angleOfIncidence >= 55) {
                 // Вызываем наш новый метод отскока
                 this.bounce(col.nx, col.ny);
+                playSound(bounceSound);
             } else {
                 this.toDestroy = true;
                 if (spawnSparks) spawnSparks(this.x, this.y, col.nx, col.ny);
@@ -68,3 +69,4 @@ export class Bullet {
         ctx.restore();
     }
 }
+
