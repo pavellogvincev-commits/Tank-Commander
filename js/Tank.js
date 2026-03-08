@@ -34,6 +34,17 @@ export class Tank {
         this.fireRate = 1.0;     // Время перезарядки (1 секунда между выстрелами)
         this.fireCooldown = 0;   // Текущий таймер перезарядки
         this.recoil = 0;         // Смещение башни при отдаче
+        
+        // --- НОВЫЕ ХАРАКТЕРИСТИКИ: HP и БРОНЯ ---
+        this.maxHp = 200;
+        this.hp = 200;
+        
+        // Броня: Лоб (front), Борта (side), Корма (rear)
+        this.armor = {
+            front: { current: 80, max: 80 },
+            side:  { current: 40, max: 40 },
+            rear:  { current: 25, max: 25 }
+        };
     }
 
     update(dt, input, arena) {
@@ -170,6 +181,92 @@ export class Tank {
         // НОВОЕ: вычитаем this.recoil по оси X, чтобы башня сдвигалась назад при выстреле
         ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight);
         ctx.restore();
+        
+        // Полоска ХП
+        ctx.fillStyle = 'red';
+        ctx.fillRect(this.x - 25, this.y - 40, 50, 5);
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(this.x - 25, this.y - 40, 50 * (this.hp / this.maxHp), 
+    }
+    checkHit(bullet) {
+        if (this.hp <= 0) return false;
+
+        // 1. Переводим координаты пули в "локальную систему координат" танка
+        let dx = bullet.x - this.x;
+        let dy = bullet.y - this.y;
+        
+        // Крутим мир обратно (на минус угол корпуса)
+        let cos = Math.cos(-this.hullAngle);
+        let sin = Math.sin(-this.hullAngle);
+        let localX = dx * cos - dy * sin;
+        let localY = dx * sin + dy * cos;
+
+        let halfW = this.hullWidth / 2;
+        let halfH = this.hullHeight / 2;
+
+        // 2. Проверяем, попала ли пуля в прямоугольник танка
+        if (localX > -halfW && localX < halfW && localY > -halfH && localY < halfH) {
+            
+            // 3. Определяем, в какую зону попали (ищем ближайшую грань)
+            let distFront = Math.abs(halfW - localX);  // Правая грань (лоб)
+            let distRear = Math.abs(-halfW - localX);  // Левая грань (корма)
+            let distSide1 = Math.abs(halfH - localY);  // Нижняя грань (борт)
+            let distSide2 = Math.abs(-halfH - localY); // Верхняя грань (борт)
+
+            let minDist = Math.min(distFront, distRear, distSide1, distSide2);
+            
+            let hitZone = '';
+            let normalX = 0, normalY = 0;
+
+            if (minDist === distFront) { hitZone = 'front'; normalX = 1; normalY = 0; }
+            else if (minDist === distRear) { hitZone = 'rear'; normalX = -1; normalY = 0; }
+            else { hitZone = 'side'; normalX = 0; normalY = minDist === distSide1 ? 1 : -1; }
+
+            // 4. Вычисляем угол падения пули
+            let localVx = bullet.vx * cos - bullet.vy * sin;
+            let localVy = bullet.vx * sin + bullet.vy * cos;
+            let speed = Math.sqrt(localVx*localVx + localVy*localVy);
+            let dirX = localVx / speed;
+            let dirY = localVy / speed;
+
+            let dot = -(dirX * normalX + dirY * normalY);
+            dot = Math.max(-1, Math.min(1, dot));
+            let angleDeg = Math.acos(dot) * (180 / Math.PI); // Угол от 0 до 90
+
+            // 5. РАСЧЕТ БРОНЕПРОБИТИЯ (формула: 100% при 0 град, 0% при 90 град)
+            if (angleDeg > 90) angleDeg = 90; 
+            let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
+            let currentArmor = this.armor[hitZone].current;
+
+            // 6. ИТОГОВЫЙ УРОН
+            let hitResult = { hit: true, zone: hitZone, x: bullet.x, y: bullet.y };
+
+            if (effectivePenetration > currentArmor) {
+                // ПРОБИТИЕ!
+                let baseDamage = effectivePenetration - currentArmor;
+                // Разброс +- 10%
+                let variation = baseDamage * 0.1;
+                let finalDamage = Math.floor(baseDamage + (Math.random() * variation * 2 - variation));
+                if (finalDamage < 1) finalDamage = 1; // Минимум 1 урона
+
+                this.hp -= finalDamage;
+                if (this.hp < 0) this.hp = 0;
+                
+                hitResult.type = 'penetration';
+                hitResult.damage = finalDamage;
+            } else {
+                // РИКОШЕТ / НЕПРОБИТИЕ (Деградация брони)
+                let armorDamage = Math.floor(bullet.penetration * 0.1); // Снимаем 10% от базового пробития пули
+                this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - armorDamage);
+                
+                hitResult.type = 'ricochet';
+                hitResult.damage = 0;
+            }
+
+            return hitResult; // Возвращаем инфу для отрисовки текста
+        }
+        return { hit: false };
     }
 }
+
 
