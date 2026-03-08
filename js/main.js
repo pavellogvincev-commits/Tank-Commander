@@ -11,6 +11,7 @@ canvas.width = 800; canvas.height = 600;
 const input = new Input(canvas);
 const arena = new Arena(canvas.width, canvas.height);
 
+// Картинки
 const hullImage = new Image(); const turretImage = new Image();
 const enemyHullImage = new Image(); const enemyTurretImage = new Image();
 
@@ -22,15 +23,17 @@ let bullets = [];
 let sparks = [];
 let floatingTexts = [];
 
+// Создание текста урона
 function spawnText(x, y, text, color) {
     floatingTexts.push({
         x: x, y: y,
         text: text, color: color,
-        life: 1.5, maxLife: 1.5, 
-        vy: -30 
+        life: 1.5, maxLife: 1.5, // Текст висит 1.5 секунды
+        vy: -30 // Медленно летит вверх
     });
 }
 
+// Создание искр при рикошете или попадании в стену
 function spawnSparks(x, y, normalX, normalY) {
     let sparkCount = 5 + Math.floor(Math.random() * 6);
     let baseAngle = Math.atan2(normalY, normalX); 
@@ -46,11 +49,13 @@ function spawnSparks(x, y, normalX, normalY) {
     }
 }
 
+// Главный игровой цикл
 function gameLoop(timestamp) {
     let dt = (timestamp - lastTime) / 1000;
     if (isNaN(dt)) dt = 0;
     lastTime = timestamp;
 
+    // 1. Обновляем Игрока
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena);
         if (input.isShooting() && playerTank.tryShoot()) {
@@ -60,6 +65,7 @@ function gameLoop(timestamp) {
         }
     }
 
+    // 2. Обновляем Врагов
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
@@ -70,115 +76,22 @@ function gameLoop(timestamp) {
                 bullets.push(new Bullet(sx, sy, enemy.turretAngle, 'enemy'));
             }
         } else {
-            enemies.splice(i, 1); 
+            enemies.splice(i, 1); // Удаляем мертвых
         }
     }
 
+    // 3. Обновляем Пули (и проверяем столкновения с танками)
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
+        
+        // Сначала двигаем пулю и проверяем стены
         b.update(dt, arena, spawnSparks);
         
-        if (b.toDestroy) {
-            bullets.splice(i, 1);
-            continue;
-        }
+        if (b.toDestroy) continue; // Если взорвалась об стену, дальше не проверяем
+        
+        let hasHit = false;
 
+        // Попадание в игрока
         if (b.owner !== 'player' && playerTank.hp > 0) {
             let hit = playerTank.checkHit(b);
-            if (hit.hit) {
-                b.toDestroy = true; 
-                if (hit.type === 'penetration') {
-                    spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
-                } else {
-                    spawnText(hit.x, hit.y - 20, 'РИКОШЕТ', '#bbbbbb');
-                    spawnSparks(hit.x, hit.y, -Math.cos(b.angle), -Math.sin(b.angle)); 
-                }
-            }
-        }
-
-        if (b.owner !== 'enemy') {
-            for (let enemy of enemies) {
-                let hit = enemy.checkHit(b);
-                if (hit.hit) {
-                    b.toDestroy = true;
-                    if (hit.type === 'penetration') {
-                        spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
-                    } else {
-                        spawnText(hit.x, hit.y - 20, 'РИКОШЕТ', '#bbbbbb');
-                        spawnSparks(hit.x, hit.y, -Math.cos(b.angle), -Math.sin(b.angle));
-                    }
-                    break; 
-                }
-            }
-        }
-    }
-
-    bullets = bullets.filter(b => !b.toDestroy);
-
-    for (let i = sparks.length - 1; i >= 0; i--) { 
-        let s = sparks[i];
-        s.life -= dt * 4; 
-        s.x += s.vx * dt; s.y += s.vy * dt;
-        s.vx *= 0.9; s.vy *= 0.9;
-        if (s.life <= 0) sparks.splice(i, 1);
-    }
-    
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        let ft = floatingTexts[i];
-        ft.life -= dt;
-        ft.y += ft.vy * dt; 
-        if (ft.life <= 0) floatingTexts.splice(i, 1);
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    arena.draw(ctx);
-    
-    for (let bullet of bullets) bullet.draw(ctx);
-    for (let s of sparks) { 
-        let alpha = Math.max(0, s.life / s.maxLife);
-        ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`; 
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    if (playerTank.hp > 0) playerTank.draw(ctx);
-    for (let enemy of enemies) enemy.draw(ctx);
-
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    for (let ft of floatingTexts) {
-        let alpha = Math.max(0, ft.life / ft.maxLife);
-        ctx.fillStyle = ft.color;
-        ctx.globalAlpha = alpha;
-        ctx.fillText(ft.text, ft.x, ft.y);
-        
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = `rgba(0,0,0,${alpha})`;
-        ctx.strokeText(ft.text, ft.x, ft.y);
-    }
-    ctx.globalAlpha = 1.0;
-
-    requestAnimationFrame(gameLoop);
-}
-
-let imagesLoaded = 0;
-function onImageLoad() {
-    imagesLoaded++;
-    if (imagesLoaded === 4) {
-        playerTank = new Tank(400, 300, hullImage, turretImage);
-        enemies.push(new Enemy(100, 100, enemyHullImage, enemyTurretImage));
-        requestAnimationFrame(gameLoop);
-    }
-}
-
-hullImage.onload = onImageLoad;
-turretImage.onload = onImageLoad;
-enemyHullImage.onload = onImageLoad;
-enemyTurretImage.onload = onImageLoad;
-
-const noCache = '?v=' + new Date().getTime();
-hullImage.src = 'assets/hull.png' + noCache;
-turretImage.src = 'assets/turret.png' + noCache;
-enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
-enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+            if (hit.
