@@ -105,7 +105,7 @@ function gameLoop(timestamp) {
         let b = bullets[i];
         
         // Сначала двигаем пулю и проверяем стены
-        b.update(dt, arena, spawnSparks);
+        b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
         
         if (b.toDestroy) continue; // Если взорвалась об стену, дальше не проверяем
         
@@ -236,6 +236,7 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
 
 
 
