@@ -15,21 +15,19 @@ const hullImage = new Image(); const turretImage = new Image();
 const enemyHullImage = new Image(); const enemyTurretImage = new Image();
 
 let playerTank;
-let enemies = []; // Теперь враги будут в массиве!
+let enemies = []; 
 let lastTime = 0;
 
 let bullets = []; 
 let sparks = [];
-
-// --- НОВОЕ: Система всплывающего текста ---
 let floatingTexts = [];
 
 function spawnText(x, y, text, color) {
     floatingTexts.push({
         x: x, y: y,
         text: text, color: color,
-        life: 1.5, maxLife: 1.5, // Живет полторы секунды
-        vy: -30 // Летит вверх
+        life: 1.5, maxLife: 1.5, 
+        vy: -30 
     });
 }
 
@@ -40,7 +38,9 @@ function spawnSparks(x, y, normalX, normalY) {
         let spread = (Math.random() - 0.5) * Math.PI;
         let speed = 100 + Math.random() * 200; 
         sparks.push({
-            x: x, y: y, vx: Math.cos(baseAngle + spread) * speed, vy: Math.sin(baseAngle + spread) * speed,
+            x: x, y: y, 
+            vx: Math.cos(baseAngle + spread) * speed, 
+            vy: Math.sin(baseAngle + spread) * speed,
             life: 1.0, maxLife: 1.0, size: 2 + Math.random() * 3
         });
     }
@@ -60,7 +60,6 @@ function gameLoop(timestamp) {
         }
     }
 
-    // Обновляем всех живых врагов
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
@@ -71,11 +70,10 @@ function gameLoop(timestamp) {
                 bullets.push(new Bullet(sx, sy, enemy.turretAngle, 'enemy'));
             }
         } else {
-            enemies.splice(i, 1); // Удаляем мертвого врага
+            enemies.splice(i, 1); 
         }
     }
 
-    // --- ЛОГИКА СТОЛКНОВЕНИЯ ПУЛЬ С ТАНКАМИ ---
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         b.update(dt, arena, spawnSparks);
@@ -85,21 +83,19 @@ function gameLoop(timestamp) {
             continue;
         }
 
-        // Проверяем попадание в Игрока
         if (b.owner !== 'player' && playerTank.hp > 0) {
             let hit = playerTank.checkHit(b);
             if (hit.hit) {
-                b.toDestroy = true; // Пуля исчезает при любом касании танка
+                b.toDestroy = true; 
                 if (hit.type === 'penetration') {
                     spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
                 } else {
                     spawnText(hit.x, hit.y - 20, 'РИКОШЕТ', '#bbbbbb');
-                    spawnSparks(hit.x, hit.y, -Math.cos(b.angle), -Math.sin(b.angle)); // Искры от брони
+                    spawnSparks(hit.x, hit.y, -Math.cos(b.angle), -Math.sin(b.angle)); 
                 }
             }
         }
 
-        // Проверяем попадание во Врагов
         if (b.owner !== 'enemy') {
             for (let enemy of enemies) {
                 let hit = enemy.checkHit(b);
@@ -111,38 +107,44 @@ function gameLoop(timestamp) {
                         spawnText(hit.x, hit.y - 20, 'РИКОШЕТ', '#bbbbbb');
                         spawnSparks(hit.x, hit.y, -Math.cos(b.angle), -Math.sin(b.angle));
                     }
-                    break; // Пуля попала, дальше врагов не проверяем
+                    break; 
                 }
             }
         }
     }
 
-    // Удаляем пули, которые врезались
     bullets = bullets.filter(b => !b.toDestroy);
 
-    // Обновляем текст и искры
-    for (let i = sparks.length - 1; i >= 0; i--) { ... /* старый код искр */ }
+    for (let i = sparks.length - 1; i >= 0; i--) { 
+        let s = sparks[i];
+        s.life -= dt * 4; 
+        s.x += s.vx * dt; s.y += s.vy * dt;
+        s.vx *= 0.9; s.vy *= 0.9;
+        if (s.life <= 0) sparks.splice(i, 1);
+    }
     
-    // Анимация текста
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
         ft.life -= dt;
-        ft.y += ft.vy * dt; // Текст летит вверх
+        ft.y += ft.vy * dt; 
         if (ft.life <= 0) floatingTexts.splice(i, 1);
     }
 
-    // --- ОТРИСОВКА ---
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     arena.draw(ctx);
     
     for (let bullet of bullets) bullet.draw(ctx);
-    for (let s of sparks) { ... /* отрисовка искр */ }
+    for (let s of sparks) { 
+        let alpha = Math.max(0, s.life / s.maxLife);
+        ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`; 
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
-    // Рисуем танки
     if (playerTank.hp > 0) playerTank.draw(ctx);
     for (let enemy of enemies) enemy.draw(ctx);
 
-    // НОВОЕ: Рисуем всплывающий текст
     ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'center';
     for (let ft of floatingTexts) {
@@ -151,7 +153,6 @@ function gameLoop(timestamp) {
         ctx.globalAlpha = alpha;
         ctx.fillText(ft.text, ft.x, ft.y);
         
-        // Черная обводка для читаемости
         ctx.lineWidth = 1;
         ctx.strokeStyle = `rgba(0,0,0,${alpha})`;
         ctx.strokeText(ft.text, ft.x, ft.y);
@@ -161,13 +162,11 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
-// Загрузка
 let imagesLoaded = 0;
 function onImageLoad() {
     imagesLoaded++;
     if (imagesLoaded === 4) {
         playerTank = new Tank(400, 300, hullImage, turretImage);
-        // Закидываем врага в массив!
         enemies.push(new Enemy(100, 100, enemyHullImage, enemyTurretImage));
         requestAnimationFrame(gameLoop);
     }
