@@ -113,7 +113,7 @@ export class Tank {
     tryShoot() {
         if (this.fireCooldown <= 0) {
             this.fireCooldown = this.fireRate; // Сбрасываем кулдаун
-            this.recoil = 8;                   // Башня дергается на 8 пикселей назад
+            this.recoil = 4;                   // Башня дергается на 8 пикселей назад
             return true;                       // Разрешаем выстрел
         }
         return false; // Идет перезарядка
@@ -172,3 +172,4 @@ export class Tank {
         ctx.restore();
     }
 }
+
