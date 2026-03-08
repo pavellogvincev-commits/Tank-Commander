@@ -6,6 +6,15 @@ export class Enemy extends Tank {
         // super вызывает constructor оригинального Tank.js
         super(x, y, hullImg, turretImg);
         
+        this.maxHp = 100; // У врага 100 ХП
+        this.hp = 100;
+
+        // Броня врага (сделаем чуть слабее)
+        this.armor = {
+            front: { current: 60, max: 60 },
+            side:  { current: 30, max: 30 },
+            rear:  { current: 15, max: 15 }
+        };
         // Переопределяем характеристики врага (сделаем его слабее игрока)
         this.maxForwardSpeed = 30; // Ездит медленнее
         this.fireRate = 2.0;       // Стреляет раз в 2 секунды (игрок раз в 1 сек)
@@ -67,4 +76,5 @@ export class Enemy extends Tank {
         }
         return false;
     }
+
 }
