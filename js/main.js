@@ -11,9 +11,26 @@ canvas.width = 800; canvas.height = 600;
 const input = new Input(canvas);
 const arena = new Arena(canvas.width, canvas.height);
 
-// Картинки
 const hullImage = new Image(); const turretImage = new Image();
 const enemyHullImage = new Image(); const enemyTurretImage = new Image();
+
+// --- ЗВУКИ ---
+const shootSound = new Audio('assets/sounds/shoot.mp3');
+const hitSound = new Audio('assets/sounds/hit.mp3');
+const bounceSound = new Audio('assets/sounds/bounce.mp3');
+// НОВЫЙ ЗВУК ВЗРЫВА
+const explodeSound = new Audio('assets/sounds/explode.mp3'); 
+
+shootSound.volume = 0.3;
+hitSound.volume = 0.6;
+bounceSound.volume = 0.5;
+explodeSound.volume = 0.8; // Взрыв должен быть громким!
+
+function playSound(audioObject) {
+    let clone = audioObject.cloneNode(); 
+    clone.volume = audioObject.volume;   
+    clone.play().catch(e => console.log("Ждем клика игрока")); 
+}
 
 let playerTank;
 let enemies = []; 
@@ -23,35 +40,11 @@ let bullets = [];
 let sparks = [];
 let floatingTexts = [];
 
-// --- НОВОЕ: Загрузка звуков ---
-const shootSound = new Audio('assets/sounds/shoot.mp3');
-const hitSound = new Audio('assets/sounds/hit.mp3');
-const bounceSound = new Audio('assets/sounds/bounce.mp3');
-
-// Можно сразу настроить громкость (от 0.0 до 1.0), чтобы звуки не оглушали
-shootSound.volume = 0.6;
-hitSound.volume = 0.6;
-bounceSound.volume = 0.2;
-
-// Специальная функция для правильного проигрывания звуков (с наложением)
-function playSound(audioObject) {
-    let clone = audioObject.cloneNode(); // Создаем копию звука
-    clone.volume = audioObject.volume;   // Переносим громкость
-    // play() может вызвать ошибку, если игрок еще не кликнул по экрану (защита браузеров), поэтому ставим catch
-    clone.play().catch(e => console.log("Ждем клика игрока для звука")); 
-}
-
-// Создание текста урона
 function spawnText(x, y, text, color) {
-    floatingTexts.push({
-        x: x, y: y,
-        text: text, color: color,
-        life: 1.5, maxLife: 1.5, // Текст висит 1.5 секунды
-        vy: -30 // Медленно летит вверх
-    });
+    floatingTexts.push({ x: x, y: y, text: text, color: color, life: 1.5, maxLife: 1.5, vy: -30 });
 }
 
-// Создание искр при рикошете или попадании в стену
+// Обновленная функция искр (теперь поддерживает цвета)
 function spawnSparks(x, y, normalX, normalY) {
     let sparkCount = 5 + Math.floor(Math.random() * 6);
     let baseAngle = Math.atan2(normalY, normalX); 
@@ -60,21 +53,40 @@ function spawnSparks(x, y, normalX, normalY) {
         let speed = 100 + Math.random() * 200; 
         sparks.push({
             x: x, y: y, 
-            vx: Math.cos(baseAngle + spread) * speed, 
-            vy: Math.sin(baseAngle + spread) * speed,
-            life: 1.0, maxLife: 1.0, size: 2 + Math.random() * 3
+            vx: Math.cos(baseAngle + spread) * speed, vy: Math.sin(baseAngle + spread) * speed,
+            life: 1.0, maxLife: 1.0, size: 2 + Math.random() * 3,
+            color: '255, 200, 0' // Желтые искры рикошета (RGB)
         });
     }
 }
 
-// Главный игровой цикл
+// НОВАЯ ФУНКЦИЯ: Огромный взрыв танка!
+function spawnExplosion(x, y) {
+    playSound(explodeSound);
+    
+    // Цвета взрыва: Ярко-красный, Оранжевый, Темно-серый дым, Черный дым
+    let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '30, 30, 30']; 
+    
+    for (let i = 0; i < 40; i++) { // 40 частиц разлетаются во все стороны
+        let angle = Math.random() * Math.PI * 2; // Во все 360 градусов
+        let speed = 50 + Math.random() * 200; 
+        sparks.push({
+            x: x, y: y, 
+            vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+            life: 0.5 + Math.random() * 1.0,  // Живут дольше искр
+            maxLife: 1.5, 
+            size: 4 + Math.random() * 12, // Огромные куски огня и дыма
+            color: colors[Math.floor(Math.random() * colors.length)] // Случайный цвет из массива
+        });
+    }
+}
+
 function gameLoop(timestamp) {
     let dt = (timestamp - lastTime) / 1000;
     if (isNaN(dt)) dt = 0;
     lastTime = timestamp;
 
-    // 1. Обновляем Игрока
-    if (playerTank.hp > 0) {
+    if (playerTank && playerTank.hp > 0) {
         playerTank.update(dt, input, arena);
         if (input.isShooting() && playerTank.tryShoot()) {
             const sx = playerTank.x + Math.cos(playerTank.turretAngle) * 35;
@@ -84,7 +96,6 @@ function gameLoop(timestamp) {
         }
     }
 
-    // 2. Обновляем Врагов
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
@@ -96,23 +107,20 @@ function gameLoop(timestamp) {
                 playSound(shootSound);
             }
         } else {
-            enemies.splice(i, 1); // Удаляем мертвых
+            enemies.splice(i, 1); 
         }
     }
 
-    // 3. Обновляем Пули (и проверяем столкновения с танками)
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         
-        // Сначала двигаем пулю и проверяем стены
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
-        
-        if (b.toDestroy) continue; // Если взорвалась об стену, дальше не проверяем
+        if (b.toDestroy) continue; 
         
         let hasHit = false;
 
         // Попадание в игрока
-        if (b.owner !== 'player' && playerTank.hp > 0) {
+        if (b.owner !== 'player' && playerTank && playerTank.hp > 0) {
             let hit = playerTank.checkHit(b);
             if (hit.hit) {
                 hasHit = true;
@@ -120,8 +128,12 @@ function gameLoop(timestamp) {
                     b.toDestroy = true; 
                     spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
                     playSound(hitSound);
+                    
+                    // ЕСЛИ УБИЛИ ИГРОКА
+                    if (hit.destroyed) {
+                        spawnExplosion(playerTank.x, playerTank.y); // Взрыв ровно по центру танка
+                    }
                 } else {
-                    // Рикошет: пуля отскакивает от брони
                     b.bounce(hit.nx, hit.ny);
                     spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                     playSound(bounceSound);
@@ -138,22 +150,24 @@ function gameLoop(timestamp) {
                         b.toDestroy = true;
                         spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333');
                         playSound(hitSound);
+                        
+                        // ЕСЛИ УБИЛИ ВРАГА
+                        if (hit.destroyed) {
+                            spawnExplosion(enemy.x, enemy.y); // Взрыв ровно по центру врага
+                        }
                     } else {
-                        // Рикошет от врага
                         b.bounce(hit.nx, hit.ny);
                         spawnSparks(hit.x, hit.y, hit.nx, hit.ny);
                         playSound(bounceSound);
                     }
-                    break; // В двух врагов одновременно пуля попасть не может
+                    break; 
                 }
             }
         }
     }
 
-    // Удаляем из массива пули, помеченные на уничтожение
     bullets = bullets.filter(b => !b.toDestroy);
 
-    // 4. Обновляем Искры
     for (let i = sparks.length - 1; i >= 0; i--) { 
         let s = sparks[i];
         s.life -= dt * 4; 
@@ -162,7 +176,6 @@ function gameLoop(timestamp) {
         if (s.life <= 0) sparks.splice(i, 1);
     }
     
-    // 5. Обновляем Текст урона
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
         ft.life -= dt;
@@ -170,51 +183,51 @@ function gameLoop(timestamp) {
         if (ft.life <= 0) floatingTexts.splice(i, 1);
     }
 
-    // --- ОТРИСОВКА ВСЕГО ---
+    // --- ОТРИСОВКА ---
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Арена
     arena.draw(ctx);
-    
-    // Снаряды
     for (let bullet of bullets) bullet.draw(ctx);
     
-    // Искры
+    // Отрисовка частиц (теперь цветная!)
     for (let s of sparks) { 
         let alpha = Math.max(0, s.life / s.maxLife);
-        ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`; 
+        ctx.fillStyle = `rgba(${s.color}, ${alpha})`; // Использует s.color вместо жестко заданного цвета
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Танки
-    if (playerTank.hp > 0) playerTank.draw(ctx);
+    if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
     for (let enemy of enemies) enemy.draw(ctx);
 
-    // Всплывающий текст урона (жирный шрифт с белой обводкой)
-    ctx.font = '900 18px Arial, sans-serif'; // 900 - самый жирный вес
+    ctx.font = '900 22px Arial, sans-serif'; 
     ctx.textAlign = 'center';
-    
     for (let ft of floatingTexts) {
         let alpha = Math.max(0, ft.life / ft.maxLife);
         ctx.globalAlpha = alpha;
-        
-        // 1. Белая обводка (толщина 4px)
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.strokeStyle = '#ffffff';
         ctx.strokeText(ft.text, ft.x, ft.y);
-        
-        // 2. Красная заливка самого текста
         ctx.fillStyle = ft.color;
         ctx.fillText(ft.text, ft.x, ft.y);
     }
-    ctx.globalAlpha = 1.0; // Возвращаем нормальную прозрачность
+    ctx.globalAlpha = 1.0;
+
+    // --- НОВОЕ: НАДПИСЬ GAME OVER ---
+    if (playerTank && playerTank.hp <= 0) {
+        ctx.font = '900 50px Arial';
+        ctx.fillStyle = '#ff0000'; // Красный цвет
+        ctx.textAlign = 'center';
+        
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#000000'; // Черная обводка
+        ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2);
+    }
 
     requestAnimationFrame(gameLoop);
 }
 
-// Загрузка ресурсов
 let imagesLoaded = 0;
 function onImageLoad() {
     imagesLoaded++;
@@ -230,14 +243,8 @@ turretImage.onload = onImageLoad;
 enemyHullImage.onload = onImageLoad;
 enemyTurretImage.onload = onImageLoad;
 
-// Хак для сброса кэша браузера (чтобы картинки всегда были свежими)
 const noCache = '?v=' + new Date().getTime();
 hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
-
-
-
-
-
