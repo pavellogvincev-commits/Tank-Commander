@@ -8,10 +8,26 @@ export class Bullet {
         this.speed = 500; 
         this.radius = 3;  
         this.toDestroy = false; 
-        this.penetration = 80; // Бронепробитие
+        this.penetration = 80; 
 
         this.vx = Math.cos(angle) * this.speed;
         this.vy = Math.sin(angle) * this.speed;
+    }
+
+    // НОВЫЙ МЕТОД: Физический отскок пули от нормали (nx, ny)
+    bounce(nx, ny) {
+        let dotV = this.vx * nx + this.vy * ny;
+        this.vx = this.vx - 2 * dotV * nx;
+        this.vy = this.vy - 2 * dotV * ny;
+        
+        this.angle = Math.atan2(this.vy, this.vx);
+        
+        // Немного "выталкиваем" пулю, чтобы она не застряла в броне
+        this.x += nx * 6;
+        this.y += ny * 6;
+        
+        // После рикошета пуля становится "ничейной" и может ранить кого угодно!
+        this.owner = null; 
     }
 
     update(dt, arena, spawnSparks) {
@@ -30,13 +46,8 @@ export class Bullet {
             let angleOfIncidence = Math.acos(dotProduct) * (180 / Math.PI);
 
             if (angleOfIncidence >= 55) {
-                let dotV = this.vx * col.nx + this.vy * col.ny;
-                this.vx = this.vx - 2 * dotV * col.nx;
-                this.vy = this.vy - 2 * dotV * col.ny;
-                
-                this.angle = Math.atan2(this.vy, this.vx);
-                this.x += col.nx * 2;
-                this.y += col.ny * 2;
+                // Вызываем наш новый метод отскока
+                this.bounce(col.nx, col.ny);
             } else {
                 this.toDestroy = true;
                 if (spawnSparks) spawnSparks(this.x, this.y, col.nx, col.ny);
