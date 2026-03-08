@@ -30,7 +30,7 @@ export class Bullet {
         this.owner = null; 
     }
 
-    update(dt, arena, spawnSparks) {
+    update(dt, arena, spawnSparks, playBounceSound) {
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
@@ -45,10 +45,10 @@ export class Bullet {
             
             let angleOfIncidence = Math.acos(dotProduct) * (180 / Math.PI);
 
-            if (angleOfIncidence >= 55) {
+            if (angleOfIncidence >= 40) {
                 // Вызываем наш новый метод отскока
                 this.bounce(col.nx, col.ny);
-                playSound(bounceSound);
+                if (playBounceSound) playBounceSound();
             } else {
                 this.toDestroy = true;
                 if (spawnSparks) spawnSparks(this.x, this.y, col.nx, col.ny);
@@ -69,4 +69,5 @@ export class Bullet {
         ctx.restore();
     }
 }
+
 
