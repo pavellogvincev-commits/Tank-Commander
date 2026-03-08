@@ -23,7 +23,7 @@ const explodeSound = new Audio('assets/sounds/explode.mp3');
 
 shootSound.volume = 0.3;
 hitSound.volume = 0.6;
-bounceSound.volume = 0.5;
+bounceSound.volume = 0.3;
 explodeSound.volume = 0.8; // Взрыв должен быть громким!
 
 function playSound(audioObject) {
@@ -171,7 +171,7 @@ function gameLoop(timestamp) {
 
     for (let i = sparks.length - 1; i >= 0; i--) { 
         let s = sparks[i];
-        s.life -= dt * 4; 
+        s.life -= dt; 
         s.x += s.vx * dt; s.y += s.vy * dt;
         s.vx *= 0.93; s.vy *= 0.93;
         if (s.life <= 0) sparks.splice(i, 1);
@@ -249,4 +249,5 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
 
