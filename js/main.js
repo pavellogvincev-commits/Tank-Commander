@@ -54,8 +54,10 @@ function spawnSparks(x, y, normalX, normalY) {
         sparks.push({
             x: x, y: y, 
             vx: Math.cos(baseAngle + spread) * speed, vy: Math.sin(baseAngle + spread) * speed,
-            life: 1.0, maxLife: 1.0, size: 2 + Math.random() * 3,
-            color: '255, 200, 0' // Желтые искры рикошета (RGB)
+            life: 0.2 + Math.random() * 0.2, // Искры живут доли секунды
+            maxLife: 0.4, 
+            size: 2 + Math.random() * 3,
+            color: '255, 200, 0' 
         });
     }
 }
@@ -64,19 +66,18 @@ function spawnSparks(x, y, normalX, normalY) {
 function spawnExplosion(x, y) {
     playSound(explodeSound);
     
-    // Цвета взрыва: Ярко-красный, Оранжевый, Темно-серый дым, Черный дым
-    let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '30, 30, 30']; 
+    let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; 
     
-    for (let i = 0; i < 40; i++) { // 40 частиц разлетаются во все стороны
-        let angle = Math.random() * Math.PI * 2; // Во все 360 градусов
-        let speed = 50 + Math.random() * 200; 
+    for (let i = 0; i < 100; i++) { // Увеличили со 40 до 100 частиц!
+        let angle = Math.random() * Math.PI * 2; 
+        let speed = 50 + Math.random() * 350; // Разлетаются в 1.5 раза дальше
         sparks.push({
             x: x, y: y, 
             vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-            life: 0.5 + Math.random() * 1.0,  // Живут дольше искр
-            maxLife: 1.5, 
-            size: 4 + Math.random() * 12, // Огромные куски огня и дыма
-            color: colors[Math.floor(Math.random() * colors.length)] // Случайный цвет из массива
+            life: 1.5 + Math.random() * 2.0,  // Дым живет от 1.5 до 3.5 СЕКУНД
+            maxLife: 3.5, 
+            size: 10 + Math.random() * 25, // Частицы стали ОГРОМНЫМИ (до 35 пикселей)
+            color: colors[Math.floor(Math.random() * colors.length)] 
         });
     }
 }
@@ -172,7 +173,7 @@ function gameLoop(timestamp) {
         let s = sparks[i];
         s.life -= dt * 4; 
         s.x += s.vx * dt; s.y += s.vy * dt;
-        s.vx *= 0.9; s.vy *= 0.9;
+        s.vx *= 0.93; s.vy *= 0.93;
         if (s.life <= 0) sparks.splice(i, 1);
     }
     
@@ -248,3 +249,4 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
