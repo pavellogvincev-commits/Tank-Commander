@@ -34,7 +34,7 @@ export class Bullet {
             // Получаем угол в градусах (0 - прямо в лоб, 90 - по касательной)
             let angleOfIncidence = Math.acos(dotProduct) * (180 / Math.PI);
 
-            if (angleOfIncidence >= 45) {
+            if (angleOfIncidence >= 55) {
                 // РИКОШЕТ! Формула отражения вектора
                 let dotV = this.vx * col.nx + this.vy * col.ny;
                 this.vx = this.vx - 2 * dotV * col.nx;
@@ -70,3 +70,4 @@ export class Bullet {
         ctx.restore();
     }
 }
+
