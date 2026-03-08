@@ -23,6 +23,24 @@ let bullets = [];
 let sparks = [];
 let floatingTexts = [];
 
+// --- НОВОЕ: Загрузка звуков ---
+const shootSound = new Audio('assets/sounds/shoot.mp3');
+const hitSound = new Audio('assets/sounds/hit.mp3');
+const bounceSound = new Audio('assets/sounds/bounce.mp3');
+
+// Можно сразу настроить громкость (от 0.0 до 1.0), чтобы звуки не оглушали
+shootSound.volume = 0.6;
+hitSound.volume = 0.6;
+bounceSound.volume = 0.4;
+
+// Специальная функция для правильного проигрывания звуков (с наложением)
+function playSound(audioObject) {
+    let clone = audioObject.cloneNode(); // Создаем копию звука
+    clone.volume = audioObject.volume;   // Переносим громкость
+    // play() может вызвать ошибку, если игрок еще не кликнул по экрану (защита браузеров), поэтому ставим catch
+    clone.play().catch(e => console.log("Ждем клика игрока для звука")); 
+}
+
 // Создание текста урона
 function spawnText(x, y, text, color) {
     floatingTexts.push({
@@ -212,4 +230,5 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
 
