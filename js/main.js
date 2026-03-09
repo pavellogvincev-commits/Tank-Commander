@@ -4,26 +4,41 @@ import { Tank } from './Tank.js';
 import { Bullet } from './Bullet.js';
 import { Enemy } from './Enemy.js';
 
-// --- БАЗА ДАННЫХ И ПРОГРЕСС ---
+// ==========================================
+// 1. БАЗА ДАННЫХ И ПРОГРЕСС
+// ==========================================
 const GameData = {
-    hulls: { "hunter": { hp: 200, armor: { front: 80, side: 40, rear: 25 }, speed: 50 } },
-    turrets: { "scourge": { fireRate: 1.0, penetration: 80 } },
-    enemyHulls: { "basic": { hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30 } },
-    enemyTurrets: { "basic": { fireRate: 2.0, penetration: 60 } }
+    hulls: {
+        "hunter": { name: "Охотник", hp: 200, armor: { front: 80, side: 40, rear: 25 }, speed: 50 }
+    },
+    turrets: {
+        "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80 }
+    },
+    enemyHulls: {
+        "basic": { name: "Враг-Корпус", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30 }
+    },
+    enemyTurrets: {
+        "basic": { name: "Враг-Пушка", fireRate: 2.0, penetration: 60 }
+    }
 };
 
-// Сохраняем прогресс игрока (в будущем можно сохранять в localStorage)
+let currentAssembly = {
+    hullId: "hunter",
+    turretId: "scourge"
+};
+
 let PlayerProgress = {
-    unlockedLevel: 1 // Максимально доступный уровень
+    unlockedLevel: 1 // Максимально доступный уровень (из 100)
 };
 
-// Конфигурация уровней (пока опишем только Уровень 1)
 const LevelsConfig = {
     1: { totalEnemies: 4, enemyType: "basic", bonuses: 2 }
-    // Уровни 2-100 пока будут пустышками (просто для теста сетки)
+    // Уровни 2-100 пока используют настройки по умолчанию
 };
 
-// --- ИНТЕРФЕЙС ---
+// ==========================================
+// 2. УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ (UI)
+// ==========================================
 const screens = {
     hangar: document.getElementById('hangar-screen'),
     levels: document.getElementById('levels-screen'),
@@ -36,6 +51,17 @@ function showScreen(screenName) {
     screens.game.style.display = screenName === 'game' ? 'block' : 'none';
 }
 
+function updateHangarUI() {
+    let hData = GameData.hulls[currentAssembly.hullId];
+    let tData = GameData.turrets[currentAssembly.turretId];
+
+    document.getElementById('stat-hp').innerText = hData.hp;
+    document.getElementById('stat-armor').innerText = `${hData.armor.front} / ${hData.armor.side} / ${hData.armor.rear}`;
+    document.getElementById('stat-speed').innerText = hData.speed;
+    document.getElementById('stat-penetration').innerText = tData.penetration;
+}
+updateHangarUI(); // Обновляем статы при загрузке
+
 document.getElementById('to-levels-btn').addEventListener('click', () => {
     generateLevelsGrid();
     showScreen('levels');
@@ -45,7 +71,6 @@ document.getElementById('back-to-hangar-btn').addEventListener('click', () => {
     showScreen('hangar');
 });
 
-// Генерация 100 кнопок уровней
 function generateLevelsGrid() {
     const grid = document.getElementById('levels-grid');
     grid.innerHTML = ''; 
@@ -55,7 +80,7 @@ function generateLevelsGrid() {
         btn.className = 'level-btn ' + (i <= PlayerProgress.unlockedLevel ? 'unlocked' : 'locked');
         
         let levelName = `<div>${i}</div>`;
-        let bonuses = i === 1 ? `<div class="bonuses">★ ★</div>` : ''; // Пример звездочек бонуса
+        let bonuses = i === 1 ? `<div class="bonuses">★ ★</div>` : ''; 
         
         btn.innerHTML = levelName + bonuses;
         
@@ -66,9 +91,8 @@ function generateLevelsGrid() {
     }
 }
 
-
 // ==========================================
-// ЛОГИКА ИГРЫ (ДВИЖОК)
+// 3. ИНИЦИАЛИЗАЦИЯ ИГРОВОГО ДВИЖКА
 // ==========================================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -80,9 +104,21 @@ const arena = new Arena(canvas.width, canvas.height);
 const hullImage = new Image(); const turretImage = new Image();
 const enemyHullImage = new Image(); const enemyTurretImage = new Image();
 
-// Звуки (заглушки для чистоты кода, если нет файлов - ошибки не сломают игру)
-function playSound() {}
+// Звуки
+const shootSound = new Audio('assets/sounds/shoot.mp3');
+const hitSound = new Audio('assets/sounds/hit.mp3');
+const bounceSound = new Audio('assets/sounds/bounce.mp3');
+const explodeSound = new Audio('assets/sounds/explode.mp3'); 
 
+shootSound.volume = 0.3; hitSound.volume = 0.6; bounceSound.volume = 0.5; explodeSound.volume = 0.8;
+
+function playSound(audioObject) {
+    let clone = audioObject.cloneNode(); 
+    clone.volume = audioObject.volume;   
+    clone.play().catch(e => console.log("Ждем клика игрока")); 
+}
+
+// Игровые массивы и переменные
 let playerTank;
 let enemies = []; 
 let bullets = []; 
@@ -92,23 +128,63 @@ let floatingTexts = [];
 let lastTime = 0;
 let gameRunning = false;
 
-// ПЕРЕМЕННЫЕ ТЕКУЩЕГО УРОВНЯ
+// Переменные текущего уровня
 let currentLevelNum = 1;
 let enemiesToSpawn = 0;
 let enemySpawnTimer = 0;
 let levelFinished = false;
 
-// Запуск конкретного уровня
+// ==========================================
+// 4. ЭФФЕКТЫ (Текст, Искры, Взрывы)
+// ==========================================
+function spawnText(x, y, text, color) {
+    floatingTexts.push({ x: x, y: y, text: text, color: color, life: 1.5, maxLife: 1.5, vy: -30 });
+}
+
+function spawnSparks(x, y, normalX, normalY) {
+    let sparkCount = 5 + Math.floor(Math.random() * 6);
+    let baseAngle = Math.atan2(normalY, normalX); 
+    for (let i = 0; i < sparkCount; i++) {
+        let spread = (Math.random() - 0.5) * Math.PI;
+        let speed = 100 + Math.random() * 200; 
+        sparks.push({
+            x: x, y: y, 
+            vx: Math.cos(baseAngle + spread) * speed, vy: Math.sin(baseAngle + spread) * speed,
+            life: 0.2 + Math.random() * 0.2, maxLife: 0.4, 
+            size: 2 + Math.random() * 3, color: '255, 200, 0' 
+        });
+    }
+}
+
+function spawnExplosion(x, y) {
+    playSound(explodeSound);
+    let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; 
+    for (let i = 0; i < 100; i++) { 
+        let angle = Math.random() * Math.PI * 2; 
+        let speed = 50 + Math.random() * 350; 
+        sparks.push({
+            x: x, y: y, 
+            vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+            life: 1.5 + Math.random() * 2.0, maxLife: 3.5, 
+            size: 10 + Math.random() * 25, 
+            color: colors[Math.floor(Math.random() * colors.length)] 
+        });
+    }
+}
+
+// ==========================================
+// 5. ЛОГИКА УРОВНЕЙ И СПАВНА
+// ==========================================
 function startLevel(levelNum) {
     currentLevelNum = levelNum;
-    let config = LevelsConfig[levelNum] || { totalEnemies: 1, enemyType: "basic", bonuses: 0 }; // Дефолт, если уровень еще не описан
+    let config = LevelsConfig[levelNum] || { totalEnemies: 1, enemyType: "basic", bonuses: 0 };
     
     enemiesToSpawn = config.totalEnemies;
     enemySpawnTimer = 0; // Первый враг появляется сразу
     levelFinished = false;
 
-    let pStatsHull = GameData.hulls["hunter"];
-    let pStatsTurret = GameData.turrets["scourge"];
+    let pStatsHull = GameData.hulls[currentAssembly.hullId];
+    let pStatsTurret = GameData.turrets[currentAssembly.turretId];
     playerTank = new Tank(400, 300, hullImage, turretImage, pStatsHull, pStatsTurret);
     
     enemies = []; bullets = []; sparks = []; floatingTexts = [];
@@ -119,26 +195,19 @@ function startLevel(levelNum) {
     requestAnimationFrame(gameLoop);
 }
 
-// Функция поиска безопасного места (подальше от игрока)
 function spawnEnemyOnArena() {
     let safeDistance = 200;
     let spawnX, spawnY;
     let attempts = 0;
 
-    // Ищем случайные координаты, пока они не будут достаточно далеко от игрока и не в стене
     do {
         spawnX = 50 + Math.random() * (canvas.width - 100);
         spawnY = 50 + Math.random() * (canvas.height - 100);
+        let dist = Math.sqrt(Math.pow(spawnX - playerTank.x, 2) + Math.pow(spawnY - playerTank.y, 2));
         
-        let dx = spawnX - playerTank.x;
-        let dy = spawnY - playerTank.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-        
-        if (dist > safeDistance && !arena.checkCollision(spawnX, spawnY, 25)) {
-            break; // Нашли идеальное место
-        }
+        if (dist > safeDistance && !arena.checkCollision(spawnX, spawnY, 25)) break;
         attempts++;
-    } while (attempts < 50); // Защита от бесконечного цикла
+    } while (attempts < 50);
 
     let eStatsHull = GameData.enemyHulls["basic"];
     let eStatsTurret = GameData.enemyTurrets["basic"];
@@ -146,40 +215,33 @@ function spawnEnemyOnArena() {
     enemies.push(new Enemy(spawnX, spawnY, enemyHullImage, enemyTurretImage, eStatsHull, eStatsTurret));
 }
 
-
+// ==========================================
+// 6. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
+// ==========================================
 function gameLoop(timestamp) {
     if (!gameRunning) return;
     let dt = (timestamp - lastTime) / 1000;
     if (isNaN(dt)) dt = 0;
     lastTime = timestamp;
 
-    // --- ЛОГИКА ПОЯВЛЕНИЯ ВРАГОВ (ТВОЙ АЛГОРИТМ) ---
+    // --- ЛОГИКА ПОЯВЛЕНИЯ ВРАГОВ ---
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
-        // Если врагов на поле нет, таймер обнуляется принудительно
-        if (enemies.length === 0) {
-            enemySpawnTimer = 0;
-        } else {
-            enemySpawnTimer -= dt;
-        }
+        if (enemies.length === 0) enemySpawnTimer = 0; // Если пусто - спавним сразу
+        else enemySpawnTimer -= dt;
 
         if (enemySpawnTimer <= 0) {
             spawnEnemyOnArena();
             enemiesToSpawn--;
-            // Формула: 20 сек + (танки на поле * 20)
-            enemySpawnTimer = 20 + (enemies.length * 20);
+            enemySpawnTimer = 20 + (enemies.length * 20); // Таймер: 20с + кол-во врагов * 20
         }
     }
 
     // --- ПРОВЕРКА ПОБЕДЫ ---
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
         levelFinished = true;
-        
-        // Разблокируем следующий уровень, если это нужно
         if (PlayerProgress.unlockedLevel === currentLevelNum) {
-            PlayerProgress.unlockedLevel++;
+            PlayerProgress.unlockedLevel++; // Открываем следующий уровень
         }
-        
-        // Через 3 секунды после победы выходим в меню
         setTimeout(() => {
             gameRunning = false;
             generateLevelsGrid();
@@ -192,52 +254,130 @@ function gameLoop(timestamp) {
         levelFinished = true;
         setTimeout(() => {
             gameRunning = false;
-            showScreen('hangar'); // При смерти выкидываем в ангар чинить танк
+            showScreen('hangar'); // Выкидываем в ангар чинить танк
         }, 3000);
     }
 
-    // Обновление игрока
+    // --- ОБНОВЛЕНИЕ СУЩНОСТЕЙ ---
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena);
         if (input.isShooting() && playerTank.tryShoot()) {
             const sx = playerTank.x + Math.cos(playerTank.turretAngle) * 35;
             const sy = playerTank.y + Math.sin(playerTank.turretAngle) * 35;
             bullets.push(new Bullet(sx, sy, playerTank.turretAngle, 'player', playerTank.penetration));
+            playSound(shootSound);
         }
     }
 
-    // Обновление врагов
-    for (let i =.owner !== 'enemy') {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let enemy = enemies[i];
+        if (enemy.hp > 0) {
+            if (enemy.updateAI(dt, arena, playerTank)) {
+                const sx = enemy.x + Math.cos(enemy.turretAngle) * 35;
+                const sy = enemy.y + Math.sin(enemy.turretAngle) * 35;
+                bullets.push(new Bullet(sx, sy, enemy.turretAngle, 'enemy', enemy.penetration));
+                playSound(shootSound);
+            }
+        } else enemies.splice(i, 1); 
+    }
+
+    // Обновление пуль и попаданий
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
+        if (b.toDestroy) continue; 
+        
+        let hasHit = false;
+
+        // Попадание в игрока
+        if (b.owner !== 'player' && playerTank && playerTank.hp > 0) {
+            let hit = playerTank.checkHit(b);
+            if (hit.hit) {
+                hasHit = true;
+                if (hit.type === 'penetration') {
+                    b.toDestroy = true; 
+                    spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
+                    if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
+                } else {
+                    b.bounce(hit.nx, hit.ny); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound);
+                }
+            }
+        }
+
+        // Попадание во врагов
+        if (!hasHit && !b.toDestroy && b.owner !== 'enemy') {
             for (let enemy of enemies) {
                 let hit = enemy.checkHit(b);
-                if (hit.hit) { b.toDestroy = true; break; }
+                if (hit.hit) {
+                    if (hit.type === 'penetration') {
+                        b.toDestroy = true;
+                        spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
+                        if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
+                    } else {
+                        b.bounce(hit.nx, hit.ny); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound);
+                    }
+                    break; 
+                }
             }
         }
     }
     bullets = bullets.filter(b => !b.toDestroy);
 
-    // ОТРИСОВКА
+    // Обновление частиц
+    for (let i = sparks.length - 1; i >= 0; i--) { 
+        let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93;
+        if (s.life <= 0) sparks.splice(i, 1);
+    }
+    
+    // Обновление всплывающего текста
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; 
+        if (ft.life <= 0) floatingTexts.splice(i, 1);
+    }
+
+    // --- ОТРИСОВКА ---
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     arena.draw(ctx);
     for (let bullet of bullets) bullet.draw(ctx);
+    
+    for (let s of sparks) { 
+        let alpha = Math.max(0, s.life / s.maxLife);
+        ctx.fillStyle = `rgba(${s.color}, ${alpha})`;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
+    }
+
     if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
     for (let enemy of enemies) enemy.draw(ctx);
 
-    // Тексты победы/поражения
+    ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
+    for (let ft of floatingTexts) {
+        let alpha = Math.max(0, ft.life / ft.maxLife); ctx.globalAlpha = alpha;
+        ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y);
+        ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Надписи конца игры
     if (playerTank.hp <= 0) {
         ctx.font = '900 50px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center';
+        ctx.lineWidth = 5; ctx.strokeStyle = '#000000';
+        ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2);
         ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2);
     } else if (levelFinished) {
         ctx.font = '900 50px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center';
+        ctx.lineWidth = 5; ctx.strokeStyle = '#000000';
+        ctx.strokeText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20);
         ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20);
+        
         ctx.font = '20px Arial'; ctx.fillStyle = '#fff';
+        ctx.strokeText('Возвращение на базу...', canvas.width / 2, canvas.height / 2 + 20);
         ctx.fillText('Возвращение на базу...', canvas.width / 2, canvas.height / 2 + 20);
     }
 
     requestAnimationFrame(gameLoop);
 }
 
-// Загрузка
+// Загрузка картинок (сброс кэша)
 const noCache = '?v=' + new Date().getTime();
 hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
