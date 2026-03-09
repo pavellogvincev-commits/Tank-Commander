@@ -24,7 +24,7 @@ export class Tank {
             side:  { current: hullStats.armor.side, max: hullStats.armor.side },
             rear:  { current: hullStats.armor.rear, max: hullStats.armor.rear }
         };
-
+        this.currentSpeed = 0
         this.maxForwardSpeed = hullStats.speed;  
         this.maxReverseSpeed = -hullStats.speed / 2;  
         this.acceleration = 80;     
@@ -267,6 +267,7 @@ export class Tank {
         ctx.fillRect(this.x - 25, this.y - 40, hpWidth, 5);
     }
 }
+
 
 
 
