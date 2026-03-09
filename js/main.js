@@ -232,7 +232,7 @@ function gameLoop(timestamp) {
         if (enemySpawnTimer <= 0) {
             spawnEnemyOnArena();
             enemiesToSpawn--;
-            enemySpawnTimer = 20 + (enemies.length * 20); // Таймер: 20с + кол-во врагов * 20
+            enemySpawnTimer = 10 + (enemies.length * 5); // Таймер: 20с + кол-во врагов * 20
         }
     }
 
@@ -383,3 +383,4 @@ hullImage.src = 'assets/hull.png' + noCache;
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
+
