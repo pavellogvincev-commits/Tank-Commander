@@ -12,18 +12,18 @@ const GameData = {
         "hunter": { name: "Охотник", hp: 200, armor: { front: 80, side: 40, rear: 25 }, speed: 50, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} } 
     },
     turrets: { 
-        // Базовая пушка: размер пули 2.5, цвет оранжевый
+        // ИГРОК: Скорострельность 1.0
         "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon' } 
     },
     enemyHulls: { 
-        "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} },
-        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 45, h: 35}, hitbox: {w: 35, h: 25} } 
+        "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30, size: {w: 60, h: 45}, hitbox: {w: 50, h: 33} },
+        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 60, h: 45}, hitbox: {w: 42, h: 28} } 
     },
     enemyTurrets: { 
-        // Враг Базовый: пуля 2.5, цвет красно-оранжевый
-        "basic": { name: "Враг-Пушка", fireRate: 2.0, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon' },
+        // БАЗОВЫЙ ВРАГ: Скорострельность 1.5
+        "basic": { name: "Враг-Пушка", fireRate: 1.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon' },
         
-        // ВРАГ СКАУТ: пуля МЕЛКАЯ (1.5), цвет БЕЛО-ЖЕЛТЫЙ, звук ПУЛЕМЕТА ('mg')
+        // СКАУТ: Скорострельность 2.0 (по умолчанию для скаута)
         "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg' } 
     }
 };
@@ -299,5 +299,6 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     // <-- ЗАГРУЗКА СКАУТА
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache; // <-- ЗАГРУЗКА СКАУТА
+
 
 
