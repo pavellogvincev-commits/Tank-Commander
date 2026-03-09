@@ -3,13 +3,11 @@ export class Tank {
         this.x = x; this.y = y;
         this.hullImg = hullImg; this.turretImg = turretImg;
         
-        // Размеры
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
         this.turretWidth = hullStats.size.w; this.turretHeight = hullStats.size.h;
         this.hitboxWidth = hullStats.hitbox.w; this.hitboxHeight = hullStats.hitbox.h; 
         this.radius = this.hitboxWidth / 2 + 2; 
 
-        // Здоровье и броня
         this.maxHp = hullStats.hp; this.hp = hullStats.hp;
         this.armor = {
             front: { current: hullStats.armor.front, max: hullStats.armor.front },
@@ -17,27 +15,22 @@ export class Tank {
             rear:  { current: hullStats.armor.rear, max: hullStats.armor.rear }
         };
 
-        // ФИЗИКА (Вернули скорость и трение!)
         this.speed = 0; 
-        this.maxForwardSpeed = hullStats.speed; 
-        this.maxReverseSpeed = -hullStats.speed / 2;  
-        this.acceleration = 80; 
-        this.friction = 100; 
-        this.brakePower = 160;       
+        this.maxForwardSpeed = hullStats.speed; this.maxReverseSpeed = -hullStats.speed / 2;  
+        this.acceleration = 80; this.friction = 100; this.brakePower = 160;       
 
         this.hullRotationSpeed = 1.5; this.hullAngle = 0;
         this.turretRotationSpeed = 2; this.turretAngle = 0;
 
-        // ДЫМ ОТ ДВИГАТЕЛЯ
         this.particles = [];
         this.particleTimer = 0;
 
-        // Оружие
         this.fireRate = turretStats.fireRate;    
         this.penetration = turretStats.penetration; 
         this.burstCount = turretStats.burstCount || 1;    
         this.burstDelay = turretStats.burstDelay || 0;    
 
+        // ГАРАНТИЯ ХАРАКТЕРИСТИК ПУЛИ
         this.bulletRadius = turretStats.bulletRadius || 2.5;
         this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon';
@@ -49,27 +42,20 @@ export class Tank {
         this.recoil = 0;         
     }
 
-    // ВЕРНУЛИ ГЕНЕРАТОР ДЫМА
     updateSmoke(dt) {
         this.particleTimer += dt;
-        let smokeRate = Math.abs(this.speed) > 5 ? 0.05 : 0.2; // Газует = больше дыма
-
+        let smokeRate = Math.abs(this.speed) > 5 ? 0.05 : 0.2; 
         if (this.particleTimer > smokeRate) {
             this.particleTimer = 0;
             let exhaustX = this.x - Math.cos(this.hullAngle) * (this.hullWidth / 2.5);
             let exhaustY = this.y - Math.sin(this.hullAngle) * (this.hullWidth / 2.5);
-
             this.particles.push({
-                x: exhaustX + (Math.random() - 0.5) * 10,
-                y: exhaustY + (Math.random() - 0.5) * 10,
-                life: 1.0, maxLife: 1.0,
-                size: 5 + Math.random() * 5
+                x: exhaustX + (Math.random() - 0.5) * 10, y: exhaustY + (Math.random() - 0.5) * 10,
+                life: 1.0, maxLife: 1.0, size: 5 + Math.random() * 5
             });
         }
-
         for (let i = this.particles.length - 1; i >= 0; i--) {
-            let p = this.particles[i];
-            p.life -= dt; p.size += dt * 10;
+            let p = this.particles[i]; p.life -= dt; p.size += dt * 10;
             if (p.life <= 0) this.particles.splice(i, 1);
         }
     }
@@ -105,9 +91,8 @@ export class Tank {
 
     update(dt, input, arena) {
         this.updateWeapons(dt);
-        this.updateSmoke(dt); // Обновляем дым
+        this.updateSmoke(dt); 
 
-        // ФИЗИКА ДВИЖЕНИЯ И ТРЕНИЕ
         let isMoving = false;
         if (input.isUp()) { this.speed += this.acceleration * dt; isMoving = true; }
         else if (input.isDown()) { this.speed -= this.brakePower * dt; isMoving = true; }
@@ -123,22 +108,18 @@ export class Tank {
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
 
-        let vx = Math.cos(this.hullAngle) * this.speed; 
-        let vy = Math.sin(this.hullAngle) * this.speed;
-        let nextX = this.x + vx * dt; 
-        let nextY = this.y + vy * dt;
+        let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
+        let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
 
         if (!arena.checkCollision(nextX, this.y, this.radius)) this.x = nextX;
-        else this.speed *= 0.5; // Удар о стену гасит скорость
+        else this.speed *= 0.5; 
 
         if (!arena.checkCollision(this.x, nextY, this.radius)) this.y = nextY;
         else this.speed *= 0.5;
 
-        // Поворот башни
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; 
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
         if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
     }
@@ -197,32 +178,18 @@ export class Tank {
 
     draw(ctx) {
         if (this.hp <= 0) return;
-
-        // 1. Рисуем дым под танком
         for (let p of this.particles) {
             ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
         }
-
-        // 2. Рисуем корпус
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle);
-        ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight);
-        ctx.restore();
+        ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
 
-        // 3. Рисуем башню
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle);
-        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight);
-        ctx.restore();
+        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
 
-        // 4. ВЕРНУЛИ ПОЛОСКУ ЗДОРОВЬЯ
-        let barWidth = 40;
-        let hpPercent = this.hp / this.maxHp;
-        ctx.fillStyle = 'red';
-        ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth, 4);
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth * hpPercent, 4);
+        let barWidth = 40; let hpPercent = this.hp / this.maxHp;
+        ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth, 4);
+        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth * hpPercent, 4);
     }
 }
-
