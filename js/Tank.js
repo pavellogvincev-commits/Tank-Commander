@@ -1,12 +1,11 @@
 export class Tank {
-    constructor(x, y, hullImg, turretImg) {
+    // НОВОЕ: Передаем объекты hullStats и turretStats
+    constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
         this.x = x;
         this.y = y;
-        this.radius = 18;
-
+        
         this.hullImg = hullImg;
         this.turretImg = turretImg;
-
         this.hullWidth = 60;
         this.hullHeight = 45;
         this.turretWidth = 60;
@@ -14,22 +13,20 @@ export class Tank {
 
         this.hitboxWidth = 50;  
         this.hitboxHeight = 33; 
+        this.radius = 18; 
 
-        // Здоровье
-        this.maxHp = 200;
-        this.hp = 200;
+        // --- НОВОЕ: Читаем статы корпуса из базы данных ---
+        this.maxHp = hullStats.hp;
+        this.hp = hullStats.hp;
         
-        // Броня
         this.armor = {
-            front: { current: 80, max: 80 },
-            side:  { current: 40, max: 40 },
-            rear:  { current: 25, max: 25 }
+            front: { current: hullStats.armor.front, max: hullStats.armor.front },
+            side:  { current: hullStats.armor.side, max: hullStats.armor.side },
+            rear:  { current: hullStats.armor.rear, max: hullStats.armor.rear }
         };
 
-        // Твоя физика
-        this.currentSpeed = 0;       
-        this.maxForwardSpeed = 50;  
-        this.maxReverseSpeed = -25;  
+        this.maxForwardSpeed = hullStats.speed;  
+        this.maxReverseSpeed = -hullStats.speed / 2;  
         this.acceleration = 80;     
         this.friction = 100;         
         this.brakePower = 160;       
@@ -43,8 +40,10 @@ export class Tank {
         this.particles = [];
         this.particleTimer = 0;
 
-        // Оружие
-        this.fireRate = 1.0;    
+        // --- НОВОЕ: Читаем статы башни из базы данных ---
+        this.fireRate = turretStats.fireRate;    
+        this.penetration = turretStats.penetration; // Сохраняем пробитие пушки
+        
         this.fireCooldown = 0;   
         this.recoil = 0;         
     }
@@ -115,10 +114,10 @@ export class Tank {
         this.updateSmoke(dt, isEngineRunning);
     }
 
-    tryShoot() {
+   tryShoot() {
         if (this.fireCooldown <= 0) {
-            this.fireCooldown = this.fireRate; 
-            this.recoil = 4; // Отдача 4 пкс                   
+            this.fireCooldown = this.fireRate; // Теперь берет время из статов башни!
+            this.recoil = 4;                  
             return true;                       
         }
         return false; 
@@ -268,6 +267,7 @@ export class Tank {
         ctx.fillRect(this.x - 25, this.y - 40, hpWidth, 5);
     }
 }
+
 
 
 
