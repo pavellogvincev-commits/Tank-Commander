@@ -3,21 +3,16 @@ import { Tank } from './Tank.js';
 export class Enemy extends Tank {
     constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
         super(x, y, hullImg, turretImg, hullStats, turretStats);
-        
         this.turretRotationSpeed = 0.5; 
-        this.aiState = 'drive'; 
-        this.aiTimer = 2;       
-        this.turnDir = 0;       
+        this.aiState = 'drive'; this.aiTimer = 2; this.turnDir = 0;       
     }
 
     updateAI(dt, arena, playerTank) {
         if (this.hp <= 0) return;
         
-        // ОБЯЗАТЕЛЬНО обновляем таймеры оружия для работы очередей (Burst)
-        this.updateWeapons(dt);
+        this.updateWeapons(dt); // Обязательно обновляем оружие!
 
         this.aiTimer -= dt;
-
         if (this.aiTimer <= 0) {
             let r = Math.random();
             if (r < 0.5) { this.aiState = 'drive'; this.aiTimer = 1 + Math.random() * 2; } 
@@ -29,33 +24,15 @@ export class Enemy extends Tank {
         if (this.aiState === 'drive') speed = this.maxForwardSpeed * 0.7;
         else if (this.aiState === 'turn') { speed = this.maxForwardSpeed * 0.4; this.hullAngle += this.turnDir * this.hullRotationSpeed * dt; }
 
-        let vx = Math.cos(this.hullAngle) * speed;
-        let vy = Math.sin(this.hullAngle) * speed;
+        let vx = Math.cos(this.hullAngle) * speed; let vy = Math.sin(this.hullAngle) * speed;
+        let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
 
-        let nextX = this.x + vx * dt;
-        let nextY = this.y + vy * dt;
+        if (arena.checkCollision(nextX, this.y, this.radius) || arena.checkCollision(this.x, nextY, this.radius)) { 
+            this.aiState = 'turn'; this.turnDir = Math.random() > 0.5 ? 1 : -1; this.aiTimer = 1; 
+        } else { this.x = nextX; this.y = nextY; }
 
-        let colX = arena.checkCollision(nextX, this.y, this.radius);
-        let colY = arena.checkCollision(this.x, nextY, this.radius);
-
-        if (colX || colY) { this.aiState = 'turn'; this.turnDir = Math.random() > 0.5 ? 1 : -1; this.aiTimer = 1; } 
-        else { this.x = nextX; this.y = nextY; }
-
-        let dx = playerTank.x - this.x;
-        let dy = playerTank.y - this.y;
-        let targetAngle = Math.atan2(dy, dx);
-
+        let targetAngle = Math.atan2(playerTank.y - this.y, playerTank.x - this.x);
         let angleDiff = targetAngle - this.turretAngle;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-        if (Math.abs(angleDiff) > 0.05) {
-            this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
-        }
-
-        // Если ИИ навелся на игрока - он нажимает "спуск"
-        if (Math.abs(angleDiff) < 0.2) {
-            this.tryShoot(); 
-        }
-    }
-}
+        if (Math.abs4. Напиши мне эту красную строчку сюда, и мы моментально поймем, где закралась опечатка!
