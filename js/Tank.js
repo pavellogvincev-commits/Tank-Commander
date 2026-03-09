@@ -1,21 +1,21 @@
 export class Tank {
-    // НОВОЕ: Передаем объекты hullStats и turretStats
     constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
         this.x = x;
         this.y = y;
         
         this.hullImg = hullImg;
         this.turretImg = turretImg;
-        this.hullWidth = 60;
-        this.hullHeight = 45;
-        this.turretWidth = 60;
-        this.turretHeight = 45;
+        
+        // --- ДИНАМИЧЕСКИЕ РАЗМЕРЫ ИЗ БАЗЫ ДАННЫХ ---
+        this.hullWidth = hullStats.size.w;
+        this.hullHeight = hullStats.size.h;
+        this.turretWidth = hullStats.size.w; // Башня масштабируется вместе с корпусом
+        this.turretHeight = hullStats.size.h;
 
-        this.hitboxWidth = 50;  
-        this.hitboxHeight = 33; 
-        this.radius = 18; 
+        this.hitboxWidth = hullStats.hitbox.w;  
+        this.hitboxHeight = hullStats.hitbox.h; 
+        this.radius = this.hitboxWidth / 2 + 2; // Динамический радиус столкновений со стенами
 
-        // --- НОВОЕ: Читаем статы корпуса из базы данных ---
         this.maxHp = hullStats.hp;
         this.hp = hullStats.hp;
         
@@ -24,7 +24,7 @@ export class Tank {
             side:  { current: hullStats.armor.side, max: hullStats.armor.side },
             rear:  { current: hullStats.armor.rear, max: hullStats.armor.rear }
         };
-        this.currentSpeed = 0
+
         this.maxForwardSpeed = hullStats.speed;  
         this.maxReverseSpeed = -hullStats.speed / 2;  
         this.acceleration = 80;     
@@ -33,97 +33,91 @@ export class Tank {
 
         this.hullRotationSpeed = 1;
         this.hullAngle = 0;
-
         this.turretRotationSpeed = 1;
         this.turretAngle = 0;
 
-        this.particles = [];
-        this.particleTimer = 0;
-
-        // --- НОВОЕ: Читаем статы башни из базы данных ---
+        // --- ЛОГИКА СТРЕЛЬБЫ И ОЧЕРЕДЕЙ (BURST) ---
         this.fireRate = turretStats.fireRate;    
-        this.penetration = turretStats.penetration; // Сохраняем пробитие пушки
-        
+        this.penetration = turretStats.penetration; 
+        this.burstCount = turretStats.burstCount || 1;    // Сколько пуль в очереди
+        this.burstDelay = turretStats.burstDelay || 0;    // Задержка между пулями в очереди
+
         this.fireCooldown = 0;   
+        this.burstsRemaining = 0; 
+        this.burstTimer = 0;
+        this.shotsToFireThisFrame = 0; // Сколько пуль должно вылететь в этом кадре
         this.recoil = 0;         
     }
 
+    // Обновление таймеров оружия
+    updateWeapons(dt) {
+        if (this.fireCooldown > 0) this.fireCooldown -= dt;
+        if (this.recoil > 0) this.recoil -= dt * 10;
+        if (this.recoil < 0) this.recoil = 0;
+
+        this.shotsToFireThisFrame = 0;
+
+        // Если танк в процессе выпуска очереди
+        if (this.burstsRemaining > 0) {
+            this.burstTimer -= dt;
+            if (this.burstTimer <= 0) {
+                this.shotsToFireThisFrame++;
+                this.burstsRemaining--;
+                this.burstTimer = this.burstDelay; // Таймер до следующей пули в очереди
+                this.recoil = 4; // Визуальная отдача
+            }
+        }
+    }
+
+    tryShoot() {
+        // Начать стрелять можно, только если остыла пушка И мы сейчас не выпускаем очередь
+        if (this.fireCooldown <= 0 && this.burstsRemaining === 0) {
+            this.fireCooldown = this.fireRate;
+            this.burstsRemaining = this.burstCount;
+            this.burstTimer = 0; // Первая пуля вылетит мгновенно
+            return true;
+        }
+        return false;
+    }
+
+    // Возвращает количество пуль, которые физически вылетают в данный момент
+    getShots() {
+        return this.shotsToFireThisFrame;
+    }
+
     update(dt, input, arena) {
+        this.updateWeapons(dt);
+
+        let moveDir = 0;
+        if (input.isUp()) moveDir = 1;
+        if (input.isDown()) moveDir = -1;
+
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
 
-        let isEngineRunning = false;
+        let currentSpeed = moveDir === 1 ? this.maxForwardSpeed : (moveDir === -1 ? this.maxReverseSpeed : 0);
+        
+        let vx = Math.cos(this.hullAngle) * currentSpeed;
+        let vy = Math.sin(this.hullAngle) * currentSpeed;
 
-        if (input.isForward()) {
-            isEngineRunning = true;
-            if (this.currentSpeed < 0) this.currentSpeed += this.brakePower * dt;
-            else this.currentSpeed += this.acceleration * dt;
-        } 
-        else if (input.isBackward()) {
-            isEngineRunning = true;
-            if (this.currentSpeed > 0) this.currentSpeed -= this.brakePower * dt;
-            else this.currentSpeed -= this.acceleration * dt;
-        } 
-        else {
-            if (this.currentSpeed > 0) {
-                this.currentSpeed -= this.friction * dt;
-                if (this.currentSpeed < 0) this.currentSpeed = 0; 
-            } else if (this.currentSpeed < 0) {
-                this.currentSpeed += this.friction * dt;
-                if (this.currentSpeed > 0) this.currentSpeed = 0;
-            }
+        let nextX = this.x + vx * dt;
+        let nextY = this.y + vy * dt;
+
+        if (!arena.checkCollision(nextX, this.y, this.radius)) this.x = nextX;
+        if (!arena.checkCollision(this.x, nextY, this.radius)) this.y = nextY;
+
+        let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
+        
+        let angleDiff = targetAngle - this.turretAngle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+        if (Math.abs(angleDiff) > 0.05) {
+            this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
         }
-
-        if (this.currentSpeed > this.maxForwardSpeed) this.currentSpeed = this.maxForwardSpeed;
-        if (this.currentSpeed < this.maxReverseSpeed) this.currentSpeed = this.maxReverseSpeed;
-
-        if (Math.abs(this.currentSpeed) > 0.1) {
-            let nextX = this.x + Math.cos(this.hullAngle) * this.currentSpeed * dt;
-            let nextY = this.y + Math.sin(this.hullAngle) * this.currentSpeed * dt;
-
-            if (!arena.checkCollision(nextX, nextY, this.radius)) {
-                this.x = nextX; this.y = nextY;
-            } else if (!arena.checkCollision(nextX, this.y, this.radius)) {
-                this.x = nextX; this.currentSpeed *= 0.9; 
-            } else if (!arena.checkCollision(this.x, nextY, this.radius)) {
-                this.y = nextY; this.currentSpeed *= 0.9;
-            } else {
-                this.currentSpeed = 0; 
-            }
-        }
-
-        let targetTurretAngle = Math.atan2(input.mouseY - this.y, input.mouseX - this.x);
-        let angleDiff = targetTurretAngle - this.turretAngle;
-        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-
-        if (Math.abs(angleDiff) > 0.01) {
-            let rotationStep = this.turretRotationSpeed * dt;
-            if (Math.abs(angleDiff) < rotationStep) {
-                this.turretAngle = targetTurretAngle; 
-            } else {
-                this.turretAngle += Math.sign(angleDiff) * rotationStep;
-            }
-        }
-
-        if (this.fireCooldown > 0) this.fireCooldown -= dt;
-        if (this.recoil > 0) {
-            this.recoil -= 30 * dt; 
-            if (this.recoil < 0) this.recoil = 0;
-        }
-
-        this.updateSmoke(dt, isEngineRunning);
     }
 
-   tryShoot() {
-        if (this.fireCooldown <= 0) {
-            this.fireCooldown = this.fireRate; // Теперь берет время из статов башни!
-            this.recoil = 4;                  
-            return true;                       
-        }
-        return false; 
-    }
-
-            checkHit(bullet) {
+    checkHit(bullet) {
         if (this.hp <= 0) return { hit: false };
 
         let dx = bullet.x - this.x;
@@ -134,6 +128,7 @@ export class Tank {
         let localX = dx * cos - dy * sin;
         let localY = dx * sin + dy * cos;
 
+        // ИСПОЛЬЗУЕМ ХИТБОКС (hitboxWidth), А НЕ РАЗМЕР КАРТИНКИ
         let halfW = this.hitboxWidth / 2;
         let halfH = this.hitboxHeight / 2;
 
@@ -166,9 +161,7 @@ export class Tank {
             let worldNx = normalX * cosHull - normalY * sinHull;
             let worldNy = normalX * sinHull + normalY * cosHull;
 
-            let hitResult = { 
-                hit: true, zone: hitZone, x: bullet.x, y: bullet.y, nx: worldNx, ny: worldNy
-            };
+            let hitResult = { hit: true, zone: hitZone, x: bullet.x, y: bullet.y, nx: worldNx, ny: worldNy };
 
             if (angleDeg > 90) angleDeg = 90; 
             let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
@@ -180,95 +173,35 @@ export class Tank {
                 let finalDamage = Math.floor(baseDamage + (Math.random() * variation * 2 - variation));
                 if (finalDamage < 1) finalDamage = 1; 
 
-                // --- НОВОЕ: Проверяем, стал ли этот урон смертельным ---
                 let isDestroyed = false;
-                if (this.hp > 0 && this.hp - finalDamage <= 0) {
-                    isDestroyed = true;
-                }
+                if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
 
                 this.hp -= finalDamage;
                 if (this.hp < 0) this.hp = 0;
                 
-                hitResult.type = 'penetration';
-                hitResult.damage = finalDamage;
-                hitResult.destroyed = isDestroyed; // Передаем флаг смерти!
+                hitResult.type = 'penetration'; hitResult.damage = finalDamage; hitResult.destroyed = isDestroyed;
             } else {
                 let armorDamage = Math.floor(bullet.penetration * 0.1); 
                 this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - armorDamage);
-                
-                hitResult.type = 'ricochet';
-                hitResult.damage = 0;
+                hitResult.type = 'ricochet'; hitResult.damage = 0;
             }
-
             return hitResult; 
         }
         return { hit: false };
     }
 
-    updateSmoke(dt, isEngineRunning) {
-        this.particleTimer += dt;
-        let spawnRate = isEngineRunning ? 0.05 : 0.2; 
-
-        if (this.particleTimer > spawnRate) {
-            this.particleTimer = 0;
-            let rearOffset = this.hullWidth / 2 - 5; 
-            let rearX = this.x - Math.cos(this.hullAngle) * rearOffset;
-            let rearY = this.y - Math.sin(this.hullAngle) * rearOffset;
-
-            this.particles.push({
-                x: rearX + (Math.random() - 0.5) * 10, 
-                y: rearY + (Math.random() - 0.5) * 10,
-                life: 1.0, maxLife: 1.0, size: 3 + Math.random() * 4,
-                vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15
-            });
-        }
-
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            let p = this.particles[i];
-            p.life -= dt;
-            if (p.life <= 0) this.particles.splice(i, 1);
-            else {
-                p.x += p.vx * dt; p.y += p.vy * dt;
-                p.size += 15 * dt; 
-            }
-        }
-    }
-
     draw(ctx) {
-        // Отрисовка дыма
-        for (let p of this.particles) {
-            let alpha = (p.life / p.maxLife) * 0.5; 
-            ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`; 
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Отрисовка корпуса
+        if (this.hp <= 0) return;
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.hullAngle);
         ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight);
         ctx.restore();
 
-        // Отрисовка башни
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.turretAngle);
         ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight);
         ctx.restore();
-
-        // Отрисовка полоски здоровья (HP Bar)
-        ctx.fillStyle = 'red';
-        ctx.fillRect(this.x - 25, this.y - 40, 50, 5);
-        ctx.fillStyle = '#00ff00';
-        // Math.max защищает от отрисовки в минус
-        let hpWidth = 50 * (Math.max(0, this.hp) / this.maxHp);
-        ctx.fillRect(this.x - 25, this.y - 40, hpWidth, 5);
     }
 }
-
-
-
-
-
