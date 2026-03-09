@@ -1,21 +1,21 @@
 export class Bullet {
-    constructor(x, y, angle, owner) {
+    constructor(x, y, angle, owner, penetration) {
         this.x = x;
         this.y = y;
         this.angle = angle;
-        this.owner = owner; // 'player' или 'enemy'
+        this.owner = owner; 
         
         this.speed = 500; 
         this.radius = 3;  
         this.toDestroy = false; 
-        this.penetration = 80; 
+        
+        this.penetration = penetration; // Получаем от танка!
 
         this.vx = Math.cos(angle) * this.speed;
         this.vy = Math.sin(angle) * this.speed;
 
-        // --- НОВОЕ: Система угасания (Decay) ---
-        this.isDecaying = false; // Начала ли пуля угасать?
-        this.maxDecayTime = 0.5; // Время жизни после рикошета (в секундах)
+        this.isDecaying = false; 
+        this.maxDecayTime = 0.5; 
         this.decayTimer = this.maxDecayTime;
     }
 
@@ -86,3 +86,4 @@ export class Bullet {
         ctx.restore(); // ctx.restore() автоматически сбросит globalAlpha обратно
     }
 }
+
