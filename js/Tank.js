@@ -38,6 +38,10 @@ export class Tank {
         this.burstCount = turretStats.burstCount || 1;    
         this.burstDelay = turretStats.burstDelay || 0;    
 
+        this.bulletRadius = turretStats.bulletRadius || 2.5;
+        this.bulletColor = turretStats.bulletColor || '#ffaa00';
+        this.shootSoundType = turretStats.shootSound || 'cannon';
+
         this.fireCooldown = 0;   
         this.burstsRemaining = 0; 
         this.burstTimer = 0;
@@ -221,3 +225,4 @@ export class Tank {
         ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth * hpPercent, 4);
     }
 }
+
