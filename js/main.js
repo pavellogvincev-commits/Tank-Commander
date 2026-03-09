@@ -85,7 +85,10 @@ const scoutHullImage = new Image(); const scoutTurretImage = new Image(); // Н�
 
 const shootSound = new Audio('assets/sounds/shoot.mp3'); const hitSound = new Audio('assets/sounds/hit.mp3');
 const bounceSound = new Audio('assets/sounds/bounce.mp3'); const explodeSound = new Audio('assets/sounds/explode.mp3'); 
-shootSound.volume = 0.3; hitSound.volume = 0.6; bounceSound.volume = 0.5; explodeSound.volume = 0.8;
+shootSound.volume = 0.3; hitSound.volume = 0.3; bounceSound.volume = 0.2; explodeSound.volume = 0.8;
+const mgShootSound = new Audio('assets/sounds/mg-shoot.mp3'); 
+mgShootSound.volume = 0.3; // Чуть тише пушки
+
 
 function playSound(audio) { let clone = audio.cloneNode(); clone.volume = audio.volume; clone.play().catch(e => {}); }
 
@@ -187,15 +190,38 @@ function gameLoop(timestamp) {
         levelFinished = true; setTimeout(() => { gameRunning = false; showScreen('hangar'); }, 3000);
     }
 
+    // --- ВЫСТРЕЛЫ ИГРОКА ---
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena);
         if (input.isShooting()) playerTank.tryShoot(); 
         
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) {
-            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, 'player', playerTank.penetration));
-            playSound(shootSound);
+            // Передаем размер и цвет!
+            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, 'player', playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor));
+            
+            // Выбираем звук
+            playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound);
         }
+    }
+
+    // --- ВЫСТРЕЛЫ ВРАГОВ ---
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let enemy = enemies[i];
+        if (enemy.hp > 0) {
+            enemy.updateAI(dt, arena, playerTank);
+            
+            let eShots = enemy.getShots();
+            for (let j = 0; j < eShots; j++) {
+                let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; 
+                
+                // Передаем размер и цвет!
+                bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, 'enemy', enemy.penetration, enemy.bulletRadius, enemy.bulletColor));
+                
+                // Выбираем звук
+                playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound);
+            }
+        } else enemies.splice(i, 1); 
     }
 
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -273,4 +299,5 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     // <-- ЗАГРУЗКА СКАУТА
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache; // <-- ЗАГРУЗКА СКАУТА
+
 
