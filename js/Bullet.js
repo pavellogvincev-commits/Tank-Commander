@@ -1,70 +1,36 @@
 export class Bullet {
-    constructor(x, y, angle, owner, penetration) {
+    // НОВОЕ: Добавили аргументы radius и color
+    constructor(x, y, angle, owner, penetration, radius = 2.5, color = '#ffaa00') {
         this.x = x;
         this.y = y;
         this.angle = angle;
-        this.owner = owner; 
+        this.owner = owner;
+        this.speed = 600; // Чуть увеличили скорость для динамики
         
-        this.speed = 500; 
-        this.radius = 3;  
-        this.toDestroy = false; 
+        this.radius = radius; // Индивидуальный размер пули
+        this.color = color;   // Индивидуальный цвет
         
-        this.penetration = penetration; // Получаем от танка!
-
+        this.toDestroy = false;
+        this.penetration = penetration;
         this.vx = Math.cos(angle) * this.speed;
         this.vy = Math.sin(angle) * this.speed;
+    }
 
-        this.isDecaying = false; 
-        this.maxDecayTime = 0.5; 
-        this.decayTimer = this.maxDecayTime;
+    update(dt, arena) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        
+        // Уничтожение пули, если она улетела за карту
+        if (this.x < 0 || this.x > arena.width || this.y < 0 || this.y > arena.height) {
+            this.toDestroy = true;
+        }
     }
 
     bounce(nx, ny) {
-        let dotV = this.vx * nx + this.vy * ny;
-        this.vx = this.vx - 2 * dotV * nx;
-        this.vy = this.vy - 2 * dotV * ny;
-        
+        let dot = this.vx * nx + this.vy * ny;
+        this.vx = this.vx - 2 * dot * nx;
+        this.vy = this.vy - 2 * dot * ny;
         this.angle = Math.atan2(this.vy, this.vx);
-        
-        this.x += nx * 6;
-        this.y += ny * 6;
-        
-        this.owner = null; 
-
-        // --- НОВОЕ: Включаем таймер угасания при ЛЮБОМ рикошете ---
-        if (!this.isDecaying) {
-            this.isDecaying = true;
-        }
-    }
-
-    update(dt, arena, spawnSparks, playBounceSound) {
-        // --- НОВОЕ: Логика угасания ---
-        if (this.isDecaying) {
-            this.decayTimer -= dt; // Таймер тикает вниз
-            
-            // Замедляем пулю, чтобы визуально показать потерю энергии (по желанию)
-            // this.speed *= 0.98; 
-            // this.vx = Math.cos(this.angle) * this.speed;
-            // this.vy = Math.sin(this.angle) * this.speed;
-
-            if (this.decayTimer <= 0) {
-                this.toDestroy = true; // Время вышло, пуля растворилась
-                return; // Прекращаем расчеты
-            }
-        }
-
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-
-        let col = arena.checkBulletCollision(this.x, this.y, this.radius);
-        
-        if (col.hit) {
-            // ТВОЯ ИДЕЯ: Пуля ВСЕГДА рикошетит от стен арены (убрали проверку угла)
-            this.bounce(col.nx, col.ny);
-            
-            if (playBounceSound) playBounceSound();
-            if (spawnSparks) spawnSparks(this.x, this.y, col.nx, col.ny); // Высекаем искры об стену
-        }
     }
 
     draw(ctx) {
@@ -72,18 +38,17 @@ export class Bullet {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         
-        // --- НОВОЕ: Визуальное исчезновение ---
-        if (this.isDecaying) {
-            // Высчитываем прозрачность (от 1.0 до 0.0)
-            ctx.globalAlpha = Math.max(0, this.decayTimer / this.maxDecayTime);
-        }
+        // Рисуем светящийся след (трассер) сзади пули
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(-this.radius * 6, -this.radius * 0.8, this.radius * 6, this.radius * 1.6);
         
-        ctx.fillStyle = '#ffaa00'; 
-        ctx.shadowBlur = 10;       
-        ctx.shadowColor = '#ff0000';
-        ctx.fillRect(-6, -2, 12, 4); 
+        // Рисуем саму пулю (круг)
+        ctx.globalAlpha = 1.0;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
         
-        ctx.restore(); // ctx.restore() автоматически сбросит globalAlpha обратно
+        ctx.restore();
     }
 }
-
