@@ -12,18 +12,14 @@ const GameData = {
         "hunter": { name: "Охотник", hp: 200, armor: { front: 80, side: 40, rear: 25 }, speed: 50, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} } 
     },
     turrets: { 
-        // ИГРОК: Скорострельность 1.0
         "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon' } 
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30, size: {w: 60, h: 45}, hitbox: {w: 50, h: 33} },
-        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 60, h: 45}, hitbox: {w: 42, h: 28} } 
+        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 60, h: 45}, hitbox: {w: 45, h: 28} } 
     },
     enemyTurrets: { 
-        // БАЗОВЫЙ ВРАГ: Скорострельность 1.5
         "basic": { name: "Враг-Пушка", fireRate: 1.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon' },
-        
-        // СКАУТ: Скорострельность 2.0 (по умолчанию для скаута)
         "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg' } 
     }
 };
@@ -78,23 +74,22 @@ const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getCont
 canvas.width = 800; canvas.height = 600;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
-// --- ЗАГРУЗКА ВСЕХ КАРТИНОК ---
 const hullImage = new Image(); const turretImage = new Image();
 const enemyHullImage = new Image(); const enemyTurretImage = new Image();
-const scoutHullImage = new Image(); const scoutTurretImage = new Image(); // НОВЫЕ КАРТИНКИ СКАУТА
+const scoutHullImage = new Image(); const scoutTurretImage = new Image();
 
 const shootSound = new Audio('assets/sounds/shoot.mp3'); const hitSound = new Audio('assets/sounds/hit.mp3');
 const bounceSound = new Audio('assets/sounds/bounce.mp3'); const explodeSound = new Audio('assets/sounds/explode.mp3'); 
-shootSound.volume = 0.3; hitSound.volume = 0.3; bounceSound.volume = 0.2; explodeSound.volume = 0.8;
-const mgShootSound = new Audio('assets/sounds/mg-shoot.mp3'); 
-mgShootSound.volume = 0.3; // Чуть тише пушки
-
+const mgShootSound = new Audio('assets/sounds/mg-shoot.mp3'); mgShootSound.volume = 0.2;
+shootSound.volume = 0.3; hitSound.volume = 0.6; bounceSound.volume = 0.5; explodeSound.volume = 0.8;
 
 function playSound(audio) { let clone = audio.cloneNode(); clone.volume = audio.volume; clone.play().catch(e => {}); }
 
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [];
 let lastTime = 0, gameRunning = false;
 let currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false;
+
+let animFrameId = null; // ГЛОБАЛЬНЫЙ ID ЦИКЛА (ДЛЯ ЗАЩИТЫ ОТ БАГА)
 
 // ==========================================
 // 4. ЭФФЕКТЫ
@@ -127,6 +122,12 @@ function shuffleArray(array) {
 // 5. ЛОГИКА УРОВНЯ
 // ==========================================
 function startLevel(levelNum) {
+    // ЖЕСТКАЯ ОЧИСТКА СТАРОГО ЦИКЛА (ФИКС БАГА СКОРОСТИ)
+    if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+    }
+    gameRunning = false;
+
     currentLevelNum = levelNum;
     let config = LevelsConfig[levelNum] || { pool: ["basic"], bonuses: 0 };
     
@@ -137,7 +138,10 @@ function startLevel(levelNum) {
     playerTank = new Tank(400, 300, hullImage, turretImage, GameData.hulls["hunter"], GameData.turrets["scourge"]);
     enemies = []; bullets = []; sparks = []; floatingTexts = [];
     
-    showScreen('game'); lastTime = performance.now(); gameRunning = true; requestAnimationFrame(gameLoop);
+    showScreen('game'); 
+    lastTime = performance.now(); 
+    gameRunning = true; 
+    animFrameId = requestAnimationFrame(gameLoop); // ЗАПУСК ЕДИНСТВЕННОГО ЦИКЛА
 }
 
 function spawnEnemyOnArena() {
@@ -154,8 +158,6 @@ function spawnEnemyOnArena() {
     let enemyType = currentEnemyPool.pop();
     let hStats = GameData.enemyHulls[enemyType];
     let tStats = GameData.enemyTurrets[enemyType];
-
-    // --- ЛОГИКА ВЫБОРА КАРТИНОК ДЛЯ ВРАГА ---
     let useHullImg = enemyType === "scout" ? scoutHullImage : enemyHullImage;
     let useTurretImg = enemyType === "scout" ? scoutTurretImage : enemyTurretImage;
 
@@ -167,7 +169,12 @@ function spawnEnemyOnArena() {
 // ==========================================
 function gameLoop(timestamp) {
     if (!gameRunning) return;
-    let dt = (timestamp - lastTime) / 1000; if (isNaN(dt)) dt = 0; lastTime = timestamp;
+    
+    let dt = (timestamp - lastTime) / 1000; 
+    if (isNaN(dt)) dt = 0; 
+    // ЗАЩИТА ОТ "РЫВКОВ" ПРИ СВОРАЧИВАНИИ ВКЛАДКИ
+    if (dt > 0.1) dt = 0.1; 
+    lastTime = timestamp;
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0;
@@ -190,22 +197,17 @@ function gameLoop(timestamp) {
         levelFinished = true; setTimeout(() => { gameRunning = false; showScreen('hangar'); }, 3000);
     }
 
-    // --- ВЫСТРЕЛЫ ИГРОКА ---
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena);
         if (input.isShooting()) playerTank.tryShoot(); 
         
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) {
-            // Передаем размер и цвет!
             bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, 'player', playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor));
-            
-            // Выбираем звук
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound);
         }
     }
 
-    // --- ВЫСТРЕЛЫ ВРАГОВ ---
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
@@ -214,26 +216,8 @@ function gameLoop(timestamp) {
             let eShots = enemy.getShots();
             for (let j = 0; j < eShots; j++) {
                 let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; 
-                
-                // Передаем размер и цвет!
                 bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, 'enemy', enemy.penetration, enemy.bulletRadius, enemy.bulletColor));
-                
-                // Выбираем звук
                 playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound);
-            }
-        } else enemies.splice(i, 1); 
-    }
-
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        let enemy = enemies[i];
-        if (enemy.hp > 0) {
-            enemy.updateAI(dt, arena, playerTank);
-            
-            let eShots = enemy.getShots();
-            for (let j = 0; j < eShots; j++) {
-                let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; 
-                bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, 'enemy', enemy.penetration));
-                playSound(shootSound);
             }
         } else enemies.splice(i, 1); 
     }
@@ -288,17 +272,14 @@ function gameLoop(timestamp) {
         ctx.font = '900 50px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center';
         ctx.strokeText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20);
     }
-    requestAnimationFrame(gameLoop);
+    
+    animFrameId = requestAnimationFrame(gameLoop);
 }
 
-// --- УСТАНОВКА ИСТОЧНИКОВ КАРТИНОК В САМОМ КОНЦЕ ---
 const noCache = '?v=' + new Date().getTime();
 hullImage.src = 'assets/hull.png' + noCache; 
 turretImage.src = 'assets/turret.png' + noCache;
 enemyHullImage.src = 'assets/enemy-hull.png' + noCache; 
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
-scoutHullImage.src = 'assets/scout-hull.png' + noCache;     // <-- ЗАГРУЗКА СКАУТА
-scoutTurretImage.src = 'assets/scout-turret.png' + noCache; // <-- ЗАГРУЗКА СКАУТА
-
-
-
+scoutHullImage.src = 'assets/scout-hull.png' + noCache;     
+scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
