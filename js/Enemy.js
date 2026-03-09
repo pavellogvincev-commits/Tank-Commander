@@ -1,22 +1,12 @@
 import { Tank } from './Tank.js';
 
 export class Enemy extends Tank {
-    constructor(x, y, hullImg, turretImg) {
-        super(x, y, hullImg, turretImg);
+    // Врагу мы тоже будем передавать его статы
+    constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
+        super(x, y, hullImg, turretImg, hullStats, turretStats);
         
-        this.maxHp = 100;
-        this.hp = 100;
-
-        this.armor = {
-            front: { current: 60, max: 60 },
-            side:  { current: 30, max: 30 },
-            rear:  { current: 15, max: 15 }
-        };
-
-        this.maxForwardSpeed = 30; 
-        this.fireRate = 2.0;       
+        // Переопределяем только логику поведения (ИИ)
         this.turretRotationSpeed = 0.5; 
-
         this.aiState = 'drive'; 
         this.aiTimer = 2;       
         this.turnDir = 0;       
@@ -64,3 +54,4 @@ export class Enemy extends Tank {
         return false;
     }
 }
+
