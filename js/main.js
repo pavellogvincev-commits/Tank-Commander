@@ -15,8 +15,8 @@ const GameData = {
         "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon' } 
     },
     enemyHulls: { 
-        "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30, size: {w: 60, h: 45}, hitbox: {w: 50, h: 33} },
-        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 60, h: 45}, hitbox: {w: 45, h: 28} } 
+        "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 30, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} },
+        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 45, h: 35}, hitbox: {w: 35, h: 25} } 
     },
     enemyTurrets: { 
         "basic": { name: "Враг-Пушка", fireRate: 1.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon' },
@@ -89,7 +89,7 @@ let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [];
 let lastTime = 0, gameRunning = false;
 let currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false;
 
-let animFrameId = null; // ГЛОБАЛЬНЫЙ ID ЦИКЛА (ДЛЯ ЗАЩИТЫ ОТ БАГА)
+let animFrameId = null;
 
 // ==========================================
 // 4. ЭФФЕКТЫ
@@ -122,10 +122,7 @@ function shuffleArray(array) {
 // 5. ЛОГИКА УРОВНЯ
 // ==========================================
 function startLevel(levelNum) {
-    // ЖЕСТКАЯ ОЧИСТКА СТАРОГО ЦИКЛА (ФИКС БАГА СКОРОСТИ)
-    if (animFrameId) {
-        cancelAnimationFrame(animFrameId);
-    }
+    if (animFrameId) cancelAnimationFrame(animFrameId);
     gameRunning = false;
 
     currentLevelNum = levelNum;
@@ -141,7 +138,7 @@ function startLevel(levelNum) {
     showScreen('game'); 
     lastTime = performance.now(); 
     gameRunning = true; 
-    animFrameId = requestAnimationFrame(gameLoop); // ЗАПУСК ЕДИНСТВЕННОГО ЦИКЛА
+    animFrameId = requestAnimationFrame(gameLoop);
 }
 
 function spawnEnemyOnArena() {
@@ -172,7 +169,6 @@ function gameLoop(timestamp) {
     
     let dt = (timestamp - lastTime) / 1000; 
     if (isNaN(dt)) dt = 0; 
-    // ЗАЩИТА ОТ "РЫВКОВ" ПРИ СВОРАЧИВАНИИ ВКЛАДКИ
     if (dt > 0.1) dt = 0.1; 
     lastTime = timestamp;
 
@@ -222,47 +218,58 @@ function gameLoop(timestamp) {
         } else enemies.splice(i, 1); 
     }
 
-       for (let i = bullets.length - 1; i >= 0; i--) {
+    // --- ОБРАБОТКА СТОЛКНОВЕНИЙ ПУЛЬ (С ДЕБАГ-ТЕКСТОМ) ---
+    for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; 
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
         
-        // СТРОГО КАК БЫЛО: Если пуля не уничтожена, она всё ещё может наносить урон (даже если рикошетит и затухает)
         if (b.toDestroy) continue; 
         
         let hasHit = false;
         
-        // Проверка попадания в игрока (вражеской пулей)
-        if (b.owner !== 'player' && playerTank && playerTank.hp > 0) {
-            let hit = playerTank.checkHit(b);
-            if (hit.hit) {
-                hasHit = true;
-                if (hit.type === 'penetration') {
-                    b.toDestroy = true; 
-                    spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
-                    if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
-                } else { 
-                    b.bounce(hit.nx, hit.ny); 
-                    b.isDecaying = true; 
-                    spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
-                }
-            }
-        }
-        
-        // Проверка попадания во врагов (пулей игрока)
-        if (!hasHit && b.owner !== 'enemy') {
+        // 1. Попадание во врагов
+        if (b.owner !== 'enemy') {
             for (let enemy of enemies) {
                 let hit = enemy.checkHit(b);
                 if (hit.hit) {
+                    hasHit = true;
+                    // Перевод зоны на русский язык
+                    let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
+                    
                     if (hit.type === 'penetration') {
                         b.toDestroy = true; 
-                        spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
+                        spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); 
+                        playSound(hitSound);
                         if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
                     } else { 
                         b.bounce(hit.nx, hit.ny); 
                         b.isDecaying = true;  
-                        spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
+                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); // Дебаг-надпись при рикошете
+                        spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
+                        playSound(bounceSound); 
                     }
                     break; 
+                }
+            }
+        }
+
+        // 2. Попадание в игрока
+        if (!hasHit && b.owner !== 'player' && playerTank && playerTank.hp > 0) {
+            let hit = playerTank.checkHit(b);
+            if (hit.hit) {
+                let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
+                
+                if (hit.type === 'penetration') {
+                    b.toDestroy = true; 
+                    spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); 
+                    playSound(hitSound);
+                    if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
+                } else { 
+                    b.bounce(hit.nx, hit.ny); 
+                    b.isDecaying = true; 
+                    spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); // Дебаг-надпись при рикошете
+                    spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
+                    playSound(bounceSound); 
                 }
             }
         }
@@ -300,4 +307,3 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
-
