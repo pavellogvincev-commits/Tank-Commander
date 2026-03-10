@@ -5,29 +5,48 @@ export class Arena {
         this.obstacles = [];
     }
 
-    // НОВЫЙ МЕТОД: Генерация препятствий от 0 (нет) до 5 (очень много)
     generateObstacles(density) {
         this.obstacles = [];
         if (density <= 0) return;
 
-        // Чем больше плотность, тем больше ящиков (допустим, плотность * 2)
         let count = density * 2; 
+        let minGap = 90; // Гарантированный минимальный просвет между ящиками!
 
         for (let i = 0; i < count; i++) {
             let w = 80 + Math.random() * 100;
             let h = 40 + Math.random() * 60;
-            // Случайно поворачиваем ящик (вертикально или горизонтально)
             if (Math.random() > 0.5) { let temp = w; w = h; h = temp; }
 
-            // Спавним так, чтобы не забить края карты (оставляем отступы)
-            let x = 100 + Math.random() * (this.width - 200 - w);
-            let y = 100 + Math.random() * (this.height - 200 - h);
+            let x, y, valid, attempts = 0;
+            do {
+                valid = true;
+                x = 100 + Math.random() * (this.width - 200 - w);
+                y = 100 + Math.random() * (this.height - 200 - h);
 
-            this.obstacles.push({ x, y, w, h });
+                // Проверяем дистанцию до уже созданных ящиков (с учетом minGap)
+                for (let obs of this.obstacles) {
+                    if (x < obs.x + obs.w + minGap && x + w > obs.x - minGap &&
+                        y < obs.y + obs.h + minGap && y + h > obs.y - minGap) {
+                        valid = false;
+                        break;
+                    }
+                }
+                attempts++;
+            } while (!valid && attempts < 50); // Если места нет, пытаемся пересоздать до 50 раз
+
+            if (valid) {
+                this.obstacles.push({ x, y, w, h });
+            }
         }
     }
 
     checkCollision(x, y, radius) {
+        // ФИКС: Теперь края экрана — это монолитные стены для танков
+        if (x - radius < 0 || x + radius > this.width || 
+            y - radius < 0 || y + radius > this.height) {
+            return true;
+        }
+
         for (let obs of this.obstacles) {
             let testX = x; let testY = y;
             if (x < obs.x) testX = obs.x; else if (x > obs.x + obs.w) testX = obs.x + obs.w;
