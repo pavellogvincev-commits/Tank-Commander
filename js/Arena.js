@@ -2,92 +2,62 @@ export class Arena {
     constructor(width, height) {
         this.width = width;
         this.height = height;
-        
-        this.obstacles = [
-            { x: 200, y: 150, w: 100, h: 50 },
-            { x: 500, y: 400, w: 50, h: 150 },
-            { x: 100, y: 450, w: 150, h: 50 }
-        ];
+        this.obstacles = [];
     }
 
-    draw(ctx) {
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 10;
-        ctx.strokeRect(0, 0, this.width, this.height);
+    // НОВЫЙ МЕТОД: Генерация препятствий от 0 (нет) до 5 (очень много)
+    generateObstacles(density) {
+        this.obstacles = [];
+        if (density <= 0) return;
 
-        ctx.fillStyle = '#8b4513'; 
-        for (const obs of this.obstacles) {
-            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-            ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+        // Чем больше плотность, тем больше ящиков (допустим, плотность * 2)
+        let count = density * 2; 
+
+        for (let i = 0; i < count; i++) {
+            let w = 80 + Math.random() * 100;
+            let h = 40 + Math.random() * 60;
+            // Случайно поворачиваем ящик (вертикально или горизонтально)
+            if (Math.random() > 0.5) { let temp = w; w = h; h = temp; }
+
+            // Спавним так, чтобы не забить края карты (оставляем отступы)
+            let x = 100 + Math.random() * (this.width - 200 - w);
+            let y = 100 + Math.random() * (this.height - 200 - h);
+
+            this.obstacles.push({ x, y, w, h });
         }
     }
 
-    // Старый метод для танка оставляем как есть!
     checkCollision(x, y, radius) {
-        if (x - radius < 0 || x + radius > this.width || 
-            y - radius < 0 || y + radius > this.height) return true;
-
-        for (const obs of this.obstacles) {
+        for (let obs of this.obstacles) {
             let testX = x; let testY = y;
-            if (x < obs.x) testX = obs.x; 
-            else if (x > obs.x + obs.w) testX = obs.x + obs.w; 
-            if (y < obs.y) testY = obs.y; 
-            else if (y > obs.y + obs.h) testY = obs.y + obs.h; 
+            if (x < obs.x) testX = obs.x; else if (x > obs.x + obs.w) testX = obs.x + obs.w;
+            if (y < obs.y) testY = obs.y; else if (y > obs.y + obs.h) testY = obs.y + obs.h;
 
             let distX = x - testX; let distY = y - testY;
-            if (Math.sqrt((distX*distX) + (distY*distY)) <= radius) return true;
+            if ((distX * distX) + (distY * distY) <= radius * radius) {
+                return true;
+            }
         }
         return false;
     }
 
-    // --- НОВОЕ: Продвинутая проверка для рикошетов снарядов ---
-    checkBulletCollision(x, y, radius) {
-        // Проверка границ экрана
-        if (x - radius <= 0) return { hit: true, nx: 1, ny: 0 };           // Левая стена
-        if (x + radius >= this.width) return { hit: true, nx: -1, ny: 0 }; // Правая стена
-        if (y - radius <= 0) return { hit: true, nx: 0, ny: 1 };           // Верхняя стена
-        if (y + radius >= this.height) return { hit: true, nx: 0, ny: -1 };// Нижняя стена
-
-        // Проверка препятствий
-        for (const obs of this.obstacles) {
-            let testX = x; let testY = y;
-
-            if (x < obs.x) testX = obs.x; 
-            else if (x > obs.x + obs.w) testX = obs.x + obs.w; 
-            if (y < obs.y) testY = obs.y; 
-            else if (y > obs.y + obs.h) testY = obs.y + obs.h; 
-
-            let dx = x - testX;
-            let dy = y - testY;
-            let distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance <= radius) {
-                if (distance === 0) return { hit: true, nx: 1, ny: 0 }; // Защита от деления на ноль
-                // Возвращаем нормаль (вектор, перпендикулярный поверхности)
-                return { hit: true, nx: dx / distance, ny: dy / distance };
-            }
-        }
-        return { hit: false };
-    }
-        // НОВЫЙ МЕТОД: Проверка видимости (Line of Sight)
     hasLineOfSight(x1, y1, x2, y2) {
-        let dx = x2 - x1;
-        let dy = y2 - y1;
+        let dx = x2 - x1; let dy = y2 - y1;
         let dist = Math.sqrt(dx * dx + dy * dy);
-        
-        // Шагаем по лучу каждые 10 пикселей
         let steps = Math.max(1, Math.ceil(dist / 10));
-        
         for (let i = 1; i < steps; i++) {
-            let px = x1 + dx * (i / steps);
-            let py = y1 + dy * (i / steps);
-            
-            // Если на пути есть препятствие радиусом 1 пиксель - видимости нет
-            if (this.checkCollision(px, py, 1)) {
-                return false;
-            }
+            let px = x1 + dx * (i / steps); let py = y1 + dy * (i / steps);
+            if (this.checkCollision(px, py, 1)) return false;
         }
-        return true; // Препятствий нет
+        return true; 
+    }
+
+    draw(ctx) {
+        for (let obs of this.obstacles) {
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            ctx.lineWidth = 4; ctx.strokeStyle = '#3e1f08';
+            ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+        }
     }
 }
-
