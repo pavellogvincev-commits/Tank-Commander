@@ -222,29 +222,46 @@ function gameLoop(timestamp) {
         } else enemies.splice(i, 1); 
     }
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i]; b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
+       for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i]; 
+        b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
+        
+        // СТРОГО КАК БЫЛО: Если пуля не уничтожена, она всё ещё может наносить урон (даже если рикошетит и затухает)
         if (b.toDestroy) continue; 
         
         let hasHit = false;
+        
+        // Проверка попадания в игрока (вражеской пулей)
         if (b.owner !== 'player' && playerTank && playerTank.hp > 0) {
             let hit = playerTank.checkHit(b);
             if (hit.hit) {
                 hasHit = true;
                 if (hit.type === 'penetration') {
-                    b.toDestroy = true; spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
+                    b.toDestroy = true; 
+                    spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
                     if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
-                } else { b.bounce(hit.nx, hit.ny); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); }
+                } else { 
+                    b.bounce(hit.nx, hit.ny); 
+                    b.isDecaying = true; 
+                    spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
+                }
             }
         }
-        if (!hasHit && !b.toDestroy && b.owner !== 'enemy') {
+        
+        // Проверка попадания во врагов (пулей игрока)
+        if (!hasHit && b.owner !== 'enemy') {
             for (let enemy of enemies) {
                 let hit = enemy.checkHit(b);
                 if (hit.hit) {
                     if (hit.type === 'penetration') {
-                        b.toDestroy = true; spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
+                        b.toDestroy = true; 
+                        spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound);
                         if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
-                    } else { b.bounce(hit.nx, hit.ny); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); }
+                    } else { 
+                        b.bounce(hit.nx, hit.ny); 
+                        b.isDecaying = true;  
+                        spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
+                    }
                     break; 
                 }
             }
@@ -283,3 +300,4 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
+
