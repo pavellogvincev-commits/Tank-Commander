@@ -1,12 +1,17 @@
 export class Tank {
-    constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
+    // ОБНОВЛЕНО: добавлен параметр startingHp
+    constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null) {
         this.x = x; this.y = y; this.hullImg = hullImg; this.turretImg = turretImg;
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
         this.turretWidth = hullStats.size.w; this.turretHeight = hullStats.size.h;
         this.hitboxWidth = hullStats.hitbox.w; this.hitboxHeight = hullStats.hitbox.h; 
         this.radius = this.hitboxWidth / 2 + 2; 
 
-        this.maxHp = hullStats.hp; this.hp = hullStats.hp;
+        this.maxHp = hullStats.hp; 
+        // Если передали здоровье - используем его. Иначе берем максимум.
+        this.hp = startingHp !== null ? startingHp : this.maxHp;
+
+        // Броня всегда сбрасывается на максимум при старте
         this.armor = { front: { current: hullStats.armor.front, max: hullStats.armor.front }, side: { current: hullStats.armor.side, max: hullStats.armor.side }, rear: { current: hullStats.armor.rear, max: hullStats.armor.rear } };
 
         this.speed = 0; this.maxForwardSpeed = hullStats.speed; this.maxReverseSpeed = -hullStats.speed / 2;  
@@ -80,7 +85,6 @@ export class Tank {
             return false;
         };
 
-        // ОБНОВЛЕНО: Раздельная логика X и Y. Убрано торможение this.speed *= 0.5 для плавного скольжения
         let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
         let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
 
