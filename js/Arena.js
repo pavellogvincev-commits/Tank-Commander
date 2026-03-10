@@ -10,29 +10,43 @@ export class Arena {
         if (density <= 0) return;
 
         let count = density; 
-        
-        // ПРОСВЕТ 70 пикселей (танк 54px, проедет легко)
         let minGap = 70; 
-        
         let centerX = 400, centerY = 300, safeR = 80;
 
         for (let i = 0; i < count; i++) {
-            // Чуть более компактные блоки, чтобы влезало много
-            let sideA = 50 + Math.random() * 70;  // Макс длина 120
-            let sideB = 40 + Math.random() * 40;  // Макс толщина 80
+            let w, h;
             
-            let w = sideA;
-            let h = sideB;
-            if (Math.random() > 0.5) { w = sideB; h = sideA; }
+            // ОБНОВЛЕНО: Разнообразие форм блоков
+            let type = Math.random();
+            if (type < 0.3) { 
+                // Маленькие колонны-столбы
+                w = 40 + Math.random() * 20; h = 40 + Math.random() * 20; 
+            } else if (type < 0.7) { 
+                // Длинные тонкие стены
+                w = 120 + Math.random() * 100; h = 30 + Math.random() * 20; 
+            } else { 
+                // Массивные бункеры
+                w = 80 + Math.random() * 60; h = 80 + Math.random() * 60; 
+            }
+
+            if (Math.random() > 0.5) { let temp = w; w = h; h = temp; }
 
             let x, y, valid, attempts = 0;
             do {
                 valid = true;
                 
-                // РАСШИРИЛИ ЗОНУ СПАВНА: отступ от краев арены теперь 50 пикселей (а не 100)
-                x = 50 + Math.random() * (this.width - 100 - w);
-                y = 50 + Math.random() * (this.height - 100 - h);
+                // Кидаем блок в случайную точку карты
+                x = Math.random() * (this.width - w);
+                y = Math.random() * (this.height - h);
 
+                // ОБНОВЛЕНО: ПРИЛИПАНИЕ К СТЕНАМ (если щель меньше 70px)
+                if (x < 70) x = 0; // Прилипнуть к левой стене
+                else if (this.width - (x + w) < 70) x = this.width - w; // К правой
+
+                if (y < 70) y = 0; // К верхней
+                else if (this.height - (y + h) < 70) y = this.height - h; // К нижней
+
+                // Проверка: не попали ли в центр (на игрока)
                 if (x < centerX + safeR && x + w > centerX - safeR &&
                     y < centerY + safeR && y + h > centerY - safeR) {
                     valid = false;
@@ -40,6 +54,7 @@ export class Arena {
                     continue;
                 }
 
+                // Проверка: не пересекаемся ли с другими блоками (с учетом minGap)
                 for (let obs of this.obstacles) {
                     if (x < obs.x + obs.w + minGap && x + w > obs.x - minGap &&
                         y < obs.y + obs.h + minGap && y + h > obs.y - minGap) {
@@ -48,9 +63,8 @@ export class Arena {
                     }
                 }
                 attempts++;
-            } while (!valid && attempts < 500); // Алгоритм будет очень упорно искать место (500 попыток)
+            } while (!valid && attempts < 500);
 
-            // Ставим ящик, только если нашли для него подходящее место
             if (valid) {
                 this.obstacles.push({ x, y, w, h });
             }
