@@ -4,9 +4,6 @@ import { Tank } from './Tank.js';
 import { Bullet } from './Bullet.js';
 import { Enemy } from './Enemy.js';
 
-// ==========================================
-// 1. БАЗА ДАННЫХ И ПРОГРЕСС
-// ==========================================
 const GameData = {
     hulls: { 
         "hunter": { name: "Охотник", hp: 200, armor: { front: 80, side: 40, rear: 25 }, speed: 50, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} } 
@@ -33,9 +30,6 @@ const LevelsConfig = {
 };
 let currentEnemyPool = [];
 
-// ==========================================
-// 2. УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ (UI)
-// ==========================================
 const screens = {
     hangar: document.getElementById('hangar-screen'), levels: document.getElementById('levels-screen'), game: document.getElementById('gameCanvas')
 };
@@ -67,9 +61,6 @@ function generateLevelsGrid() {
     }
 }
 
-// ==========================================
-// 3. ИНИЦИАЛИЗАЦИЯ ИГРЫ, КАРТИНКИ И ЗВУКИ
-// ==========================================
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
 canvas.width = 800; canvas.height = 600;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
@@ -91,9 +82,6 @@ let currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished 
 
 let animFrameId = null;
 
-// ==========================================
-// 4. ЭФФЕКТЫ
-// ==========================================
 function spawnText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -30 }); }
 function spawnSparks(x, y, nx, ny) {
     let count = 5 + Math.floor(Math.random() * 6); let base = Math.atan2(ny, nx); 
@@ -118,9 +106,6 @@ function shuffleArray(array) {
     return array;
 }
 
-// ==========================================
-// 5. ЛОГИКА УРОВНЯ
-// ==========================================
 function startLevel(levelNum) {
     if (animFrameId) cancelAnimationFrame(animFrameId);
     gameRunning = false;
@@ -161,9 +146,6 @@ function spawnEnemyOnArena() {
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
 }
 
-// ==========================================
-// 6. ИГРОВОЙ ЦИКЛ
-// ==========================================
 function gameLoop(timestamp) {
     if (!gameRunning) return;
     
@@ -176,11 +158,7 @@ function gameLoop(timestamp) {
         if (enemies.length === 0) enemySpawnTimer = 0;
         else enemySpawnTimer -= dt;
 
-        if (enemySpawnTimer <= 0) {
-            spawnEnemyOnArena();
-            enemiesToSpawn--;
-            enemySpawnTimer = 10 + (enemies.length * 5); 
-        }
+        if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = 10 + (enemies.length * 5); }
     }
 
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
@@ -196,7 +174,6 @@ function gameLoop(timestamp) {
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena);
         if (input.isShooting()) playerTank.tryShoot(); 
-        
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) {
             bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, 'player', playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor));
@@ -208,7 +185,6 @@ function gameLoop(timestamp) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
             enemy.updateAI(dt, arena, playerTank);
-            
             let eShots = enemy.getShots();
             for (let j = 0; j < eShots; j++) {
                 let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; 
@@ -218,38 +194,30 @@ function gameLoop(timestamp) {
         } else enemies.splice(i, 1); 
     }
 
-    // --- ОБРАБОТКА СТОЛКНОВЕНИЙ ПУЛЬ (С ДЕБАГ-ТЕКСТОМ) ---
-      // --- ОБРАБОТКА СТОЛКНОВЕНИЙ ПУЛЬ (С ДЕБАГ-ТЕКСТОМ) ---
+    // --- СТОЛКНОВЕНИЯ ПУЛЬ ---
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; 
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
-        
         if (b.toDestroy) continue; 
-        
         let hasHit = false;
         
         // 1. Попадание во врагов
         if (b.owner !== 'enemy') {
             for (let enemy of enemies) {
+                // Если пуля в прошлом кадре отскочила от этого же врага - игнорируем!
+                if (b.lastHitTarget === enemy) continue; 
+
                 let hit = enemy.checkHit(b);
                 if (hit.hit) {
                     hasHit = true;
                     let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
-                    
                     if (hit.type === 'penetration') {
-                        b.toDestroy = true; 
-                        spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); 
-                        playSound(hitSound);
+                        b.toDestroy = true; spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); playSound(hitSound);
                         if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
                     } else { 
-                        // ФИКС: Возвращаем пулю на позицию ПРОШЛОГО кадра, чтобы она не застряла в броне!
-                        b.x = b.prevX; 
-                        b.y = b.prevY;
-                        b.bounce(hit.nx, hit.ny); 
-                        b.isDecaying = true;  
-                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); 
-                        spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
-                        playSound(bounceSound); 
+                        b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; 
+                        b.lastHitTarget = enemy; // Запомнили, от кого отскочили
+                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
                     }
                     break; 
                 }
@@ -258,24 +226,19 @@ function gameLoop(timestamp) {
 
         // 2. Попадание в игрока
         if (!hasHit && b.owner !== 'player' && playerTank && playerTank.hp > 0) {
-            let hit = playerTank.checkHit(b);
-            if (hit.hit) {
-                let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
-                
-                if (hit.type === 'penetration') {
-                    b.toDestroy = true; 
-                    spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); 
-                    playSound(hitSound);
-                    if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
-                } else { 
-                    // ФИКС: Возвращаем пулю на позицию ПРОШЛОГО кадра
-                    b.x = b.prevX; 
-                    b.y = b.prevY;
-                    b.bounce(hit.nx, hit.ny); 
-                    b.isDecaying = true; 
-                    spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); 
-                    spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
-                    playSound(bounceSound); 
+            // Если пуля только что отскочила от игрока - игнорируем!
+            if (b.lastHitTarget !== playerTank) {
+                let hit = playerTank.checkHit(b);
+                if (hit.hit) {
+                    let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
+                    if (hit.type === 'penetration') {
+                        b.toDestroy = true; spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); playSound(hitSound);
+                        if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
+                    } else { 
+                        b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; 
+                        b.lastHitTarget = playerTank; // Запомнили игрока
+                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
+                    }
                 }
             }
         }
@@ -290,6 +253,14 @@ function gameLoop(timestamp) {
     for (let s of sparks) { ctx.fillStyle = `rgba(${s.color}, ${Math.max(0, s.life / s.maxLife)})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); }
     if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
     for (let e of enemies) e.draw(ctx);
+
+    // --- ОТРИСОВКА ИНТЕРФЕЙСА (БРОНЯ ТАНКА) ---
+    if (playerTank && playerTank.hp > 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30);
+    }
 
     ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
     for (let ft of floatingTexts) { let alpha = Math.max(0, ft.life / ft.maxLife); ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); }
@@ -313,4 +284,3 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
-
