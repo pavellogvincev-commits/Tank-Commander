@@ -50,7 +50,6 @@ export class Tank {
 
     getShots() { return this.shotsToFireThisFrame; }
 
-    // ОБНОВЛЕНО: Добавлена проверка столкновений с другими танками (enemies)
     update(dt, input, arena, enemies) {
         this.updateWeapons(dt); this.updateSmoke(dt); 
 
@@ -71,7 +70,6 @@ export class Tank {
         let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
 
-        // Функция проверки столкновений с врагами
         let hitTanks = (checkX, checkY) => {
             if (!enemies) return false;
             for (let e of enemies) {
@@ -82,8 +80,12 @@ export class Tank {
             return false;
         };
 
-        if (!arena.checkCollision(nextX, this.y, this.radius) && !hitTanks(nextX, this.y)) this.x = nextX; else this.speed *= 0.5; 
-        if (!arena.checkCollision(this.x, nextY, this.radius) && !hitTanks(this.x, nextY)) this.y = nextY; else this.speed *= 0.5;
+        // ОБНОВЛЕНО: Раздельная логика X и Y. Убрано торможение this.speed *= 0.5 для плавного скольжения
+        let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
+        let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
+
+        if (!colX) this.x = nextX;
+        if (!colY) this.y = nextY;
 
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
@@ -127,7 +129,6 @@ export class Tank {
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 
-                // ВАЖНО: БРОНЯ СНИМАЕТСЯ РОВНО НА 1 ПРИ ЛЮБОМ КАСАНИИ
                 let currentArmor = this.armor[hitZone].current;
                 this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1);
 
