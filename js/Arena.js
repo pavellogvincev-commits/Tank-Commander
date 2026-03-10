@@ -5,31 +5,33 @@ export class Arena {
         this.obstacles = [];
     }
 
-    // ОБНОВЛЕНО: density теперь означает точное количество блоков!
     generateObstacles(density) {
         this.obstacles = [];
         if (density <= 0) return;
 
-        let count = density; // Строго то число, что указано в уровнях (например, 5 = 5 блоков)
-        let minGap = 90; 
+        let count = density; 
+        
+        // ПРОСВЕТ 70 пикселей (танк 54px, проедет легко)
+        let minGap = 70; 
         
         let centerX = 400, centerY = 300, safeR = 80;
 
         for (let i = 0; i < count; i++) {
-            // ОБНОВЛЕНО: Более разнообразные размеры (от 50 до 200 пикселей)
-            let sideA = 50 + Math.random() * 150; 
-            let sideB = 50 + Math.random() * 80;  
+            // Чуть более компактные блоки, чтобы влезало много
+            let sideA = 50 + Math.random() * 70;  // Макс длина 120
+            let sideB = 40 + Math.random() * 40;  // Макс толщина 80
             
             let w = sideA;
             let h = sideB;
-            // Случайный поворот (вертикальный или горизонтальный блок)
             if (Math.random() > 0.5) { w = sideB; h = sideA; }
 
             let x, y, valid, attempts = 0;
             do {
                 valid = true;
-                x = 100 + Math.random() * (this.width - 200 - w);
-                y = 100 + Math.random() * (this.height - 200 - h);
+                
+                // РАСШИРИЛИ ЗОНУ СПАВНА: отступ от краев арены теперь 50 пикселей (а не 100)
+                x = 50 + Math.random() * (this.width - 100 - w);
+                y = 50 + Math.random() * (this.height - 100 - h);
 
                 if (x < centerX + safeR && x + w > centerX - safeR &&
                     y < centerY + safeR && y + h > centerY - safeR) {
@@ -46,8 +48,9 @@ export class Arena {
                     }
                 }
                 attempts++;
-            } while (!valid && attempts < 100); // Увеличили кол-во попыток для сложных лабиринтов
+            } while (!valid && attempts < 500); // Алгоритм будет очень упорно искать место (500 попыток)
 
+            // Ставим ящик, только если нашли для него подходящее место
             if (valid) {
                 this.obstacles.push({ x, y, w, h });
             }
