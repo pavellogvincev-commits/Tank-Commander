@@ -69,4 +69,25 @@ export class Arena {
         }
         return { hit: false };
     }
+        // НОВЫЙ МЕТОД: Проверка видимости (Line of Sight)
+    hasLineOfSight(x1, y1, x2, y2) {
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Шагаем по лучу каждые 10 пикселей
+        let steps = Math.max(1, Math.ceil(dist / 10));
+        
+        for (let i = 1; i < steps; i++) {
+            let px = x1 + dx * (i / steps);
+            let py = y1 + dy * (i / steps);
+            
+            // Если на пути есть препятствие радиусом 1 пиксель - видимости нет
+            if (this.checkCollision(px, py, 1)) {
+                return false;
+            }
+        }
+        return true; // Препятствий нет
+    }
 }
+
