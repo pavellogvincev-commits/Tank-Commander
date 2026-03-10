@@ -6,7 +6,6 @@ import { Enemy } from './Enemy.js';
 
 const GameData = {
     hulls: { 
-        // ОБНОВЛЕНО: HP 150, Броня 60/30/20
         "hunter": { name: "Охотник", hp: 150, armor: { front: 60, side: 30, rear: 20 }, speed: 50, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} } 
     },
     turrets: { 
@@ -23,24 +22,76 @@ const GameData = {
 };
 
 let currentAssembly = { hullId: "hunter", turretId: "scourge" };
-let PlayerProgress = { unlockedLevel: 5 }; 
 
+// ОБНОВЛЕНО: Прогресс игрока
+let PlayerProgress = { 
+    unlockedLevel: 1, // Доступен только 1-й
+    passedLevels: [], // Массив зачищенных уровней
+    points: 0,        // Валюта
+    currentHp: 150    // Текущее здоровье (начинаем с максимума Охотника)
+}; 
+
+// ОБНОВЛЕНО: Настройка уровней
 const LevelsConfig = { 
-    1: { pool: ["basic", "basic"], bonuses: 2, obstacles: 8 }, 
-    2: { pool: ["basic", "basic", "scout"], bonuses: 3, obstacles: 1 }, 
-    3: { pool: ["basic", "scout", "scout"], bonuses: 3, obstacles: 2 }, 
-    4: { pool: ["basic", "basic", "scout", "scout"], bonuses: 3, obstacles: 4 }, 
-    5: { pool: ["basic", "basic", "basic", "scout", "scout"], bonuses: 5, obstacles: 7 } 
+    1: { pool: ["basic", "basic", "basic", "basic"], obstacles: 1 }, 
+    2: { pool: ["basic", "basic", "basic", "scout", "scout"], obstacles: 2 }, 
+    3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 3 }
 };
 let currentEnemyPool = [];
 
 const screens = { hangar: document.getElementById('hangar-screen'), levels: document.getElementById('levels-screen'), game: document.getElementById('gameCanvas') };
 function showScreen(screenName) { screens.hangar.style.display = screenName === 'hangar' ? 'flex' : 'none'; screens.levels.style.display = screenName === 'levels' ? 'flex' : 'none'; screens.game.style.display = screenName === 'game' ? 'block' : 'none'; }
-function updateHangarUI() { let hData = GameData.hulls[currentAssembly.hullId]; let tData = GameData.turrets[currentAssembly.turretId]; document.getElementById('stat-hp').innerText = hData.hp; document.getElementById('stat-armor').innerText = `${hData.armor.front} / ${hData.armor.side} / ${hData.armor.rear}`; document.getElementById('stat-speed').innerText = hData.speed; document.getElementById('stat-penetration').innerText = tData.penetration; }
+
+// ОБНОВЛЕНО: Отрисовка Ангара
+function updateHangarUI() { 
+    let hData = GameData.hulls[currentAssembly.hullId]; 
+    let tData = GameData.turrets[currentAssembly.turretId]; 
+
+    document.getElementById('player-points').innerText = PlayerProgress.points;
+    document.getElementById('hangar-hull-name').innerText = hData.name;
+    document.getElementById('hangar-turret-name').innerText = tData.name;
+
+    document.getElementById('stat-hp').innerText = `${PlayerProgress.currentHp} / ${hData.hp}`; 
+    document.getElementById('stat-armor').innerText = `${hData.armor.front} / ${hData.armor.side} / ${hData.armor.rear}`; 
+    document.getElementById('stat-speed').innerText = hData.speed; 
+    document.getElementById('stat-penetration').innerText = tData.penetration; 
+}
+
+// ОБНОВЛЕНО: Кнопка Лечения
+document.getElementById('heal-btn').addEventListener('click', () => {
+    let maxHp = GameData.hulls[currentAssembly.hullId].hp;
+    if (PlayerProgress.points >= 1 && PlayerProgress.currentHp < maxHp) {
+        PlayerProgress.points -= 1;
+        // Восстанавливаем 20% от максимального
+        PlayerProgress.currentHp = Math.floor(PlayerProgress.currentHp + (maxHp * 0.2));
+        if (PlayerProgress.currentHp > maxHp) PlayerProgress.currentHp = maxHp;
+        updateHangarUI();
+    }
+});
+
 updateHangarUI();
 document.getElementById('to-levels-btn').addEventListener('click', () => { generateLevelsGrid(); showScreen('levels'); });
-document.getElementById('back-to-hangar-btn').addEventListener('click', () => { showScreen('hangar'); });
-function generateLevelsGrid() { const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; for (let i = 1; i <= 100; i++) { let btn = document.createElement('button'); btn.className = 'level-btn ' + (i <= PlayerProgress.unlockedLevel ? 'unlocked' : 'locked'); btn.innerHTML = `<div>${i}</div>`; if (i <= PlayerProgress.unlockedLevel) btn.onclick = () => startLevel(i); grid.appendChild(btn); } }
+document.getElementById('back-to-hangar-btn').addEventListener('click', () => { showScreen('hangar'); updateHangarUI(); });
+
+// ОБНОВЛЕНО: Генерация сетки (Желтые и Зеленые)
+function generateLevelsGrid() { 
+    const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
+    for (let i = 1; i <= 100; i++) { 
+        let btn = document.createElement('button'); 
+        
+        if (PlayerProgress.passedLevels.includes(i)) {
+            btn.className = 'level-btn passed'; // Зеленый
+        } else if (i <= PlayerProgress.unlockedLevel) {
+            btn.className = 'level-btn unlocked'; // Желтый
+        } else {
+            btn.className = 'level-btn locked'; // Серый
+        }
+        
+        btn.innerHTML = `<div>${i}</div>`; 
+        if (i <= PlayerProgress.unlockedLevel) btn.onclick = () => startLevel(i); 
+        grid.appendChild(btn); 
+    } 
+}
 
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
 canvas.width = 800; canvas.height = 600;
@@ -65,58 +116,39 @@ function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { cons
 function startLevel(levelNum) {
     if (animFrameId) cancelAnimationFrame(animFrameId);
     gameRunning = false; currentLevelNum = levelNum;
-    let config = LevelsConfig[levelNum] || { pool: ["basic"], bonuses: 0, obstacles: 1 };
+    let config = LevelsConfig[levelNum] || { pool: ["basic"], obstacles: 1 };
     
     currentEnemyPool = shuffleArray([...config.pool]);
     enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false;
 
     arena.generateObstacles(config.obstacles);
 
-    playerTank = new Tank(400, 300, hullImage, turretImage, GameData.hulls["hunter"], GameData.turrets["scourge"]);
+    // ОБНОВЛЕНО: Передаем текущее здоровье из PlayerProgress
+    playerTank = new Tank(400, 300, hullImage, turretImage, GameData.hulls["hunter"], GameData.turrets["scourge"], PlayerProgress.currentHp);
     enemies = []; bullets = []; sparks = []; floatingTexts = [];
     showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
 }
 
 function spawnEnemyOnArena() {
     if (currentEnemyPool.length === 0) return;
-    
-    let safeDist = 200; // Безопасное расстояние от игрока
-    let spawnX, spawnY, validSpawn = false, attempts = 0;
-    let enemyRadius = 30; // Физический радиус танка
-
+    let safeDist = 200; let spawnX, spawnY, validSpawn = false, attempts = 0; let enemyRadius = 30;
     do {
         validSpawn = true;
-        spawnX = 50 + Math.random() * (canvas.width - 100); 
-        spawnY = 50 + Math.random() * (canvas.height - 100);
-
-        // 1. Проверяем расстояние до игрока
+        spawnX = 50 + Math.random() * (canvas.width - 100); spawnY = 50 + Math.random() * (canvas.height - 100);
         let distToPlayer = Math.sqrt(Math.pow(spawnX - playerTank.x, 2) + Math.pow(spawnY - playerTank.y, 2));
         if (distToPlayer <= safeDist) validSpawn = false;
-
-        // 2. Проверяем, не воткнулись ли в блок
         if (validSpawn && arena.checkCollision(spawnX, spawnY, enemyRadius)) validSpawn = false;
-
-        // 3. ОБНОВЛЕНО: Проверяем, не залезли ли на ДРУГОГО ВРАГА!
         if (validSpawn) {
             for (let e of enemies) {
                 let distToEnemy = Math.sqrt(Math.pow(spawnX - e.x, 2) + Math.pow(spawnY - e.y, 2));
-                // Если дистанция меньше 75 пикселей (2.5 радиуса танка), значит места мало
-                if (distToEnemy < 75) {
-                    validSpawn = false;
-                    break;
-                }
+                if (distToEnemy < 75) { validSpawn = false; break; }
             }
         }
-        
         attempts++;
-    } while (!validSpawn && attempts < 100); // Пробуем до 100 раз найти свободное место
+    } while (!validSpawn && attempts < 100); 
 
-    let enemyType = currentEnemyPool.pop(); 
-    let hStats = GameData.enemyHulls[enemyType]; 
-    let tStats = GameData.enemyTurrets[enemyType];
-    let useHullImg = enemyType === "scout" ? scoutHullImage : enemyHullImage; 
-    let useTurretImg = enemyType === "scout" ? scoutTurretImage : enemyTurretImage;
-    
+    let enemyType = currentEnemyPool.pop(); let hStats = GameData.enemyHulls[enemyType]; let tStats = GameData.enemyTurrets[enemyType];
+    let useHullImg = enemyType === "scout" ? scoutHullImage : enemyHullImage; let useTurretImg = enemyType === "scout" ? scoutTurretImage : enemyTurretImage;
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
 }
 
@@ -126,17 +158,35 @@ function gameLoop(timestamp) {
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
-        if (enemySpawnTimer <= 0) { 
-            spawnEnemyOnArena(); 
-            enemiesToSpawn--; 
-            // ОБНОВЛЕНО: Формула спавна: 5 сек + кол-во врагов на поле * 5
-            enemySpawnTimer = 5 + (enemies.length * 5); 
-        }
+        if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = 5 + (enemies.length * 5); }
     }
+    
+    // ОБНОВЛЕНО: Логика победы
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
-        levelFinished = true; if (PlayerProgress.unlockedLevel === currentLevelNum) PlayerProgress.unlockedLevel++; setTimeout(() => { gameRunning = false; generateLevelsGrid(); showScreen('levels'); }, 3000);
+        levelFinished = true; 
+        PlayerProgress.currentHp = playerTank.hp; // Сохраняем выжившее ХП
+
+        // Если уровень проходится ВПЕРВЫЕ
+        if (!PlayerProgress.passedLevels.includes(currentLevelNum)) {
+            PlayerProgress.points += 5; // Бонус 5 очков
+            PlayerProgress.passedLevels.push(currentLevelNum);
+            if (PlayerProgress.unlockedLevel === currentLevelNum) {
+                PlayerProgress.unlockedLevel++; // Открываем следующий
+            }
+        }
+
+        setTimeout(() => { gameRunning = false; generateLevelsGrid(); showScreen('levels'); }, 3000);
     }
-    if (playerTank.hp <= 0 && !levelFinished) { levelFinished = true; setTimeout(() => { gameRunning = false; showScreen('hangar'); }, 3000); }
+
+    // ОБНОВЛЕНО: Логика смерти игрока
+    if (playerTank.hp <= 0 && !levelFinished) { 
+        levelFinished = true; 
+        // Ставим ХП на 20% от максимума
+        let maxHp = GameData.hulls[currentAssembly.hullId].hp;
+        PlayerProgress.currentHp = Math.floor(maxHp * 0.2);
+
+        setTimeout(() => { gameRunning = false; updateHangarUI(); showScreen('hangar'); }, 3000); 
+    }
 
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena, enemies);
@@ -151,7 +201,11 @@ function gameLoop(timestamp) {
             enemy.updateAI(dt, arena, playerTank, enemies);
             let eShots = enemy.getShots();
             for (let j = 0; j < eShots; j++) { let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor)); playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); }
-        } else enemies.splice(i, 1); 
+        } else {
+            // ОБНОВЛЕНО: Даем 1 очко за убийство врага!
+            PlayerProgress.points += 1;
+            enemies.splice(i, 1); 
+        }
     }
 
     for (let i = bullets.length - 1; i >= 0; i--) {
@@ -188,7 +242,7 @@ function gameLoop(timestamp) {
     if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
     for (let e of enemies) e.draw(ctx);
 
-    if (playerTank && playerTank.hp > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.fillText(`Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); }
+    if (playerTank && playerTank.hp > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); }
     ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
     for (let ft of floatingTexts) { let alpha = Math.max(0, ft.life / ft.maxLife); ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); }
     ctx.globalAlpha = 1.0;
@@ -199,6 +253,3 @@ function gameLoop(timestamp) {
 }
 
 const noCache = '?v=' + new Date().getTime(); hullImage.src = 'assets/hull.png' + noCache; turretImage.src = 'assets/turret.png' + noCache; enemyHullImage.src = 'assets/enemy-hull.png' + noCache; enemyTurretImage.src = 'assets/enemy-turret.png' + noCache; scoutHullImage.src = 'assets/scout-hull.png' + noCache; scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
-
-
-
