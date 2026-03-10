@@ -3,62 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Танки: Ангар и Арена</title>
+    <title>Танки: Ангар 2.0</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div id="game-container">
     
-    <!-- ЭКРАН АНГАРА -->
+    <!-- ЭКРАН АНГАРА 2.0 -->
     <div id="hangar-screen" class="screen">
-        <h1>АНГАР</h1>
-        <!-- ОБНОВЛЕНО: Шестеренка вместо текста -->
-        <div id="points-display">⚙️ <span id="player-points">0</span></div>
+        <div class="hangar-header">
+            <h1>АНГАР</h1>
+            <div id="points-display">⚙️ <span id="player-points">0</span></div>
+        </div>
 
-        <div class="hangar-showcase">
-            <div class="hangar-part">
-                <img id="hangar-turret-img" src="assets/turret.png" alt="Башня">
-                <div id="hangar-turret-name" class="part-name">Плеть</div>
-            </div>
-
-            <div class="hangar-center">
-                <div class="hangar-visual">
-                    <img id="hangar-hull" src="assets/hull.png" alt="Корпус">
-                    <img id="hangar-turret" src="assets/turret.png" alt="Башня">
+        <div class="hangar-layout">
+            <!-- ЛЕВАЯ ПАНЕЛЬ: Текущая сборка -->
+            <div class="hangar-panel hangar-left">
+                <h3>ТЕКУЩАЯ СБОРКА</h3>
+                <div class="hangar-visual-box">
+                    <img id="hangar-hull-layer" src="assets/hull.png">
+                    <img id="hangar-turret-layer" src="assets/turret.png">
                 </div>
-                <!-- ОБНОВЛЕНО: Шестеренка на кнопке -->
-                <button id="heal-btn" class="action-btn">Ремонт 20% HP (1 ⚙️)</button>
+                <div class="current-hp-box">
+                    Прочность: <span id="current-hp-val">0</span> / <span id="max-hp-val">0</span>
+                </div>
+                <button id="heal-btn" class="action-btn">Ремонт 20% (1 ⚙️)</button>
+                <button id="to-levels-btn" class="menu-btn start-btn">В БОЙ</button>
             </div>
 
-            <div class="hangar-part">
-                <img id="hangar-hull-img" src="assets/hull.png" alt="Корпус">
-                <div id="hangar-hull-name" class="part-name">Охотник</div>
+            <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ: Список деталей -->
+            <div class="hangar-panel hangar-center">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="hulls">КОРПУСА</button>
+                    <button class="tab-btn" data-tab="turrets">БАШНИ</button>
+                </div>
+                <div id="parts-list" class="parts-list">
+                    <!-- Сюда JS добавит кнопки деталей -->
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ ПАНЕЛЬ: Характеристики выбранной детали -->
+            <div class="hangar-panel hangar-right">
+                <div id="details-info">
+                    <h3>ДЕТАЛЬ</h3>
+                    <div class="details-stats">
+                        <p id="det-name" class="highlight">-</p>
+                        <p>HP: <span id="det-hp">-</span></p>
+                        <p>Броня: <span id="det-armor">-</span></p>
+                        <p>Скорость: <span id="det-speed">-</span></p>
+                        <p>Особенность: <span id="det-ability" style="color: #00ffcc;">-</span></p>
+                    </div>
+                    <div id="action-area" class="action-area">
+                        <!-- Кнопка КУПИТЬ или УСТАНОВИТЬ -->
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div class="hangar-stats">
-            <h3>Характеристики сборки:</h3>
-            <p>Прочность (Текущая / Макс): <span id="stat-hp" class="highlight"></span></p>
-            <p>Броня (Лоб/Борт/Корма): <span id="stat-armor" class="highlight"></span></p>
-            <p>Скорость: <span id="stat-speed" class="highlight"></span></p>
-            <p>Пробитие: <span id="stat-penetration" class="highlight"></span></p>
-        </div>
-        
-        <button id="to-levels-btn" class="menu-btn">К выбору уровня</button>
     </div>
 
     <!-- ЭКРАН ВЫБОРА УРОВНЯ -->
     <div id="levels-screen" class="screen" style="display: none;">
         <h1>СЕКТОРА</h1>
-        <div class="levels-info">Желтые - доступны | Зеленые - зачищены</div>
         <div id="levels-grid"></div>
         <button id="back-to-hangar-btn" class="menu-btn">В ангар</button>
     </div>
 
-    <!-- ИГРОВОЙ ЭКРАН -->
     <canvas id="gameCanvas" style="display: none;"></canvas>
-
 </div>
 
 <script type="module" src="js/main.js"></script>
