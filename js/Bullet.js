@@ -2,13 +2,16 @@ export class Bullet {
     constructor(x, y, angle, owner, penetration, radius = 2.5, color = '#ffaa00') {
         this.x = x;
         this.y = y;
+        this.prevX = x; // ПАМЯТЬ О ПРОШЛОЙ ПОЗИЦИИ
+        this.prevY = y;
+        
         this.angle = angle;
         this.owner = owner;
         this.penetration = penetration;
         this.radius = radius;
         this.color = color;
 
-        this.speed = 450; // СТРОГО 450 по твоей просьбе
+        this.speed = 450; 
         this.toDestroy = false;
 
         this.vx = Math.cos(angle) * this.speed;
@@ -20,6 +23,10 @@ export class Bullet {
     }
 
     update(dt, arena, spawnSparks, bounceCallback) {
+        // Запоминаем позицию ДО начала движения в этом кадре
+        this.prevX = this.x;
+        this.prevY = this.y;
+
         if (this.isDecaying) {
             this.decayTimer -= dt;
             if (this.decayTimer <= 0) this.toDestroy = true;
@@ -34,23 +41,17 @@ export class Bullet {
         let hitWall = false;
         let nx = 0, ny = 0;
 
-        // 1. Проверяем ось X (Границы арены И препятствия внутри)
         if (nextX < 0) { hitWall = true; nx = 1; ny = 0; this.x = 0; }
         else if (nextX > arena.width) { hitWall = true; nx = -1; ny = 0; this.x = arena.width; }
         else if (arena.checkCollision(nextX, this.y, this.radius)) { 
-            hitWall = true; nx = -Math.sign(this.vx); ny = 0; // Отскок от блока по X
-        } else { 
-            this.x = nextX; 
-        }
+            hitWall = true; nx = -Math.sign(this.vx); ny = 0; 
+        } else { this.x = nextX; }
 
-        // 2. Проверяем ось Y (Границы арены И препятствия внутри)
         if (nextY < 0) { hitWall = true; nx = 0; ny = 1; this.y = 0; }
         else if (nextY > arena.height) { hitWall = true; nx = 0; ny = -1; this.y = arena.height; }
         else if (arena.checkCollision(this.x, nextY, this.radius)) { 
-            hitWall = true; nx = 0; ny = -Math.sign(this.vy); // Отскок от блока по Y
-        } else { 
-            this.y = nextY; 
-        }
+            hitWall = true; nx = 0; ny = -Math.sign(this.vy); 
+        } else { this.y = nextY; }
 
         if (hitWall) {
             this.bounce(nx, ny);
