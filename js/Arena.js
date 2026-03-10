@@ -10,7 +10,10 @@ export class Arena {
         if (density <= 0) return;
 
         let count = density * 2; 
-        let minGap = 90; // Гарантированный минимальный просвет между ящиками!
+        let minGap = 90; 
+        
+        // Координаты спавна игрока и безопасный радиус вокруг
+        let centerX = 400, centerY = 300, safeR = 80;
 
         for (let i = 0; i < count; i++) {
             let w = 80 + Math.random() * 100;
@@ -23,7 +26,14 @@ export class Arena {
                 x = 100 + Math.random() * (this.width - 200 - w);
                 y = 100 + Math.random() * (this.height - 200 - h);
 
-                // Проверяем дистанцию до уже созданных ящиков (с учетом minGap)
+                // ОБНОВЛЕНО: Проверяем, не налез ли ящик на центр арены
+                if (x < centerX + safeR && x + w > centerX - safeR &&
+                    y < centerY + safeR && y + h > centerY - safeR) {
+                    valid = false;
+                    attempts++;
+                    continue;
+                }
+
                 for (let obs of this.obstacles) {
                     if (x < obs.x + obs.w + minGap && x + w > obs.x - minGap &&
                         y < obs.y + obs.h + minGap && y + h > obs.y - minGap) {
@@ -32,7 +42,7 @@ export class Arena {
                     }
                 }
                 attempts++;
-            } while (!valid && attempts < 50); // Если места нет, пытаемся пересоздать до 50 раз
+            } while (!valid && attempts < 50);
 
             if (valid) {
                 this.obstacles.push({ x, y, w, h });
@@ -41,21 +51,13 @@ export class Arena {
     }
 
     checkCollision(x, y, radius) {
-        // ФИКС: Теперь края экрана — это монолитные стены для танков
-        if (x - radius < 0 || x + radius > this.width || 
-            y - radius < 0 || y + radius > this.height) {
-            return true;
-        }
-
+        if (x - radius < 0 || x + radius > this.width || y - radius < 0 || y + radius > this.height) return true;
         for (let obs of this.obstacles) {
             let testX = x; let testY = y;
             if (x < obs.x) testX = obs.x; else if (x > obs.x + obs.w) testX = obs.x + obs.w;
             if (y < obs.y) testY = obs.y; else if (y > obs.y + obs.h) testY = obs.y + obs.h;
-
             let distX = x - testX; let distY = y - testY;
-            if ((distX * distX) + (distY * distY) <= radius * radius) {
-                return true;
-            }
+            if ((distX * distX) + (distY * distY) <= radius * radius) return true;
         }
         return false;
     }
@@ -73,10 +75,8 @@ export class Arena {
 
     draw(ctx) {
         for (let obs of this.obstacles) {
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-            ctx.lineWidth = 4; ctx.strokeStyle = '#3e1f08';
-            ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+            ctx.fillStyle = '#8B4513'; ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            ctx.lineWidth = 4; ctx.strokeStyle = '#3e1f08'; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
         }
     }
 }
