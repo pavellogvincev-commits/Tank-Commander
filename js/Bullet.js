@@ -2,7 +2,7 @@ export class Bullet {
     constructor(x, y, angle, owner, penetration, radius = 2.5, color = '#ffaa00') {
         this.x = x;
         this.y = y;
-        this.prevX = x; // ПАМЯТЬ О ПРОШЛОЙ ПОЗИЦИИ
+        this.prevX = x; 
         this.prevY = y;
         
         this.angle = angle;
@@ -20,10 +20,12 @@ export class Bullet {
         this.isDecaying = false;
         this.maxDecayTime = 0.5;
         this.decayTimer = this.maxDecayTime;
+
+        // ПАМЯТЬ ПУЛИ (чтобы не бить одного и того же танка 10 раз подряд)
+        this.lastHitTarget = null; 
     }
 
     update(dt, arena, spawnSparks, bounceCallback) {
-        // Запоминаем позицию ДО начала движения в этом кадре
         this.prevX = this.x;
         this.prevY = this.y;
 
@@ -56,6 +58,8 @@ export class Bullet {
         if (hitWall) {
             this.bounce(nx, ny);
             this.isDecaying = true; 
+            // При ударе о стену сбрасываем память (может снова попасть в того же)
+            this.lastHitTarget = null; 
             if (spawnSparks) spawnSparks(this.x, this.y, nx, ny);
             if (bounceCallback) bounceCallback();
         }
