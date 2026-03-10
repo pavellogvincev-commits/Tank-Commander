@@ -2,133 +2,66 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Танки: Кампания</title>
-    <style>
-        body { margin: 0; padding: 0; background-color: #1a1a1a; color: #fff; font-family: 'Arial', sans-serif; overflow: hidden; }
-        #game-container { position: relative; width: 800px; height: 600px; margin: 20px auto; outline: 2px solid #333; background: #222; overflow: hidden; }
-        #gameCanvas { display: none; background-color: #3b4231; }
-
-        /* --- АНГАР --- */
-        #hangar-screen { width: 100%; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; padding: 20px; }
-        .hangar-top { display: flex; flex: 1; gap: 20px; }
-        .left-panel { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .tank-preview { position: relative; width: 150px; height: 150px; margin-bottom: 20px; background: #1a1a1a; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 20px #000; }
-        .tank-preview img { position: absolute; width: 80px; transform: rotate(-90deg); }
-        .tank-preview img.turret { width: 70px; z-index: 2; }
-        .stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .stats-table td { padding: 8px; border-bottom: 1px solid #444; }
-        .stats-table td:nth-child(2) { text-align: right; color: #00ff00; font-weight: bold; }
-        
-        .right-panel { flex: 1; display: flex; flex-direction: column; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 10px; }
-        .tab-btn { flex: 1; padding: 10px; background: #333; border: none; color: #aaa; cursor: pointer; font-weight: bold; text-transform: uppercase; border-radius: 4px 4px 0 0; }
-        .tab-btn.active { background: #2a2a2a; color: #fff; border-top: 3px solid #ffaa00; }
-        .tab-content { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 0 0 8px 8px; padding: 15px; overflow-y: auto; }
-        
-        /* Скрываем скроллбары во вкладках ангара */
-        .tab-content::-webkit-scrollbar { display: none; }
-        .tab-content { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .part-card { background: #333; border: 1px solid #555; padding: 10px; border-radius: 4px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
-        .part-card.equipped { border-color: #00ff00; background: #253325; }
-        .part-card img { width: 50px; }
-        .part-card-info h3 { margin: 0 0 5px 0; font-size: 16px; color: #ffaa00; }
-        .part-card-info p { margin: 0; font-size: 12px; color: #ccc; }
-        
-        .hangar-bottom { margin-top: 20px; display: flex; justify-content: flex-end; }
-        .main-btn { padding: 15px 40px; font-size: 20px; font-weight: 900; background: linear-gradient(180deg, #ff8c00, #d94500); color: #fff; border: 2px solid #ffcc00; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
-        .main-btn:hover { background: linear-gradient(180deg, #ffa200, #ff5e00); transform: scale(1.05); }
-
-        /* --- ЭКРАН ВЫБОРА УРОВНЕЙ --- */
-        #levels-screen { display: none; width: 100%; height: 100%; flex-direction: column; box-sizing: border-box; padding: 20px; background: #222; }
-        .levels-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .levels-header h2 { margin: 0; color: #ffaa00; }
-        
-        .levels-grid { 
-            display: grid; 
-            grid-template-columns: repeat(10, 1fr); 
-            gap: 8px; 
-            flex: 1; 
-            overflow-y: auto; 
-            overflow-x: hidden; /* Точно убираем горизонтальный скролл */
-            padding-right: 5px;
-            
-            /* Скрываем вертикальный скроллбар для Chrome, Safari, Opera */
-            -ms-overflow-style: none;  /* IE/Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        .levels-grid::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-
-        .level-btn { background: #444; border: 2px solid #222; color: #fff; font-weight: bold; font-size: 16px; border-radius: 4px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; aspect-ratio: 1; transition: 0.2s; }
-        .level-btn.unlocked { background: #3b4231; border-color: #5a8a25; }
-        .level-btn.unlocked:hover { background: #5a8a25; border-color: #00ff00; transform: scale(1.1); }
-        .level-btn.locked { opacity: 0.5; cursor: not-allowed; background: #2a2a2a; border-color: #111; color: #666; }
-        .level-btn .bonuses { font-size: 10px; color: #ffaa00; margin-top: 5px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Танки: Ангар и Арена</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div id="game-container">
-    <canvas id="gameCanvas"></canvas>
+    
+    <!-- ЭКРАН АНГАРА -->
+    <div id="hangar-screen" class="screen">
+        <h1>АНГАР</h1>
+        <div id="points-display">Очки деталей: <span id="player-points">0</span></div>
 
-    <div id="hangar-screen">
-        <div class="hangar-top">
-            <div class="left-panel">
-                <div class="tank-preview">
-                    <img src="assets/hull.png" alt="Корпус">
-                    <img class="turret" src="assets/turret.png" alt="Башня">
-                </div>
-                <h2>Текущая сборка</h2>
-                <table class="stats-table">
-                    <tr><td>Здоровье (HP)</td><td id="stat-hp">0</td></tr>
-                    <tr><td>Броня (Лоб/Борт/Корма)</td><td id="stat-armor">0</td></tr>
-                    <tr><td>Скорость</td><td id="stat-speed">0</td></tr>
-                    <tr><td>Бронепробитие</td><td id="stat-penetration">0</td></tr>
-                </table>
+        <div class="hangar-showcase">
+            <!-- Левая колонка: Башня -->
+            <div class="hangar-part">
+                <img id="hangar-turret-img" src="assets/turret.png" alt="Башня">
+                <div id="hangar-turret-name" class="part-name">Плеть</div>
             </div>
-            <div class="right-panel">
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('hulls')">Корпуса</button>
-                    <button class="tab-btn" onclick="switchTab('turrets')">Башни</button>
+
+            <!-- Центральная колонка: Танк и Лечение -->
+            <div class="hangar-center">
+                <div class="hangar-visual">
+                    <img id="hangar-hull" src="assets/hull.png" alt="Корпус">
+                    <img id="hangar-turret" src="assets/turret.png" alt="Башня">
                 </div>
-                <div class="tab-content">
-                    <div id="tab-hulls" class="tab-pane active">
-                        <div class="part-card equipped">
-                            <img src="assets/hull.png" alt="Корпус">
-                            <div class="part-card-info"><h3>Охотник</h3><p>Средний класс. Отличный баланс.</p></div>
-                        </div>
-                    </div>
-                    <div id="tab-turrets" class="tab-pane">
-                        <div class="part-card equipped">
-                            <img src="assets/turret.png" alt="Башня">
-                            <div class="part-card-info"><h3>Плеть</h3><p>Стандартное орудие.</p></div>
-                        </div>
-                    </div>
-                </div>
+                <button id="heal-btn" class="action-btn">Ремонт 20% HP (1 очко)</button>
+            </div>
+
+            <!-- Правая колонка: Корпус -->
+            <div class="hangar-part">
+                <img id="hangar-hull-img" src="assets/hull.png" alt="Корпус">
+                <div id="hangar-hull-name" class="part-name">Охотник</div>
             </div>
         </div>
-        <div class="hangar-bottom">
-            <button id="to-levels-btn" class="main-btn">К МИССИЯМ</button>
+
+        <div class="hangar-stats">
+            <h3>Характеристики сборки:</h3>
+            <p>Прочность (Текущая / Макс): <span id="stat-hp" class="highlight"></span></p>
+            <p>Броня (Лоб/Борт/Корма): <span id="stat-armor" class="highlight"></span></p>
+            <p>Скорость: <span id="stat-speed" class="highlight"></span></p>
+            <p>Пробитие: <span id="stat-penetration" class="highlight"></span></p>
         </div>
+        
+        <button id="to-levels-btn" class="menu-btn">К выбору уровня</button>
     </div>
 
-    <div id="levels-screen">
-        <div class="levels-header">
-            <h2>КАМПАНИЯ (100 Уровней)</h2>
-            <button id="back-to-hangar-btn" class="main-btn" style="padding: 10px 20px; font-size: 16px;">НАЗАД</button>
-        </div>
-        <div id="levels-grid" class="levels-grid"></div>
+    <!-- ЭКРАН ВЫБОРА УРОВНЯ -->
+    <div id="levels-screen" class="screen" style="display: none;">
+        <h1>СЕКТОРА</h1>
+        <div class="levels-info">Желтые - доступны | Зеленые - зачищены</div>
+        <div id="levels-grid"></div>
+        <button id="back-to-hangar-btn" class="menu-btn">В ангар</button>
     </div>
+
+    <!-- ИГРОВОЙ ЭКРАН -->
+    <canvas id="gameCanvas" style="display: none;"></canvas>
+
 </div>
 
-<script>
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-        event.target.classList.add('active');
-        document.getElementById('tab-' + tabId).classList.add('active');
-    }
-</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
