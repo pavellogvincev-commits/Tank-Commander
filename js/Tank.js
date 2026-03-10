@@ -2,7 +2,6 @@ export class Tank {
     constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
         this.x = x; this.y = y;
         this.hullImg = hullImg; this.turretImg = turretImg;
-        
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
         this.turretWidth = hullStats.size.w; this.turretHeight = hullStats.size.h;
         this.hitboxWidth = hullStats.hitbox.w; this.hitboxHeight = hullStats.hitbox.h; 
@@ -18,28 +17,18 @@ export class Tank {
         this.speed = 0; 
         this.maxForwardSpeed = hullStats.speed; this.maxReverseSpeed = -hullStats.speed / 2;  
         this.acceleration = 80; this.friction = 100; this.brakePower = 160;       
-
         this.hullRotationSpeed = 1.5; this.hullAngle = 0;
         this.turretRotationSpeed = 2; this.turretAngle = 0;
 
-        this.particles = [];
-        this.particleTimer = 0;
-
-        this.fireRate = turretStats.fireRate;    
-        this.penetration = turretStats.penetration; 
-        this.burstCount = turretStats.burstCount || 1;    
-        this.burstDelay = turretStats.burstDelay || 0;    
-
-        // ГАРАНТИЯ ХАРАКТЕРИСТИК ПУЛИ
+        this.particles = []; this.particleTimer = 0;
+        this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
+        this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
         this.bulletRadius = turretStats.bulletRadius || 2.5;
         this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon';
 
-        this.fireCooldown = 0;   
-        this.burstsRemaining = 0; 
-        this.burstTimer = 0;
-        this.shotsToFireThisFrame = 0; 
-        this.recoil = 0;         
+        this.fireCooldown = 0; this.burstsRemaining = 0; 
+        this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
     }
 
     updateSmoke(dt) {
@@ -69,20 +58,16 @@ export class Tank {
         if (this.burstsRemaining > 0) {
             this.burstTimer -= dt;
             if (this.burstTimer <= 0) {
-                this.shotsToFireThisFrame++;
-                this.burstsRemaining--;
-                this.burstTimer = this.burstDelay; 
-                this.recoil = 4; 
+                this.shotsToFireThisFrame++; this.burstsRemaining--;
+                this.burstTimer = this.burstDelay; this.recoil = 4; 
             }
         }
     }
 
     tryShoot() {
         if (this.fireCooldown <= 0 && this.burstsRemaining === 0) {
-            this.fireCooldown = this.fireRate;
-            this.burstsRemaining = this.burstCount;
-            this.burstTimer = 0; 
-            return true;
+            this.fireCooldown = this.fireRate; this.burstsRemaining = this.burstCount;
+            this.burstTimer = 0; return true;
         }
         return false;
     }
@@ -90,8 +75,7 @@ export class Tank {
     getShots() { return this.shotsToFireThisFrame; }
 
     update(dt, input, arena) {
-        this.updateWeapons(dt);
-        this.updateSmoke(dt); 
+        this.updateWeapons(dt); this.updateSmoke(dt); 
 
         let isMoving = false;
         if (input.isUp()) { this.speed += this.acceleration * dt; isMoving = true; }
@@ -111,67 +95,84 @@ export class Tank {
         let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
 
-        if (!arena.checkCollision(nextX, this.y, this.radius)) this.x = nextX;
-        else this.speed *= 0.5; 
-
-        if (!arena.checkCollision(this.x, nextY, this.radius)) this.y = nextY;
-        else this.speed *= 0.5;
+        if (!arena.checkCollision(nextX, this.y, this.radius)) this.x = nextX; else this.speed *= 0.5; 
+        if (!arena.checkCollision(this.x, nextY, this.radius)) this.y = nextY; else this.speed *= 0.5;
 
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
         if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
     }
 
+    // НОВЫЙ АЛГОРИТМ УРОНА (RAYCASTING)
     checkHit(bullet) {
         if (this.hp <= 0) return { hit: false };
-        let dx = bullet.x - this.x; let dy = bullet.y - this.y;
-        let cos = Math.cos(-this.hullAngle); let sin = Math.sin(-this.hullAngle);
-        let localX = dx * cos - dy * sin; let localY = dx * sin + dy * cos;
 
-        let halfW = this.hitboxWidth / 2; let halfH = this.hitboxHeight / 2;
+        let startX = bullet.prevX !== undefined ? bullet.prevX : bullet.x;
+        let startY = bullet.prevY !== undefined ? bullet.prevY : bullet.y;
 
-        if (localX > -halfW && localX < halfW && localY > -halfH && localY < halfH) {
-            let distFront = Math.abs(halfW - localX); let distRear = Math.abs(-halfW - localX);  
-            let distSide1 = Math.abs(halfH - localY); let distSide2 = Math.abs(-halfH - localY); 
+        let dxPath = bullet.x - startX;
+        let dyPath = bullet.y - startY;
+        let dist = Math.sqrt(dxPath*dxPath + dyPath*dyPath);
 
-            let minDist = Math.min(distFront, distRear, distSide1, distSide2);
-            let hitZone = ''; let normalX = 0, normalY = 0;
+        // Разбиваем путь пули на шаги по 2 пикселя
+        let steps = Math.max(1, Math.ceil(dist / 2));
 
-            if (minDist === distFront) { hitZone = 'front'; normalX = 1; normalY = 0; }
-            else if (minDist === distRear) { hitZone = 'rear'; normalX = -1; normalY = 0; }
-            else { hitZone = 'side'; normalX = 0; normalY = minDist === distSide1 ? 1 : -1; }
+        for (let i = 1; i <= steps; i++) {
+            let t = i / steps;
+            let px = startX + dxPath * t; // Проверочная точка X
+            let py = startY + dyPath * t; // Проверочная точка Y
 
-            let localVx = bullet.vx * cos - bullet.vy * sin; let localVy = bullet.vx * sin + bullet.vy * cos;
-            let speed = Math.sqrt(localVx*localVx + localVy*localVy);
-            let dirX = localVx / speed; let dirY = localVy / speed;
-            let dot = -(dirX * normalX + dirY * normalY);
-            dot = Math.max(-1, Math.min(1, dot)); let angleDeg = Math.acos(dot) * (180 / Math.PI); 
+            // Переводим точку в локальные координаты танка
+            let dx = px - this.x; let dy = py - this.y;
+            let cos = Math.cos(-this.hullAngle); let sin = Math.sin(-this.hullAngle);
+            let localX = dx * cos - dy * sin; let localY = dx * sin + dy * cos;
 
-            let cosHull = Math.cos(this.hullAngle); let sinHull = Math.sin(this.hullAngle);
-            let worldNx = normalX * cosHull - normalY * sinHull; let worldNy = normalX * sinHull + normalY * cosHull;
+            let halfW = this.hitboxWidth / 2; let halfH = this.hitboxHeight / 2;
 
-            let hitResult = { hit: true, zone: hitZone, x: bullet.x, y: bullet.y, nx: worldNx, ny: worldNy };
+            if (localX > -halfW && localX < halfW && localY > -halfH && localY < halfH) {
+                // ПУЛЯ КОСНУЛАСЬ БРОНИ В ЭТОЙ ТОЧКЕ!
+                let distFront = Math.abs(halfW - localX); let distRear = Math.abs(-halfW - localX);  
+                let distSide1 = Math.abs(halfH - localY); let distSide2 = Math.abs(-halfH - localY); 
 
-            if (angleDeg > 90) angleDeg = 90; 
-            let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
-            let currentArmor = this.armor[hitZone].current;
+                let minDist = Math.min(distFront, distRear, distSide1, distSide2);
+                let hitZone = ''; let normalX = 0, normalY = 0;
 
-            if (effectivePenetration > currentArmor) {
-                let baseDamage = effectivePenetration - currentArmor;
-                let finalDamage = Math.floor(baseDamage + (Math.random() * (baseDamage * 0.1) * 2 - (baseDamage * 0.1)));
-                if (finalDamage < 1) finalDamage = 1; 
+                if (minDist === distFront) { hitZone = 'front'; normalX = 1; normalY = 0; }
+                else if (minDist === distRear) { hitZone = 'rear'; normalX = -1; normalY = 0; }
+                else { hitZone = 'side'; normalX = 0; normalY = minDist === distSide1 ? 1 : -1; }
 
-                let isDestroyed = false; if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
-                this.hp -= finalDamage; if (this.hp < 0) this.hp = 0;
+                let localVx = bullet.vx * cos - bullet.vy * sin; let localVy = bullet.vx * sin + bullet.vy * cos;
+                let speedSq = Math.sqrt(localVx*localVx + localVy*localVy);
+                let dirX = localVx / speedSq; let dirY = localVy / speedSq;
                 
-                hitResult.type = 'penetration'; hitResult.damage = finalDamage; hitResult.destroyed = isDestroyed;
-            } else {
-                this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - Math.floor(bullet.penetration * 0.1));
-                hitResult.type = 'ricochet'; hitResult.damage = 0;
+                let dot = -(dirX * normalX + dirY * normalY);
+                dot = Math.max(-1, Math.min(1, dot)); let angleDeg = Math.acos(dot) * (180 / Math.PI); 
+
+                let cosHull = Math.cos(this.hullAngle); let sinHull = Math.sin(this.hullAngle);
+                let worldNx = normalX * cosHull - normalY * sinHull; let worldNy = normalX * sinHull + normalY * cosHull;
+
+                let hitResult = { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy };
+
+                if (angleDeg > 90) angleDeg = 90; 
+                let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
+                let currentArmor = this.armor[hitZone].current;
+
+                if (effectivePenetration > currentArmor) {
+                    let baseDamage = effectivePenetration - currentArmor;
+                    let finalDamage = Math.floor(baseDamage + (Math.random() * (baseDamage * 0.1) * 2 - (baseDamage * 0.1)));
+                    if (finalDamage < 1) finalDamage = 1; 
+
+                    let isDestroyed = false; if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
+                    this.hp -= finalDamage; if (this.hp < 0) this.hp = 0;
+                    
+                    hitResult.type = 'penetration'; hitResult.damage = finalDamage; hitResult.destroyed = isDestroyed;
+                } else {
+                    this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - Math.floor(bullet.penetration * 0.1));
+                    hitResult.type = 'ricochet'; hitResult.damage = 0;
+                }
+                return hitResult; // Возвращаем попадание при первом же контакте!
             }
-            return hitResult; 
         }
         return { hit: false };
     }
