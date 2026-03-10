@@ -79,16 +79,44 @@ function startLevel(levelNum) {
 
 function spawnEnemyOnArena() {
     if (currentEnemyPool.length === 0) return;
-    let safeDist = 200, spawnX, spawnY, attempts = 0;
-    do {
-        spawnX = 50 + Math.random() * (canvas.width - 100); spawnY = 50 + Math.random() * (canvas.height - 100);
-        let dist = Math.sqrt(Math.pow(spawnX - playerTank.x, 2) + Math.pow(spawnY - playerTank.y, 2));
-        if (dist > safeDist && !arena.checkCollision(spawnX, spawnY, 30)) break;
-        attempts++;
-    } while (attempts < 50);
+    
+    let safeDist = 200; // Безопасное расстояние от игрока
+    let spawnX, spawnY, validSpawn = false, attempts = 0;
+    let enemyRadius = 30; // Физический радиус танка
 
-    let enemyType = currentEnemyPool.pop(); let hStats = GameData.enemyHulls[enemyType]; let tStats = GameData.enemyTurrets[enemyType];
-    let useHullImg = enemyType === "scout" ? scoutHullImage : enemyHullImage; let useTurretImg = enemyType === "scout" ? scoutTurretImage : enemyTurretImage;
+    do {
+        validSpawn = true;
+        spawnX = 50 + Math.random() * (canvas.width - 100); 
+        spawnY = 50 + Math.random() * (canvas.height - 100);
+
+        // 1. Проверяем расстояние до игрока
+        let distToPlayer = Math.sqrt(Math.pow(spawnX - playerTank.x, 2) + Math.pow(spawnY - playerTank.y, 2));
+        if (distToPlayer <= safeDist) validSpawn = false;
+
+        // 2. Проверяем, не воткнулись ли в блок
+        if (validSpawn && arena.checkCollision(spawnX, spawnY, enemyRadius)) validSpawn = false;
+
+        // 3. ОБНОВЛЕНО: Проверяем, не залезли ли на ДРУГОГО ВРАГА!
+        if (validSpawn) {
+            for (let e of enemies) {
+                let distToEnemy = Math.sqrt(Math.pow(spawnX - e.x, 2) + Math.pow(spawnY - e.y, 2));
+                // Если дистанция меньше 75 пикселей (2.5 радиуса танка), значит места мало
+                if (distToEnemy < 75) {
+                    validSpawn = false;
+                    break;
+                }
+            }
+        }
+        
+        attempts++;
+    } while (!validSpawn && attempts < 100); // Пробуем до 100 раз найти свободное место
+
+    let enemyType = currentEnemyPool.pop(); 
+    let hStats = GameData.enemyHulls[enemyType]; 
+    let tStats = GameData.enemyTurrets[enemyType];
+    let useHullImg = enemyType === "scout" ? scoutHullImage : enemyHullImage; 
+    let useTurretImg = enemyType === "scout" ? scoutTurretImage : enemyTurretImage;
+    
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
 }
 
@@ -171,5 +199,6 @@ function gameLoop(timestamp) {
 }
 
 const noCache = '?v=' + new Date().getTime(); hullImage.src = 'assets/hull.png' + noCache; turretImage.src = 'assets/turret.png' + noCache; enemyHullImage.src = 'assets/enemy-hull.png' + noCache; enemyTurretImage.src = 'assets/enemy-turret.png' + noCache; scoutHullImage.src = 'assets/scout-hull.png' + noCache; scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
+
 
 
