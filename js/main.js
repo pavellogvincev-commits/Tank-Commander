@@ -219,6 +219,7 @@ function gameLoop(timestamp) {
     }
 
     // --- ОБРАБОТКА СТОЛКНОВЕНИЙ ПУЛЬ (С ДЕБАГ-ТЕКСТОМ) ---
+      // --- ОБРАБОТКА СТОЛКНОВЕНИЙ ПУЛЬ (С ДЕБАГ-ТЕКСТОМ) ---
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; 
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
@@ -233,7 +234,6 @@ function gameLoop(timestamp) {
                 let hit = enemy.checkHit(b);
                 if (hit.hit) {
                     hasHit = true;
-                    // Перевод зоны на русский язык
                     let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
                     
                     if (hit.type === 'penetration') {
@@ -242,9 +242,12 @@ function gameLoop(timestamp) {
                         playSound(hitSound);
                         if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
                     } else { 
+                        // ФИКС: Возвращаем пулю на позицию ПРОШЛОГО кадра, чтобы она не застряла в броне!
+                        b.x = b.prevX; 
+                        b.y = b.prevY;
                         b.bounce(hit.nx, hit.ny); 
                         b.isDecaying = true;  
-                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); // Дебаг-надпись при рикошете
+                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); 
                         spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                         playSound(bounceSound); 
                     }
@@ -265,9 +268,12 @@ function gameLoop(timestamp) {
                     playSound(hitSound);
                     if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
                 } else { 
+                    // ФИКС: Возвращаем пулю на позицию ПРОШЛОГО кадра
+                    b.x = b.prevX; 
+                    b.y = b.prevY;
                     b.bounce(hit.nx, hit.ny); 
                     b.isDecaying = true; 
-                    spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); // Дебаг-надпись при рикошете
+                    spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); 
                     spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                     playSound(bounceSound); 
                 }
@@ -307,3 +313,4 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
+
