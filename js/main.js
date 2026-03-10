@@ -26,11 +26,11 @@ let currentAssembly = { hullId: "hunter", turretId: "scourge" };
 let PlayerProgress = { unlockedLevel: 5 }; 
 
 const LevelsConfig = { 
-    1: { pool: ["basic", "basic"], bonuses: 2, obstacles: 0 }, 
+    1: { pool: ["basic", "basic"], bonuses: 2, obstacles: 2 }, 
     2: { pool: ["basic", "basic", "scout"], bonuses: 3, obstacles: 1 }, 
     3: { pool: ["basic", "scout", "scout"], bonuses: 3, obstacles: 2 }, 
     4: { pool: ["basic", "basic", "scout", "scout"], bonuses: 3, obstacles: 4 }, 
-    5: { pool: ["basic", "basic", "basic", "scout", "scout"], bonuses: 5, obstacles: 5 } 
+    5: { pool: ["basic", "basic", "basic", "scout", "scout"], bonuses: 5, obstacles: 7 } 
 };
 let currentEnemyPool = [];
 
@@ -171,3 +171,4 @@ function gameLoop(timestamp) {
 }
 
 const noCache = '?v=' + new Date().getTime(); hullImage.src = 'assets/hull.png' + noCache; turretImage.src = 'assets/turret.png' + noCache; enemyHullImage.src = 'assets/enemy-hull.png' + noCache; enemyTurretImage.src = 'assets/enemy-turret.png' + noCache; scoutHullImage.src = 'assets/scout-hull.png' + noCache; scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
+
