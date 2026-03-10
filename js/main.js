@@ -23,15 +23,13 @@ const GameData = {
 
 let currentAssembly = { hullId: "hunter", turretId: "scourge" };
 
-// ОБНОВЛЕНО: Прогресс игрока
 let PlayerProgress = { 
-    unlockedLevel: 1, // Доступен только 1-й
-    passedLevels: [], // Массив зачищенных уровней
-    points: 0,        // Валюта
-    currentHp: 150    // Текущее здоровье (начинаем с максимума Охотника)
+    unlockedLevel: 1, 
+    passedLevels: [], 
+    points: 0,        
+    currentHp: 150    
 }; 
 
-// ОБНОВЛЕНО: Настройка уровней
 const LevelsConfig = { 
     1: { pool: ["basic", "basic", "basic", "basic"], obstacles: 1 }, 
     2: { pool: ["basic", "basic", "basic", "scout", "scout"], obstacles: 2 }, 
@@ -42,7 +40,6 @@ let currentEnemyPool = [];
 const screens = { hangar: document.getElementById('hangar-screen'), levels: document.getElementById('levels-screen'), game: document.getElementById('gameCanvas') };
 function showScreen(screenName) { screens.hangar.style.display = screenName === 'hangar' ? 'flex' : 'none'; screens.levels.style.display = screenName === 'levels' ? 'flex' : 'none'; screens.game.style.display = screenName === 'game' ? 'block' : 'none'; }
 
-// ОБНОВЛЕНО: Отрисовка Ангара
 function updateHangarUI() { 
     let hData = GameData.hulls[currentAssembly.hullId]; 
     let tData = GameData.turrets[currentAssembly.turretId]; 
@@ -57,12 +54,10 @@ function updateHangarUI() {
     document.getElementById('stat-penetration').innerText = tData.penetration; 
 }
 
-// ОБНОВЛЕНО: Кнопка Лечения
 document.getElementById('heal-btn').addEventListener('click', () => {
     let maxHp = GameData.hulls[currentAssembly.hullId].hp;
     if (PlayerProgress.points >= 1 && PlayerProgress.currentHp < maxHp) {
         PlayerProgress.points -= 1;
-        // Восстанавливаем 20% от максимального
         PlayerProgress.currentHp = Math.floor(PlayerProgress.currentHp + (maxHp * 0.2));
         if (PlayerProgress.currentHp > maxHp) PlayerProgress.currentHp = maxHp;
         updateHangarUI();
@@ -73,20 +68,13 @@ updateHangarUI();
 document.getElementById('to-levels-btn').addEventListener('click', () => { generateLevelsGrid(); showScreen('levels'); });
 document.getElementById('back-to-hangar-btn').addEventListener('click', () => { showScreen('hangar'); updateHangarUI(); });
 
-// ОБНОВЛЕНО: Генерация сетки (Желтые и Зеленые)
 function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
     for (let i = 1; i <= 100; i++) { 
         let btn = document.createElement('button'); 
-        
-        if (PlayerProgress.passedLevels.includes(i)) {
-            btn.className = 'level-btn passed'; // Зеленый
-        } else if (i <= PlayerProgress.unlockedLevel) {
-            btn.className = 'level-btn unlocked'; // Желтый
-        } else {
-            btn.className = 'level-btn locked'; // Серый
-        }
-        
+        if (PlayerProgress.passedLevels.includes(i)) btn.className = 'level-btn passed'; 
+        else if (i <= PlayerProgress.unlockedLevel) btn.className = 'level-btn unlocked'; 
+        else btn.className = 'level-btn locked'; 
         btn.innerHTML = `<div>${i}</div>`; 
         if (i <= PlayerProgress.unlockedLevel) btn.onclick = () => startLevel(i); 
         grid.appendChild(btn); 
@@ -108,6 +96,9 @@ function playSound(audio) { let clone = audio.cloneNode(); clone.volume = audio.
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 
+// ОБНОВЛЕНО: Флаг для бонуса за первое прохождение
+let firstClearBonus = false; 
+
 function spawnText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -30 }); }
 function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 6); let base = Math.atan2(ny, nx); for (let i = 0; i < count; i++) { let spread = (Math.random() - 0.5) * Math.PI; let speed = 100 + Math.random() * 200; sparks.push({ x, y, vx: Math.cos(base+spread)*speed, vy: Math.sin(base+spread)*speed, life: 0.2+Math.random()*0.2, maxLife: 0.4, size: 2+Math.random()*3, color: '255, 200, 0' }); } }
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
@@ -120,10 +111,10 @@ function startLevel(levelNum) {
     
     currentEnemyPool = shuffleArray([...config.pool]);
     enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false;
+    firstClearBonus = false; // Сбрасываем флаг
 
     arena.generateObstacles(config.obstacles);
 
-    // ОБНОВЛЕНО: Передаем текущее здоровье из PlayerProgress
     playerTank = new Tank(400, 300, hullImage, turretImage, GameData.hulls["hunter"], GameData.turrets["scourge"], PlayerProgress.currentHp);
     enemies = []; bullets = []; sparks = []; floatingTexts = [];
     showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
@@ -161,30 +152,26 @@ function gameLoop(timestamp) {
         if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = 5 + (enemies.length * 5); }
     }
     
-    // ОБНОВЛЕНО: Логика победы
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
         levelFinished = true; 
-        PlayerProgress.currentHp = playerTank.hp; // Сохраняем выжившее ХП
+        PlayerProgress.currentHp = playerTank.hp; 
 
-        // Если уровень проходится ВПЕРВЫЕ
         if (!PlayerProgress.passedLevels.includes(currentLevelNum)) {
-            PlayerProgress.points += 5; // Бонус 5 очков
+            PlayerProgress.points += 5; 
             PlayerProgress.passedLevels.push(currentLevelNum);
             if (PlayerProgress.unlockedLevel === currentLevelNum) {
-                PlayerProgress.unlockedLevel++; // Открываем следующий
+                PlayerProgress.unlockedLevel++; 
             }
+            firstClearBonus = true; // Зажигаем флаг для отрисовки надписи
         }
 
         setTimeout(() => { gameRunning = false; generateLevelsGrid(); showScreen('levels'); }, 3000);
     }
 
-    // ОБНОВЛЕНО: Логика смерти игрока
     if (playerTank.hp <= 0 && !levelFinished) { 
         levelFinished = true; 
-        // Ставим ХП на 20% от максимума
         let maxHp = GameData.hulls[currentAssembly.hullId].hp;
         PlayerProgress.currentHp = Math.floor(maxHp * 0.2);
-
         setTimeout(() => { gameRunning = false; updateHangarUI(); showScreen('hangar'); }, 3000); 
     }
 
@@ -202,8 +189,9 @@ function gameLoop(timestamp) {
             let eShots = enemy.getShots();
             for (let j = 0; j < eShots; j++) { let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor)); playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); }
         } else {
-            // ОБНОВЛЕНО: Даем 1 очко за убийство врага!
             PlayerProgress.points += 1;
+            // ОБНОВЛЕНО: Всплывающий текст с шестеренкой желтого цвета
+            spawnText(enemy.x, enemy.y, "+1 ⚙️", '#ffcc00');
             enemies.splice(i, 1); 
         }
     }
@@ -247,8 +235,22 @@ function gameLoop(timestamp) {
     for (let ft of floatingTexts) { let alpha = Math.max(0, ft.life / ft.maxLife); ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); }
     ctx.globalAlpha = 1.0;
 
-    if (playerTank.hp <= 0) { ctx.font = '900 50px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); } 
-    else if (levelFinished) { ctx.font = '900 50px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; ctx.strokeText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); }
+    // ОБНОВЛЕНО: Отрисовка финальных текстов
+    if (playerTank.hp <= 0) { 
+        ctx.font = '900 50px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; 
+        ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); 
+    } else if (levelFinished) { 
+        ctx.font = '900 50px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; 
+        ctx.strokeText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); 
+        
+        // Рисуем бонус за первое прохождение
+        if (firstClearBonus) {
+            ctx.font = '900 30px Arial'; ctx.fillStyle = '#ffcc00'; 
+            ctx.strokeText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 30);
+            ctx.fillText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 30);
+        }
+    }
+    
     animFrameId = requestAnimationFrame(gameLoop);
 }
 
