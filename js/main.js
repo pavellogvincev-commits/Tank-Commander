@@ -4,10 +4,10 @@ import { Tank } from './Tank.js';
 import { Bullet } from './Bullet.js';
 import { Enemy } from './Enemy.js';
 
-// ОБНОВЛЕНО: Скорость базового врага (45) и размеры Скаута (60x45, хитбокс 45x29)
 const GameData = {
     hulls: { 
-        "hunter": { name: "Охотник", hp: 200, armor: { front: 80, side: 40, rear: 25 }, speed: 50, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} } 
+        // ОБНОВЛЕНО: HP 150, Броня 60/30/20
+        "hunter": { name: "Охотник", hp: 150, armor: { front: 60, side: 30, rear: 20 }, speed: 50, size: {w: 60, h: 45}, hitbox: {w: 50, h: 35} } 
     },
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon' } 
@@ -23,15 +23,14 @@ const GameData = {
 };
 
 let currentAssembly = { hullId: "hunter", turretId: "scourge" };
-let PlayerProgress = { unlockedLevel: 5 }; // Открыл 5 уровней для тестов
+let PlayerProgress = { unlockedLevel: 5 }; 
 
-// ОБНОВЛЕНО: Добавлен параметр obstacles (плотность препятствий от 0 до 5)
 const LevelsConfig = { 
-    1: { pool: ["basic", "basic"], bonuses: 2, obstacles: 0 }, // Пустое поле, легкий старт
-    2: { pool: ["basic", "basic", "scout"], bonuses: 3, obstacles: 1 }, // Пару ящиков
+    1: { pool: ["basic", "basic"], bonuses: 2, obstacles: 0 }, 
+    2: { pool: ["basic", "basic", "scout"], bonuses: 3, obstacles: 1 }, 
     3: { pool: ["basic", "scout", "scout"], bonuses: 3, obstacles: 2 }, 
-    4: { pool: ["basic", "basic", "scout", "scout"], bonuses: 3, obstacles: 4 }, // Много укрытий
-    5: { pool: ["basic", "basic", "basic", "scout", "scout"], bonuses: 5, obstacles: 5 } // Лабиринт
+    4: { pool: ["basic", "basic", "scout", "scout"], bonuses: 3, obstacles: 4 }, 
+    5: { pool: ["basic", "basic", "basic", "scout", "scout"], bonuses: 5, obstacles: 5 } 
 };
 let currentEnemyPool = [];
 
@@ -71,7 +70,6 @@ function startLevel(levelNum) {
     currentEnemyPool = shuffleArray([...config.pool]);
     enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false;
 
-    // ГЕНЕРИРУЕМ АРЕНУ ПЕРЕД СТАРТОМ УРОВНЯ
     arena.generateObstacles(config.obstacles);
 
     playerTank = new Tank(400, 300, hullImage, turretImage, GameData.hulls["hunter"], GameData.turrets["scourge"]);
@@ -100,7 +98,12 @@ function gameLoop(timestamp) {
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
-        if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = 10 + (enemies.length * 5); }
+        if (enemySpawnTimer <= 0) { 
+            spawnEnemyOnArena(); 
+            enemiesToSpawn--; 
+            // ОБНОВЛЕНО: Формула спавна: 5 сек + кол-во врагов на поле * 5
+            enemySpawnTimer = 5 + (enemies.length * 5); 
+        }
     }
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
         levelFinished = true; if (PlayerProgress.unlockedLevel === currentLevelNum) PlayerProgress.unlockedLevel++; setTimeout(() => { gameRunning = false; generateLevelsGrid(); showScreen('levels'); }, 3000);
