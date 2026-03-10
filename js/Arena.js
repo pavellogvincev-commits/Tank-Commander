@@ -5,20 +5,25 @@ export class Arena {
         this.obstacles = [];
     }
 
+    // ОБНОВЛЕНО: density теперь означает точное количество блоков!
     generateObstacles(density) {
         this.obstacles = [];
         if (density <= 0) return;
 
-        let count = density * 2; 
+        let count = density; // Строго то число, что указано в уровнях (например, 5 = 5 блоков)
         let minGap = 90; 
         
-        // Координаты спавна игрока и безопасный радиус вокруг
         let centerX = 400, centerY = 300, safeR = 80;
 
         for (let i = 0; i < count; i++) {
-            let w = 80 + Math.random() * 100;
-            let h = 40 + Math.random() * 60;
-            if (Math.random() > 0.5) { let temp = w; w = h; h = temp; }
+            // ОБНОВЛЕНО: Более разнообразные размеры (от 50 до 200 пикселей)
+            let sideA = 50 + Math.random() * 150; 
+            let sideB = 50 + Math.random() * 80;  
+            
+            let w = sideA;
+            let h = sideB;
+            // Случайный поворот (вертикальный или горизонтальный блок)
+            if (Math.random() > 0.5) { w = sideB; h = sideA; }
 
             let x, y, valid, attempts = 0;
             do {
@@ -26,7 +31,6 @@ export class Arena {
                 x = 100 + Math.random() * (this.width - 200 - w);
                 y = 100 + Math.random() * (this.height - 200 - h);
 
-                // ОБНОВЛЕНО: Проверяем, не налез ли ящик на центр арены
                 if (x < centerX + safeR && x + w > centerX - safeR &&
                     y < centerY + safeR && y + h > centerY - safeR) {
                     valid = false;
@@ -42,7 +46,7 @@ export class Arena {
                     }
                 }
                 attempts++;
-            } while (!valid && attempts < 50);
+            } while (!valid && attempts < 100); // Увеличили кол-во попыток для сложных лабиринтов
 
             if (valid) {
                 this.obstacles.push({ x, y, w, h });
