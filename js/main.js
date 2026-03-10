@@ -171,12 +171,13 @@ function gameLoop(timestamp) {
         levelFinished = true; setTimeout(() => { gameRunning = false; showScreen('hangar'); }, 3000);
     }
 
-    if (playerTank.hp > 0) {
-        playerTank.update(dt, input, arena);
+       if (playerTank.hp > 0) {
+        // Передаем enemies для физики столкновений
+        playerTank.update(dt, input, arena, enemies);
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) {
-            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, 'player', playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor));
+            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor));
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound);
         }
     }
@@ -184,61 +185,63 @@ function gameLoop(timestamp) {
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
-            enemy.updateAI(dt, arena, playerTank);
+            // Передаем enemies для физики столкновений
+            enemy.updateAI(dt, arena, playerTank, enemies);
             let eShots = enemy.getShots();
             for (let j = 0; j < eShots; j++) {
                 let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; 
-                bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, 'enemy', enemy.penetration, enemy.bulletRadius, enemy.bulletColor));
+                bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor));
                 playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound);
             }
         } else enemies.splice(i, 1); 
     }
 
-    // --- СТОЛКНОВЕНИЯ ПУЛЬ ---
+    // --- СТОЛКНОВЕНИЯ ПУЛЬ (Текст зон убран, Friendly Fire включен) ---
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; 
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
         if (b.toDestroy) continue; 
         let hasHit = false;
         
-        // 1. Попадание во врагов
-        if (b.owner !== 'enemy') {
-            for (let enemy of enemies) {
-                // Если пуля в прошлом кадре отскочила от этого же врага - игнорируем!
-                if (b.lastHitTarget === enemy) continue; 
-
-                let hit = enemy.checkHit(b);
-                if (hit.hit) {
-                    hasHit = true;
-                    let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
-                    if (hit.type === 'penetration') {
-                        b.toDestroy = true; spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); playSound(hitSound);
-                        if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
-                    } else { 
-                        b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; 
-                        b.lastHitTarget = enemy; // Запомнили, от кого отскочили
-                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
-                    }
-                    break; 
+        // 1. Проверка попадания в игрока (любой пулей, кроме его собственной)
+        if (b.ownerTank !== playerTank && playerTank && playerTank.hp > 0 && b.lastHitTarget !== playerTank) {
+            let hit = playerTank.checkHit(b);
+            if (hit.hit) {
+                hasHit = true;
+                if (hit.type === 'penetration') {
+                    b.toDestroy = true; 
+                    spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); 
+                    playSound(hitSound);
+                    if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
+                } else { 
+                    b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; 
+                    b.lastHitTarget = playerTank; 
+                    // Текст рикошета убран!
+                    spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
                 }
             }
         }
 
-        // 2. Попадание в игрока
-        if (!hasHit && b.owner !== 'player' && playerTank && playerTank.hp > 0) {
-            // Если пуля только что отскочила от игрока - игнорируем!
-            if (b.lastHitTarget !== playerTank) {
-                let hit = playerTank.checkHit(b);
+        // 2. Проверка попадания во врагов (любой пулей, кроме той, что выпустил сам враг)
+        if (!hasHit) {
+            for (let enemy of enemies) {
+                // Если пуля выпущена этим врагом ИЛИ только что от него отскочила - игнор
+                if (b.ownerTank === enemy || b.lastHitTarget === enemy) continue; 
+
+                let hit = enemy.checkHit(b);
                 if (hit.hit) {
-                    let zoneName = hit.zone === 'front' ? 'Лоб' : (hit.zone === 'rear' ? 'Корма' : 'Борт');
                     if (hit.type === 'penetration') {
-                        b.toDestroy = true; spawnText(hit.x, hit.y - 20, `${zoneName}: -${hit.damage}`, '#ff3333'); playSound(hitSound);
-                        if (hit.destroyed) spawnExplosion(playerTank.x, playerTank.y);
+                        b.toDestroy = true; 
+                        spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); 
+                        playSound(hitSound);
+                        if (hit.destroyed) spawnExplosion(enemy.x, enemy.y);
                     } else { 
                         b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; 
-                        b.lastHitTarget = playerTank; // Запомнили игрока
-                        spawnText(hit.x, hit.y - 20, `${zoneName}: Рикошет`, '#aaaaaa'); spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
+                        b.lastHitTarget = enemy; 
+                        // Текст рикошета убран!
+                        spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); 
                     }
+                    break; 
                 }
             }
         }
@@ -284,3 +287,4 @@ enemyHullImage.src = 'assets/enemy-hull.png' + noCache;
 enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 scoutHullImage.src = 'assets/scout-hull.png' + noCache;     
 scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
+
