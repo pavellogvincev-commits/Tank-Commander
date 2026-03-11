@@ -1,5 +1,4 @@
 export class Tank {
-    // ОБНОВЛЕНО: добавлен параметр startingHp
     constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null) {
         this.x = x; this.y = y; this.hullImg = hullImg; this.turretImg = turretImg;
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
@@ -8,10 +7,8 @@ export class Tank {
         this.radius = this.hitboxWidth / 2 + 2; 
 
         this.maxHp = hullStats.hp; 
-        // Если передали здоровье - используем его. Иначе берем максимум.
         this.hp = startingHp !== null ? startingHp : this.maxHp;
 
-        // Броня всегда сбрасывается на максимум при старте
         this.armor = { front: { current: hullStats.armor.front, max: hullStats.armor.front }, side: { current: hullStats.armor.side, max: hullStats.armor.side }, rear: { current: hullStats.armor.rear, max: hullStats.armor.rear } };
 
         this.speed = 0; this.maxForwardSpeed = hullStats.speed; this.maxReverseSpeed = -hullStats.speed / 2;  
@@ -155,11 +152,54 @@ export class Tank {
 
     draw(ctx) {
         if (this.hp <= 0) return;
-        for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
+
+        // Дым от выхлопной трубы
+        for (let p of this.particles) { 
+            ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; 
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); 
+        }
+
+        // ==============================
+        // 1. ТЕНЬ КОРПУСА (смещение X+5, Y+5)
+        // ==============================
+        ctx.save(); 
+        ctx.translate(this.x + 5, this.y + 5); // Сдвигаем тень вправо-вниз
+        ctx.rotate(this.hullAngle); 
+        ctx.filter = 'brightness(0) opacity(0.4)'; // Делаем картинку черной и прозрачной
+        ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); 
+        ctx.restore();
+
+        // ==============================
+        // 2. САМ КОРПУС ТАНКА
+        // ==============================
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.hullAngle); 
+        ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); 
+        ctx.restore();
+
+        // ==============================
+        // 3. ТЕНЬ БАШНИ (смещение больше X+8, Y+8, чтобы казалась выше)
+        // ==============================
+        ctx.save(); 
+        ctx.translate(this.x + 8, this.y + 8); 
+        ctx.rotate(this.turretAngle); 
+        ctx.filter = 'brightness(0) opacity(0.4)';
+        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); 
+        ctx.restore();
+
+        // ==============================
+        // 4. САМА БАШНЯ
+        // ==============================
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.turretAngle); 
+        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); 
+        ctx.restore();
+
+        // Полоска здоровья
         let barWidth = 40; let hpPercent = this.hp / this.maxHp;
-        ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth, 4);
-        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 15, barWidth * hpPercent, 4);
+        ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth, 4);
+        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
