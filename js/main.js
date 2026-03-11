@@ -31,6 +31,10 @@ const enemyTurretImage = new Image(); enemyTurretImage.src = 'assets/enemy-turre
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; 
 const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 
+// ОБНОВЛЕНО: Загрузка спрайтов Демона
+const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache;
+const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
+
 const shootSound = new Audio('assets/sounds/shoot.mp3'); 
 const hitSound = new Audio('assets/sounds/hit.mp3');
 const bounceSound = new Audio('assets/sounds/bounce.mp3'); 
@@ -89,7 +93,7 @@ function shuffleArray(array) {
 }
 
 // ==========================================
-// 3. УПРАВЛЕНИЕ УРОВНЯМИ
+// 3. УПРАВЛЕНИЕ УРОВНЯМИ И СПАВН
 // ==========================================
 function startLevel(levelNum) {
     if (animFrameId) cancelAnimationFrame(animFrameId);
@@ -142,8 +146,11 @@ function spawnEnemyOnArena() {
     let enemyType = currentEnemyPool.pop(); 
     let hStats = GameData.enemyHulls[enemyType]; 
     let tStats = GameData.enemyTurrets[enemyType];
-    let useHullImg = enemyType === "scout" ? scoutHullImage : enemyHullImage; 
-    let useTurretImg = enemyType === "scout" ? scoutTurretImage : enemyTurretImage;
+
+    // ОБНОВЛЕНО: Выбор картинок для Демона
+    let useHullImg = enemyType === "scout" ? scoutHullImage : (enemyType === "demon" ? demonHullImage : enemyHullImage);
+    let useTurretImg = enemyType === "scout" ? scoutTurretImage : (enemyType === "demon" ? demonTurretImage : enemyTurretImage);
+    
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
 }
 
@@ -157,7 +164,6 @@ function gameLoop(timestamp) {
     if (dt > 0.1) dt = 0.1; 
     lastTime = timestamp;
 
-    // Респаун врагов
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
         if (enemySpawnTimer <= 0) { 
@@ -167,7 +173,6 @@ function gameLoop(timestamp) {
         }
     }
     
-    // Условие победы
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
         levelFinished = true; 
         const hullId = PlayerProgress.currentAssembly.hullId;
@@ -179,7 +184,6 @@ function gameLoop(timestamp) {
             if (PlayerProgress.unlockedLevel === currentLevelNum) PlayerProgress.unlockedLevel++; 
             firstClearBonus = true; 
         }
-        // Мгновенное обновление сетки уровней
         setTimeout(() => { 
             gameRunning = false; 
             updateHangarUI(); 
@@ -188,7 +192,6 @@ function gameLoop(timestamp) {
         }, 3000);
     }
 
-    // Условие смерти
     if (playerTank.hp <= 0 && !levelFinished) { 
         levelFinished = true; 
         const hullId = PlayerProgress.currentAssembly.hullId;
@@ -196,7 +199,6 @@ function gameLoop(timestamp) {
         setTimeout(() => { gameRunning = false; updateHangarUI(); showScreen('hangar'); }, 3000); 
     }
 
-    // Обновление игрока
     if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena, enemies);
         if (input.isShooting()) playerTank.tryShoot(); 
@@ -207,7 +209,6 @@ function gameLoop(timestamp) {
         }
     }
 
-    // Обновление врагов
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
@@ -224,7 +225,6 @@ function gameLoop(timestamp) {
         }
     }
 
-    // ОБНОВЛЕННАЯ ЛОГИКА ПУЛЬ (Рикошеты наносят урон всем)
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; 
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
@@ -233,7 +233,6 @@ function gameLoop(timestamp) {
         
         let hasHit = false;
 
-        // Проверка игрока (может быть ранен своей же пулей после рикошета)
         if (playerTank && playerTank.hp > 0 && b.ownerTank !== playerTank && b.lastHitTarget !== playerTank) {
             let hit = playerTank.checkHit(b);
             if (hit.hit) {
@@ -246,7 +245,7 @@ function gameLoop(timestamp) {
                 } else { 
                     b.x = b.prevX; b.y = b.prevY; 
                     b.bounce(hit.nx, hit.ny); 
-                    b.isDecaying = true; b.ownerTank = null; // Отвязываем владельца при рикошете от брони
+                    b.isDecaying = true; b.ownerTank = null; 
                     b.lastHitTarget = playerTank; 
                     spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                     playSound(bounceSound); 
@@ -254,7 +253,6 @@ function gameLoop(timestamp) {
             }
         }
 
-        // Проверка врагов
         if (!hasHit) {
             for (let enemy of enemies) {
                 if (b.ownerTank === enemy || b.lastHitTarget === enemy) continue; 
@@ -269,7 +267,7 @@ function gameLoop(timestamp) {
                     } else { 
                         b.x = b.prevX; b.y = b.prevY; 
                         b.bounce(hit.nx, hit.ny); 
-                        b.isDecaying = true; b.ownerTank = null; // Отвязываем владельца
+                        b.isDecaying = true; b.ownerTank = null; 
                         b.lastHitTarget = enemy; 
                         spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                         playSound(bounceSound); 
@@ -281,11 +279,9 @@ function gameLoop(timestamp) {
     }
     bullets = bullets.filter(b => !b.toDestroy);
     
-    // Эффекты
     for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93; if (s.life <= 0) sparks.splice(i, 1); }
     for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
-    // РЕНДЕРИНГ
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     arena.draw(ctx);
     for (let b of bullets) b.draw(ctx);
@@ -293,13 +289,11 @@ function gameLoop(timestamp) {
     if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
     for (let e of enemies) e.draw(ctx);
 
-    // Интерфейс боя
     if (playerTank && playerTank.hp > 0) { 
         ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; 
         ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); 
     }
     
-    // Всплывающие тексты
     ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
     for (let ft of floatingTexts) { 
         let alpha = Math.max(0, ft.life / ft.maxLife); 
@@ -307,7 +301,6 @@ function gameLoop(timestamp) {
     }
     ctx.globalAlpha = 1.0;
 
-    // Тексты конца уровня
     if (playerTank.hp <= 0) { 
         ctx.font = '900 60px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; 
         ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); 
@@ -324,5 +317,4 @@ function gameLoop(timestamp) {
     animFrameId = requestAnimationFrame(gameLoop);
 }
 
-// Запуск инициализации
 initHangarUI(startLevel);
