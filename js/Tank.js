@@ -59,7 +59,31 @@ export class Tank {
     getShots() { return this.shotsToFireThisFrame; }
 
     update(dt, input, arena, enemies) {
-        this.updateWeapons(dt); this.updateSmoke(dt); 
+        this.updateWeapons(dt); this.updateSmoke(dt);
+                // ЛОГИКА АБИЛОК (ЛЕОПАРД)
+        if (this.hullName === "Леопард") {
+            if (!this.droneActive) {
+                this.droneCooldown -= dt;
+                if (this.droneCooldown <= 0) this.droneActive = true;
+            } else {
+                this.droneAngle += dt * 3; // Дрон кружится
+                // Поиск жертвы в радиусе 180 пикселей
+                if (enemies) {
+                    for (let e of enemies) {
+                        if (e.hp > 0 && (!e.stunTimer || e.stunTimer <= 0)) {
+                            let dist = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
+                            if (dist < 180) {
+                                e.stunTimer = 30.0; // ОГЛУШЕНИЕ НА 30 СЕКУНД!
+                                e.isJustStunned = true; // Флаг для надписи
+                                this.droneActive = false;
+                                this.droneCooldown = 15.0; // Перезарядка дрона
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         let isMoving = false;
         if (input.isUp()) { this.speed += this.acceleration * dt; isMoving = true; }
@@ -209,5 +233,6 @@ export class Tank {
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
+
 
 
