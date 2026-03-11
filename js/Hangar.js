@@ -75,6 +75,8 @@ function renderPartsList() {
     }
 }
 
+let lastUpgradedStatId = null; // Запоминаем, что прокачалось, для анимации
+
 function showPartDetails(id) {
     const item = GameData[selectedTab][id];
     const isUnlocked = selectedTab === 'hulls' ? PlayerProgress.unlockedHulls.includes(id) : PlayerProgress.unlockedTurrets.includes(id);
@@ -84,7 +86,6 @@ function showPartDetails(id) {
     let html = `<h3>${item.name}</h3>`;
 
     if (isUnlocked) {
-        // Блок потенциала
         html += `<div class="capacity-box">Потенциал: ${stats.usedCapacity} / ${stats.maxCapacity}<br>`;
         if (stats.usedCapacity >= stats.maxCapacity) {
             let cost = stats.maxCapacity + 1;
@@ -92,7 +93,6 @@ function showPartDetails(id) {
         }
         html += `</div>`;
 
-        // Кнопки апгрейда
         let canUpgrade = stats.usedCapacity < stats.maxCapacity;
         let pointsType = selectedTab === 'hulls' ? 'hullUpgrades' : 'turretUpgrades';
         let hasPoints = PlayerProgress.inventory[pointsType] > 0;
@@ -104,15 +104,25 @@ function showPartDetails(id) {
             let armR = item.armor.rear + (stats.armor * item.upgrades.armor.rear);
             let spdCalc = item.speed + (stats.speed * item.upgrades.speed);
 
-            html += `<div class="upgrade-row"><span>Здоровье: <span class="upgrade-val">${hpCalc}</span></span> <button class="upgrade-btn" ${canUpgrade && hasPoints ? '' : 'disabled'} onclick="buyUpgrade('${id}', 'hp')">+</button></div>`;
-            html += `<div class="upgrade-row"><span>Броня: <span class="upgrade-val">${armF}/${armS}/${armR}</span></span> <button class="upgrade-btn" ${canUpgrade && hasPoints ? '' : 'disabled'} onclick="buyUpgrade('${id}', 'armor')">+</button></div>`;
-            html += `<div class="upgrade-row"><span>Скорость: <span class="upgrade-val">${spdCalc}</span></span> <button class="upgrade-btn" ${canUpgrade && hasPoints ? '' : 'disabled'} onclick="buyUpgrade('${id}', 'speed')">+</button></div>`;
+            html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${hpCalc}</span></span></div>`;
+            html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${armF}/${armS}/${armR}</span></span></div>`;
+            html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${spdCalc}</span></span></div>`;
         } else {
             let penCalc = item.penetration + (stats.penetration * item.upgrades.penetration);
             let frCalc = (item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2);
-            html += `<div class="upgrade-row"><span>Пробитие: <span class="upgrade-val">${penCalc}</span></span> <button class="upgrade-btn" ${canUpgrade && hasPoints ? '' : 'disabled'} onclick="buyUpgrade('${id}', 'penetration')">+</button></div>`;
-            html += `<div class="upgrade-row"><span>Перезарядка: <span class="upgrade-val">${frCalc}с</span></span> <button class="upgrade-btn" ${canUpgrade && hasPoints ? '' : 'disabled'} onclick="buyUpgrade('${id}', 'fireRate')">+</button></div>`;
+            html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${penCalc}</span></span></div>`;
+            html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${frCalc}с</span></span></div>`;
         }
+
+        // Кнопка рандомного апгрейда
+        if (canUpgrade && hasPoints) {
+            html += `<button class="random-upgrade-btn" onclick="buyRandomUpgrade('${id}')">СЛУЧАЙНЫЙ АПГРЕЙД (1 ★)</button>`;
+        } else if (!hasPoints && canUpgrade) {
+            html += `<button class="random-upgrade-btn" disabled>НЕТ ЗВЕЗД ДЛЯ АПГРЕЙДА</button>`;
+        } else if (!canUpgrade) {
+            html += `<button class="random-upgrade-btn" disabled>ПОТЕНЦИАЛ ИСЧЕРПАН</button>`;
+        }
+
     } else {
         html += `<p>HP: ${item.hp || '-'}</p><p>Броня: ${item.armor ? item.armor.front+'/'+item.armor.side+'/'+item.armor.rear : '-'}</p><p>Скорость: ${item.speed || '-'}</p>`;
     }
@@ -122,12 +132,18 @@ function showPartDetails(id) {
 
     document.getElementById('details-info').innerHTML = html;
 
+    // ЗАПУСК АНИМАЦИИ
+    if (lastUpgradedStatId) {
+        let el = document.getElementById(lastUpgradedStatId);
+        if (el) el.classList.add('stat-flash');
+        lastUpgradedStatId = null; // Сбрасываем после показа
+    }
+
     const actionArea = document.getElementById('action-area');
     if (!isUnlocked) {
         const btn = document.createElement('button'); btn.className = 'buy-btn'; btn.innerText = `КУПИТЬ ЗА ${item.cost} ⚙️`;
         btn.onclick = () => {
-            if (PlayerProgress.points >= item.cost) {
-                PlayerProgress.points -= item.cost;
+            if (PlayerProgress.points >= item.cost) { PlayerProgress.points -= item.cost;
                 if (selectedTab === 'hulls') PlayerProgress.unlockedHulls.push(id); else PlayerProgress.unlockedTurrets.push(id);
                 updateHangarUI();
             }
@@ -141,22 +157,27 @@ function showPartDetails(id) {
     }
 }
 
-window.buyUpgrade = function(id, stat) {
+// НОВАЯ ФУНКЦИЯ: Рандомный апгрейд
+window.buyRandomUpgrade = function(id) {
     let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
     if (PlayerProgress.inventory[type] > 0 && PlayerProgress.partStats[id].usedCapacity < PlayerProgress.partStats[id].maxCapacity) {
+        
+        // Выбираем случайную характеристику
+        let statsOptions = GameData.hulls[id] ? ['hp', 'armor', 'speed'] : ['penetration', 'fireRate'];
+        let randomStat = statsOptions[Math.floor(Math.random() * statsOptions.length)];
+        
         PlayerProgress.inventory[type]--;
-        PlayerProgress.partStats[id][stat]++;
+        PlayerProgress.partStats[id][randomStat]++;
         PlayerProgress.partStats[id].usedCapacity++;
+        
+        // Запоминаем для анимации
+        lastUpgradedStatId = `val-${randomStat}`;
         updateHangarUI();
     }
 }
 
 window.expandCapacity = function(id, cost) {
-    if (PlayerProgress.points >= cost) {
-        PlayerProgress.points -= cost;
-        PlayerProgress.partStats[id].maxCapacity++;
-        updateHangarUI();
-    }
+    if (PlayerProgress.points >= cost) { PlayerProgress.points -= cost; PlayerProgress.partStats[id].maxCapacity++; updateHangarUI(); }
 }
 
 export function generateLevelsGrid() { 
@@ -176,10 +197,8 @@ export function generateLevelsGrid() {
             for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; }
             starsHtml += `</div>`;
         }
-
         btn.className = classes;
         btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><div>${i}</div>${starsHtml}</div>`; 
-        
         if (i <= PlayerProgress.unlockedLevel) { btn.onclick = () => { if (onStartLevelCallback) onStartLevelCallback(i); }; }
         grid.appendChild(btn); 
     } 
