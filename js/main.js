@@ -41,7 +41,8 @@ function playSound(audio) { let clone = audio.cloneNode(); clone.volume = audio.
 // 2. ИНИЦИАЛИЗАЦИЯ ДВИЖКА
 // ==========================================
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
-canvas.width = 800; canvas.height = 600;
+// ОБНОВЛЕНО: Разрешение холста
+canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [];
@@ -70,11 +71,11 @@ function startLevel(levelNum) {
     const turretId = PlayerProgress.currentAssembly.turretId;
     const currentHp = PlayerProgress.hullsHp[hullId];
 
-    // Берем нужную картинку корпуса и башни из нашего словаря
     const activeHullImg = playerImages.hulls[hullId];
     const activeTurretImg = playerImages.turrets[turretId];
 
-    playerTank = new Tank(400, 300, activeHullImg, activeTurretImg, GameData.hulls[hullId], GameData.turrets[turretId], currentHp);
+    // ОБНОВЛЕНО: Спавн игрока в новом центре (500, 350)
+    playerTank = new Tank(500, 350, activeHullImg, activeTurretImg, GameData.hulls[hullId], GameData.turrets[turretId], currentHp);
     enemies = []; bullets = []; sparks = []; floatingTexts = [];
     
     showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
@@ -82,14 +83,14 @@ function startLevel(levelNum) {
 
 function spawnEnemyOnArena() {
     if (currentEnemyPool.length === 0) return;
-    let safeDist = 200; let spawnX, spawnY, validSpawn = false, attempts = 0; let enemyRadius = 30;
+    let safeDist = 200; let spawnX, spawnY, validSpawn = false, attempts = 0; let enemyRadius = 35; // Чуть увеличили радиус проверки
     do {
         validSpawn = true;
         spawnX = 50 + Math.random() * (canvas.width - 100); spawnY = 50 + Math.random() * (canvas.height - 100);
         let distToPlayer = Math.sqrt(Math.pow(spawnX - playerTank.x, 2) + Math.pow(spawnY - playerTank.y, 2));
         if (distToPlayer <= safeDist) validSpawn = false;
         if (validSpawn && arena.checkCollision(spawnX, spawnY, enemyRadius)) validSpawn = false;
-        if (validSpawn) { for (let e of enemies) { let distToEnemy = Math.sqrt(Math.pow(spawnX - e.x, 2) + Math.pow(spawnY - e.y, 2)); if (distToEnemy < 75) { validSpawn = false; break; } } }
+        if (validSpawn) { for (let e of enemies) { let distToEnemy = Math.sqrt(Math.pow(spawnX - e.x, 2) + Math.pow(spawnY - e.y, 2)); if (distToEnemy < 85) { validSpawn = false; break; } } }
         attempts++;
     } while (!validSpawn && attempts < 100); 
 
@@ -104,7 +105,12 @@ function gameLoop(timestamp) {
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
-        if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = 5 + (enemies.length * 5); }
+        if (enemySpawnTimer <= 0) { 
+            spawnEnemyOnArena(); 
+            enemiesToSpawn--; 
+            // ОБНОВЛЕНО: Новая формула респавна (Кол-во на поле * 4 сек)
+            enemySpawnTimer = enemies.length * 4; 
+        }
     }
     
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
@@ -133,7 +139,8 @@ function gameLoop(timestamp) {
         playerTank.update(dt, input, arena, enemies);
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
-        for (let i = 0; i < pShots; i++) { bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*35, playerTank.y + Math.sin(playerTank.turretAngle)*35, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor)); playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); }
+        // ОБНОВЛЕНО: Отступ вылета пули 45 пикселей
+        for (let i = 0; i < pShots; i++) { bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor)); playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); }
     }
 
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -141,7 +148,8 @@ function gameLoop(timestamp) {
         if (enemy.hp > 0) {
             enemy.updateAI(dt, arena, playerTank, enemies);
             let eShots = enemy.getShots();
-            for (let j = 0; j < eShots; j++) { let barrelOffset = enemy.hullWidth > 50 ? 35 : 25; bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*barrelOffset, enemy.y + Math.sin(enemy.turretAngle)*barrelOffset, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor)); playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); }
+            // ОБНОВЛЕНО: Отступ вылета пули 45 пикселей для врагов
+            for (let j = 0; j < eShots; j++) { bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*45, enemy.y + Math.sin(enemy.turretAngle)*45, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor)); playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); }
         } else {
             PlayerProgress.points += 1;
             spawnText(enemy.x, enemy.y, "+1 ⚙️", '#ffcc00');
@@ -202,3 +210,4 @@ function gameLoop(timestamp) {
 
 // Запускаем UI, передавая ему функцию старта уровня!
 initHangarUI(startLevel);
+
