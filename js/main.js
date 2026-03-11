@@ -12,6 +12,7 @@ playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hul
 const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png' + noCache; const enemyTurretImage = new Image(); enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
+
 const shootSound = new Audio('assets/sounds/shoot.mp3'); const hitSound = new Audio('assets/sounds/hit.mp3'); const bounceSound = new Audio('assets/sounds/bounce.mp3'); const explodeSound = new Audio('assets/sounds/explode.mp3'); const mgShootSound = new Audio('assets/sounds/mg-shoot.mp3'); 
 mgShootSound.volume = 0.2; shootSound.volume = 0.3; hitSound.volume = 0.6; bounceSound.volume = 0.5; explodeSound.volume = 0.8;
 function playSound(audio) { let clone = audio.cloneNode(); clone.volume = audio.volume; clone.play().catch(e => {}); }
@@ -43,7 +44,6 @@ function startLevel(levelNum) {
     currentEnemyPool = shuffleArray([...config.pool]);
     enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
 
-    // Сброс счетчиков дропа
     dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0;
     maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
 
@@ -52,9 +52,8 @@ function startLevel(levelNum) {
     const hullId = PlayerProgress.currentAssembly.hullId;
     const turretId = PlayerProgress.currentAssembly.turretId;
     
-    // РАСЧЕТ ПРОКАЧАННЫХ ХАРАКТЕРИСТИК
     let bHull = GameData.hulls[hullId]; let sHull = PlayerProgress.partStats[hullId];
-    let calcHull = JSON.parse(JSON.stringify(bHull)); // Глубокое копирование
+    let calcHull = JSON.parse(JSON.stringify(bHull)); 
     calcHull.hp += sHull.hp * bHull.upgrades.hp;
     calcHull.speed += sHull.speed * bHull.upgrades.speed;
     calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front;
@@ -109,17 +108,14 @@ function gameLoop(timestamp) {
     if (!gameRunning) return;
     let dt = (timestamp - lastTime) / 1000; if (isNaN(dt)) dt = 0; if (dt > 0.1) dt = 0.1; lastTime = timestamp;
 
-    // ЛОГИКА ДРОПА АПГРЕЙДОВ
     if (dropsSpawnedThisMatch < maxDropsForLevel && playerTank.hp > 0 && !levelFinished) {
         dropCheckTimer -= dt;
         if (dropCheckTimer <= 0) {
             dropCheckTimer = 5.0;
             if (Math.random() <= currentDropChance) {
-                spawnDrop();
-                dropsSpawnedThisMatch++;
-                currentDropChance = 0.10; // Сброс шанса при успехе
+                spawnDrop(); dropsSpawnedThisMatch++; currentDropChance = 0.10; 
             } else {
-                currentDropChance += 0.10; // Увеличение шанса при неудаче
+                currentDropChance += 0.10; 
             }
         }
     }
@@ -128,7 +124,7 @@ function gameLoop(timestamp) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
         if (enemySpawnTimer <= 0) { 
             spawnEnemyOnArena(); enemiesToSpawn--; 
-            enemySpawnTimer = enemies.length * 2.5; // ОБНОВЛЕНО: Формула респавна (2.5 сек)
+            enemySpawnTimer = enemies.length * 2.5; 
         }
     }
     
@@ -162,7 +158,6 @@ function gameLoop(timestamp) {
         } else { PlayerProgress.points += 1; spawnText(enemy.x, enemy.y, "+1 ⚙️", '#ffcc00'); enemies.splice(i, 1); }
     }
 
-    // СБОР ДРОПОВ
     if (playerTank && playerTank.hp > 0) {
         for (let i = drops.length - 1; i >= 0; i--) {
             let d = drops[i];
@@ -206,7 +201,6 @@ function gameLoop(timestamp) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); arena.draw(ctx);
     
-    // ОТРИСОВКА ДРОПОВ
     for (let d of drops) {
         ctx.shadowBlur = 15; ctx.shadowColor = d.type === 'hull' ? '#00ccff' : '#ff3333';
         ctx.fillStyle = d.type === 'hull' ? '#0055aa' : '#aa2222';
@@ -217,8 +211,34 @@ function gameLoop(timestamp) {
 
     for (let b of bullets) b.draw(ctx);
     for (let s of sparks) { ctx.fillStyle = `rgba(${s.color}, ${Math.max(0, s.life / s.maxLife)})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); }
-    if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
-    for (let e of enemies) e.draw(ctx);
+    
+    // ОТРИСОВКА ИГРОКА И ДРОНА ЛЕОПАРДА
+    if (playerTank && playerTank.hp > 0) {
+        playerTank.draw(ctx);
+        if (playerTank.hullName === "Леопард" && playerTank.droneActive) {
+            let dx = playerTank.x + Math.cos(playerTank.droneAngle) * 55;
+            let dy = playerTank.y + Math.sin(playerTank.droneAngle) * 55;
+            ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
+            ctx.fillStyle = '#00ffcc';
+            ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    // ОТРИСОВКА ВРАГОВ И ЭФФЕКТА СТАНА
+    for (let e of enemies) {
+        e.draw(ctx);
+        if (e.isJustStunned) {
+            e.isJustStunned = false;
+            spawnText(e.x, e.y - 30, "ОГЛУШЕН!", '#00ffcc');
+        }
+        if (e.stunTimer > 0) {
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(timestamp / 50) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
 
     if (playerTank && playerTank.hp > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); }
     
@@ -235,4 +255,3 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
-
