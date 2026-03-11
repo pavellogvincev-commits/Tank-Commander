@@ -20,6 +20,7 @@ export class Tank {
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon';
+        this.bulletSpeed = turretStats.bulletSpeed || 400; // <-- ОБНОВЛЕНО: Читаем скорость пули
 
         this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
     }
@@ -203,3 +204,4 @@ export class Tank {
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
+
