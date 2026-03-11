@@ -3,112 +3,118 @@ import { Tank } from './Tank.js';
 export class Enemy extends Tank {
     constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
         super(x, y, hullImg, turretImg, hullStats, turretStats);
-        this.turretRotationSpeed = 1.0; 
-        this.aiType = hullStats.name === "Скаут" ? 'scout' : 'basic';
-        this.aiState = 'drive'; this.aiTimer = 2; this.turnDir = 0;
-        this.circleDir = Math.random() > 0.5 ? 1 : -1;
+        
+        // Переменные для нового ИИ
+        this.aiType = hullStats.name; // Запоминаем тип танка (Базовый, Скаут, Демон)
         this.stuckTimer = 0;
+        this.lastX = x;
+        this.lastY = y;
+        this.evadeTimer = 0;
+        this.evadeDir = 1; // Направление обхода: 1 (вправо) или -1 (влево)
+        this.stateTimer = 0;
+        this.randomAngleOffset = 0;
     }
 
     updateAI(dt, arena, playerTank, enemies) {
-        if (this.hp <= 0) return;
-        this.updateWeapons(dt);
+        if (this.hp <= 0 || !playerTank || playerTank.hp <= 0) return;
 
-        let dx = playerTank.x - this.x; let dy = playerTank.y - this.y;
-        let distToPlayer = Math.sqrt(dx * dx + dy * dy); let angleToPlayer = Math.atan2(dy, dx);
-        let hasLOS = arena.hasLineOfSight(this.x, this.y, playerTank.x, playerTank.y);
+        let distToPlayer = Math.sqrt(Math.pow(this.x - playerTank.x, 2) + Math.pow(this.y - playerTank.y, 2));
+        let hasLoS = arena.hasLineOfSight(this.x, this.y, playerTank.x, playerTank.y);
+        let angleToPlayer = Math.atan2(playerTank.y - this.y, playerTank.x - this.x);
 
-        if (this.stuckTimer > 0) this.stuckTimer -= dt;
+        let shouldMove = true;
+        let targetHullAngle = angleToPlayer;
 
-        let targetSpeed = 0; let targetHullAngle = this.hullAngle; let isSmartMoving = false; 
-
-        if (hasLOS) {
-            isSmartMoving = true;
-            if (this.aiType === 'basic') {
-                targetHullAngle = angleToPlayer;
-                if (distToPlayer > 300) targetSpeed = this.maxForwardSpeed * 0.8; 
-                else if (distToPlayer < 150) targetSpeed = this.maxReverseSpeed * 0.5; 
-                else targetSpeed = 0; 
-            } else if (this.aiType === 'scout') {
-                if (distToPlayer > 200) { targetHullAngle = angleToPlayer; targetSpeed = this.maxForwardSpeed; } 
-                else { targetHullAngle = angleToPlayer + (Math.PI / 2 * this.circleDir); targetSpeed = this.maxForwardSpeed; }
+        // ==========================================
+        // 1. ХАРАКТЕР ПОВЕДЕНИЯ (По типам танков)
+        // ==========================================
+        if (this.aiType === "Враг-Базовый") {
+            // Классика: подъезжает и останавливается для выстрела
+            if (hasLoS && distToPlayer < 400) shouldMove = false; 
+        } 
+        else if (this.aiType === "Скаут") {
+            // Скаут кружит вокруг игрока, постоянно в движении
+            if (hasLoS && distToPlayer < 350) {
+                targetHullAngle = angleToPlayer + (Math.PI / 2.5) * this.evadeDir; 
             }
-        } else {
-            this.aiTimer -= dt;
-            if (this.aiTimer <= 0) {
-                let r = Math.random();
-                if (r < 0.5) { this.aiState = 'drive'; this.aiTimer = 1 + Math.random() * 2; } 
-                else if (r < 0.8) { this.aiState = 'turn'; this.aiTimer = 0.5 + Math.random() * 1.5; this.turnDir = Math.random() > 0.5 ? 1 : -1; } 
-                else { this.aiState = 'stop'; this.aiTimer = 1 + Math.random() * 1; }
+        } 
+        else if (this.aiType === "Демон") {
+            // Демон рашит зигзагами, чтобы сложнее было попасть
+            this.stateTimer += dt;
+            if (this.stateTimer > 1.5) {
+                this.stateTimer = 0;
+                this.randomAngleOffset = (Math.random() - 0.5) * (Math.PI / 1.5); 
             }
-            if (this.aiState === 'drive') targetSpeed = this.maxForwardSpeed * 0.6;
-            else if (this.aiState === 'turn') { targetSpeed = this.maxForwardSpeed * 0.4; this.hullAngle += this.turnDir * this.hullRotationSpeed * dt; }
+            if (hasLoS && distToPlayer < 200) {
+                targetHullAngle = angleToPlayer + (Math.PI / 2) * this.evadeDir; 
+            } else {
+                targetHullAngle = angleToPlayer + this.randomAngleOffset;
+            }
         }
 
-        if (targetSpeed > 0) {
-            let hitTanks = (checkX, checkY) => {
-                let dxP = checkX - playerTank.x; let dyP = checkY - playerTank.y;
-                if (playerTank.hp > 0 && Math.sqrt(dxP*dxP + dyP*dyP) < this.radius + playerTank.radius) return true;
-                for (let e of enemies) {
-                    if (e === this || e.hp <= 0) continue;
-                    let distE = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2));
-                    if (distE < this.radius + e.radius) return true;
-                }
-                return false;
-            };
-
-            let whiskerDist = this.radius + 30; let sensorAngle = 0.5; 
-            let sensorL_X = this.x + Math.cos(this.hullAngle - sensorAngle) * whiskerDist; let sensorL_Y = this.y + Math.sin(this.hullAngle - sensorAngle) * whiskerDist;
-            let blockedL = arena.checkCollision(sensorL_X, sensorL_Y, 5) || hitTanks(sensorL_X, sensorL_Y);
-            let sensorR_X = this.x + Math.cos(this.hullAngle + sensorAngle) * whiskerDist; let sensorR_Y = this.y + Math.sin(this.hullAngle + sensorAngle) * whiskerDist;
-            let blockedR = arena.checkCollision(sensorR_X, sensorR_Y, 5) || hitTanks(sensorR_X, sensorR_Y);
-
-            if (blockedL && !blockedR) { targetHullAngle = this.hullAngle + 1.5; targetSpeed *= 0.6; isSmartMoving = true; } 
-            else if (blockedR && !blockedL) { targetHullAngle = this.hullAngle - 1.5; targetSpeed *= 0.6; isSmartMoving = true; } 
-            else if (blockedL && blockedR) { targetHullAngle = this.hullAngle + Math.PI; targetSpeed = this.maxReverseSpeed; isSmartMoving = true; }
-        }
-
-        if (isSmartMoving) {
-            let hullDiff = targetHullAngle - this.hullAngle;
-            while (hullDiff > Math.PI) hullDiff -= Math.PI * 2; while (hullDiff < -Math.PI) hullDiff += Math.PI * 2;
-            if (Math.abs(hullDiff) > 0.05) this.hullAngle += Math.sign(hullDiff) * this.hullRotationSpeed * dt;
-        }
-
-        this.speed = targetSpeed; this.updateSmoke(dt); 
-        let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
-        let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
-
-        let hitTanksHard = (checkX, checkY) => {
-            let dxP = checkX - playerTank.x; let dyP = checkY - playerTank.y;
-            if (playerTank.hp > 0 && Math.sqrt(dxP*dxP + dyP*dyP) < this.radius + playerTank.radius) return true;
-            for (let e of enemies) {
-                if (e === this || e.hp <= 0) continue;
-                let distE = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2));
-                if (distE < this.radius + e.radius) return true;
+        // ==========================================
+        // 2. АНТИ-ЗАСТРЕВАНИЕ (Обход стен)
+        // ==========================================
+        this.stuckTimer += dt;
+        if (this.stuckTimer > 0.5) {
+            let distMoved = Math.sqrt(Math.pow(this.x - this.lastX, 2) + Math.pow(this.y - this.lastY, 2));
+            
+            // Если танк должен ехать, но за 0.5 сек сдвинулся меньше чем на 15 пикселей - он застрял
+            if (shouldMove && distMoved < 15) {
+                this.evadeTimer = 2.0; // Включаем режим обхода стены на 2 секунды
+                this.evadeDir = Math.random() > 0.5 ? 1 : -1;
             }
-            return false;
+            this.lastX = this.x;
+            this.lastY = this.y;
+            this.stuckTimer = 0;
+        }
+
+        // Если включен режим обхода стены - едем вбок
+        if (this.evadeTimer > 0) {
+            this.evadeTimer -= dt;
+            shouldMove = true;
+            targetHullAngle = angleToPlayer + (Math.PI / 2) * this.evadeDir;
+        }
+
+        // ==========================================
+        // 3. ПРИМЕНЕНИЕ ДВИЖЕНИЯ И ВРАЩЕНИЯ
+        // ==========================================
+        // Создаем "фейковый" ввод, чтобы скормить его базовому классу Tank
+        let fakeInput = {
+            isUp: () => shouldMove,
+            isDown: () => false,
+            isLeft: () => false,
+            isRight: () => false,
+            getMouseX: () => playerTank.x, // Башня всегда следит за игроком
+            getMouseY: () => playerTank.y,
+            isShooting: () => false 
         };
 
-        // ОБНОВЛЕНО: Раздельная проверка X и Y для скольжения вдоль стен!
-        let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanksHard(nextX, this.y);
-        let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanksHard(this.x, nextY);
-
-        if (!colX) this.x = nextX;
-        if (!colY) this.y = nextY;
-
-        if (colX || colY) {
-            if (this.stuckTimer <= 0) {
-                if (this.aiType === 'scout') this.circleDir *= -1;
-                this.stuckTimer = 1.0; 
-                if (!isSmartMoving) {
-                    this.aiState = 'turn'; this.turnDir = Math.random() > 0.5 ? 1 : -1; this.aiTimer = 0.5;
-                }
-            }
+        if (shouldMove) {
+             let hullDiff = targetHullAngle - this.hullAngle;
+             while (hullDiff > Math.PI) hullDiff -= Math.PI * 2;
+             while (hullDiff < -Math.PI) hullDiff += Math.PI * 2;
+             
+             // Поворачиваем корпус
+             if (Math.abs(hullDiff) > 0.1) {
+                 if (hullDiff > 0) fakeInput.isRight = () => true;
+                 else fakeInput.isLeft = () => true;
+             }
         }
 
-        let angleDiff = angleToPlayer - this.turretAngle;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
-        if (Math.abs(angleDiff) < 0.2 && hasLOS) this.tryShoot(); 
+        // Вызываем базовую физику (движение корпуса и поворот башни за "мышкой")
+        super.update(dt, fakeInput, arena, enemies);
+
+        // ==========================================
+        // 4. ЛОГИКА СТРЕЛЬБЫ
+        // ==========================================
+        let aimDiff = angleToPlayer - this.turretAngle;
+        while (aimDiff > Math.PI) aimDiff -= Math.PI * 2;
+        while (aimDiff < -Math.PI) aimDiff += Math.PI * 2;
+
+        // Если есть прямая видимость и пушка смотрит примерно на игрока - стреляем!
+        if (hasLoS && Math.abs(aimDiff) < 0.15) {
+            this.tryShoot();
+        }
     }
 }
