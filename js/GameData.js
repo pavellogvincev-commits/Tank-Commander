@@ -1,11 +1,15 @@
 export const GameData = {
     hulls: { 
-        "hunter": { name: "Охотник", hp: 150, armor: { front: 50, side: 30, rear: 20 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52}, ability: "Нет", cost: 0 },
-        "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "Защитный дрон", cost: 15 },
-        "titan": { name: "Титан", hp: 180, armor: { front: 60, side: 40, rear: 30 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук", cost: 15 }
+        "hunter": { name: "Охотник", hp: 150, armor: { front: 50, side: 30, rear: 20 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52}, ability: "Нет", cost: 0, 
+            upgrades: { hp: 15, armor: { front: 5, side: 3, rear: 2 }, speed: 5 } },
+        "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "Защитный дрон", cost: 15,
+            upgrades: { hp: 10, armor: { front: 3, side: 3, rear: 3 }, speed: 7 } },
+        "titan": { name: "Титан", hp: 180, armor: { front: 60, side: 40, rear: 30 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук", cost: 15,
+            upgrades: { hp: 18, armor: { front: 6, side: 4, rear: 3 }, speed: 4 } }
     },
     turrets: { 
-        "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon', bulletSpeed: 400, cost: 0 } 
+        "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon', bulletSpeed: 400, cost: 0,
+            upgrades: { penetration: 5, fireRate: -0.05 } } 
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
@@ -26,12 +30,26 @@ export let PlayerProgress = {
     unlockedHulls: ["hunter"],
     unlockedTurrets: ["scourge"],
     currentAssembly: { hullId: "hunter", turretId: "scourge" },
-    hullsHp: { "hunter": 150, "leopard": 120, "titan": 180 }
+    hullsHp: { "hunter": 150, "leopard": 120, "titan": 180 },
+    
+    // ИНВЕНТАРЬ ДЛЯ АПГРЕЙДОВ
+    inventory: { hullUpgrades: 0, turretUpgrades: 0 },
+    
+    // СОСТОЯНИЕ ПРОКАЧКИ КАЖДОЙ ДЕТАЛИ (сколько раз нажали "плюсик")
+    partStats: {
+        "hunter": { hp: 0, armor: 0, speed: 0, maxCapacity: 3, usedCapacity: 0 },
+        "leopard": { hp: 0, armor: 0, speed: 0, maxCapacity: 3, usedCapacity: 0 },
+        "titan": { hp: 0, armor: 0, speed: 0, maxCapacity: 3, usedCapacity: 0 },
+        "scourge": { penetration: 0, fireRate: 0, maxCapacity: 3, usedCapacity: 0 }
+    },
+    
+    // СКОЛЬКО ЗВЕЗД СОБРАНО НА КАЖДОМ УРОВНЕ
+    collectedStars: { 1: 0, 2: 0, 3: 0, 4: 0 } 
 };
 
 export const LevelsConfig = { 
-    1: { pool: ["basic", "basic", "basic", "basic"], obstacles: 3 }, 
-    2: { pool: ["basic", "basic", "basic", "scout", "scout"], obstacles: 4 }, 
-    3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 5 },
-    4: { pool: ["demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 6 }
+    1: { pool: ["basic", "basic", "basic", "basic"], obstacles: 3, maxUpgrades: 1 }, 
+    2: { pool: ["basic", "basic", "basic", "scout", "scout"], obstacles: 4, maxUpgrades: 1 }, 
+    3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 5, maxUpgrades: 1 },
+    4: { pool: ["demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 6, maxUpgrades: 2 }
 };
