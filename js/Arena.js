@@ -5,22 +5,32 @@ export class Arena {
         this.obstacles = [];
     }
 
-    generateObstacles(density) {
+      generateObstacles(density) {
         this.obstacles = [];
         if (density <= 0) return;
 
         let count = density; 
-        let minGap = 80; // Чуть увеличили зазор, так как танки стали больше
+        let minGap = 100; // Просвет увеличен, чтобы огромные блоки не заблокировали всё
         
-        // ОБНОВЛЕНО: Новый центр (500, 350)
-        let centerX = 500, centerY = 350, safeR = 90;
+        let centerX = 500, centerY = 350, safeR = 120; // Безопасная зона тоже больше
 
         for (let i = 0; i < count; i++) {
             let w, h;
             let type = Math.random();
-            if (type < 0.3) { w = 40 + Math.random() * 20; h = 40 + Math.random() * 20; } 
-            else if (type < 0.7) { w = 120 + Math.random() * 100; h = 30 + Math.random() * 20; } 
-            else { w = 80 + Math.random() * 60; h = 80 + Math.random() * 60; }
+            // ОБНОВЛЕНО: ОГРОМНЫЕ РАЗМЕРЫ
+            if (type < 0.3) { 
+                // Квадратные колонны (от 80x80 до 120x120)
+                w = 80 + Math.random() * 40; h = 80 + Math.random() * 40; 
+            } 
+            else if (type < 0.7) { 
+                // Очень длинные стены (от 200 до 400 пикселей в длину!)
+                w = 200 + Math.random() * 200; h = 40 + Math.random() * 30; 
+            } 
+            else { 
+                // Массивные бункеры (от 150x150 до 250x250)
+                w = 150 + Math.random() * 100; h = 150 + Math.random() * 100; 
+            }
+            
             if (Math.random() > 0.5) { let temp = w; w = h; h = temp; }
 
             let x, y, valid, attempts = 0;
@@ -42,7 +52,7 @@ export class Arena {
                     }
                 }
                 attempts++;
-            } while (!valid && attempts < 500);
+            } while (!valid && attempts < 1000); // Поиск места для больших блоков сложнее, даем 1000 попыток
 
             if (valid) this.obstacles.push({ x, y, w, h });
         }
@@ -85,3 +95,4 @@ export class Arena {
         }
     }
 }
+
