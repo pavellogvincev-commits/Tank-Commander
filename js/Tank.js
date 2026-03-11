@@ -22,7 +22,12 @@ export class Tank {
         this.shootSoundType = turretStats.shootSound || 'cannon';
         this.bulletSpeed = turretStats.bulletSpeed || 400; // <-- ОБНОВЛЕНО: Читаем скорость пули
 
-        this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
+        this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;   
+                // АБИЛКИ
+        this.hullName = hullStats.name;
+        this.droneActive = (this.hullName === "Леопард"); // Дрон сразу готов
+        this.droneAngle = 0;
+        this.droneCooldown = 0;
     }
 
     updateSmoke(dt) {
@@ -204,4 +209,5 @@ export class Tank {
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
+
 
