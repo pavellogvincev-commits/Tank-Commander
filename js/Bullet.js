@@ -1,8 +1,8 @@
 export class Bullet {
     constructor(x, y, angle, ownerTank, penetration, radius, color) {
         this.x = x; this.y = y; 
-        this.vx = Math.cos(angle) * 800; 
-        this.vy = Math.sin(angle) * 800;
+        this.vx = Math.cos(angle) * 400; 
+        this.vy = Math.sin(angle) * 400;
         this.ownerTank = ownerTank; 
         this.penetration = penetration; 
         this.radius = radius; 
@@ -74,3 +74,4 @@ export class Bullet {
         ctx.restore();
     }
 }
+
