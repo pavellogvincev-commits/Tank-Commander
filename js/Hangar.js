@@ -83,15 +83,27 @@ function showPartDetails(id) {
     const isEquipped = (selectedTab === 'hulls' && PlayerProgress.currentAssembly.hullId === id) || (selectedTab === 'turrets' && PlayerProgress.currentAssembly.turretId === id);
     const stats = PlayerProgress.partStats[id];
 
-    let html = `<h3>${item.name}</h3>`;
+    // Определяем правильную картинку
+    let imgSrc = `assets/${id}.png`;
+    if (id === 'hunter') imgSrc = 'assets/hull.png';
+    if (id === 'scourge') imgSrc = 'assets/turret.png';
+
+    let html = ``;
 
     if (isUnlocked) {
-        html += `<div class="capacity-box">Потенциал: ${stats.usedCapacity} / ${stats.maxCapacity}<br>`;
-        if (stats.usedCapacity >= stats.maxCapacity) {
-            let cost = stats.maxCapacity + 1;
-            html += `<button class="expand-btn" onclick="expandCapacity('${id}', ${cost})">Расширить потенциал за ${cost} ⚙️</button>`;
-        }
-        html += `</div>`;
+        // НОВОЕ: Отрисовка картинки и Уровня
+        html += `
+        <div class="details-image-box">
+            <img src="${imgSrc}" alt="${item.name}">
+            <div class="details-level-text">${item.name} ур. ${stats.usedCapacity}/${stats.maxCapacity}</div>
+        </div>`;
+
+        // НОВОЕ: Кнопка расширения потенциала всегда доступна
+        let expandCost = stats.maxCapacity + 1;
+        html += `
+        <div style="text-align:center; margin-bottom: 15px;">
+            <button class="expand-btn" onclick="expandCapacity('${id}', ${expandCost})">Расширить потенциал (${expandCost} ⚙️)</button>
+        </div>`;
 
         let canUpgrade = stats.usedCapacity < stats.maxCapacity;
         let pointsType = selectedTab === 'hulls' ? 'hullUpgrades' : 'turretUpgrades';
@@ -114,7 +126,6 @@ function showPartDetails(id) {
             html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${frCalc}с</span></span></div>`;
         }
 
-        // Кнопка рандомного апгрейда
         if (canUpgrade && hasPoints) {
             html += `<button class="random-upgrade-btn" onclick="buyRandomUpgrade('${id}')">СЛУЧАЙНЫЙ АПГРЕЙД (1 ★)</button>`;
         } else if (!hasPoints && canUpgrade) {
@@ -124,19 +135,23 @@ function showPartDetails(id) {
         }
 
     } else {
+        html += `
+        <div class="details-image-box">
+            <img src="${imgSrc}" alt="${item.name}" style="filter: brightness(0.3) drop-shadow(0px 10px 10px rgba(0,0,0,0.8));">
+            <div class="details-level-text" style="color:#666;">${item.name} (Заблокировано)</div>
+        </div>`;
         html += `<p>HP: ${item.hp || '-'}</p><p>Броня: ${item.armor ? item.armor.front+'/'+item.armor.side+'/'+item.armor.rear : '-'}</p><p>Скорость: ${item.speed || '-'}</p>`;
     }
 
-    html += `<p>Особенность: <span style="color: #00ffcc;">${item.ability || 'Нет'}</span></p>`;
+    html += `<p style="margin-top:15px; font-size:14px;">Особенность: <span style="color: #00ffcc;">${item.ability || 'Нет'}</span></p>`;
     html += `<div id="action-area" class="action-area"></div>`;
 
     document.getElementById('details-info').innerHTML = html;
 
-    // ЗАПУСК АНИМАЦИИ
     if (lastUpgradedStatId) {
         let el = document.getElementById(lastUpgradedStatId);
         if (el) el.classList.add('stat-flash');
-        lastUpgradedStatId = null; // Сбрасываем после показа
+        lastUpgradedStatId = null; 
     }
 
     const actionArea = document.getElementById('action-area');
