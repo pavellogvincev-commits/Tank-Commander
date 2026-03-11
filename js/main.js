@@ -204,7 +204,7 @@ function gameLoop(timestamp) {
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { 
-            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor)); 
+            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
         }
     }
@@ -215,7 +215,7 @@ function gameLoop(timestamp) {
             enemy.updateAI(dt, arena, playerTank, enemies);
             let eShots = enemy.getShots();
             for (let j = 0; j < eShots; j++) { 
-                bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*45, enemy.y + Math.sin(enemy.turretAngle)*45, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor)); 
+                bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*45, enemy.y + Math.sin(enemy.turretAngle)*45, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor, enemy.bulletSpeed)); 
                 playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); 
             }
         } else {
@@ -318,3 +318,4 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
+
