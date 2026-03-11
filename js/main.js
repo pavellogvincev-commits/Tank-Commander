@@ -169,7 +169,7 @@ function gameLoop(timestamp) {
         if (enemySpawnTimer <= 0) { 
             spawnEnemyOnArena(); 
             enemiesToSpawn--; 
-            enemySpawnTimer = enemies.length * 4; 
+            enemySpawnTimer = enemies.length * 2; 
         }
     }
     
@@ -318,4 +318,5 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
+
 
