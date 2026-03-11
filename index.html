@@ -12,10 +12,20 @@
     
     <!-- ЭКРАН АНГАРА 2.0 -->
     <div id="hangar-screen" class="screen">
-        <div class="hangar-header">
-            <h1>АНГАР</h1>
-            <div id="points-display">⚙️ <span id="player-points">0</span></div>
+       <div class="hangar-header">
+    <h1>АНГАР</h1>
+    <div class="resources-bar">
+        <div class="res-item" title="Шестеренки">
+            <span class="res-icon">⚙️</span> <span id="player-points">0</span>
         </div>
+        <div class="res-item" title="Апгрейды Корпуса">
+            <span class="res-icon hull-star">★</span> <span id="inv-hull-val">0</span>
+        </div>
+        <div class="res-item" title="Апгрейды Башни">
+            <span class="res-icon turret-star">★</span> <span id="inv-turret-val">0</span>
+        </div>
+    </div>
+</div>
 
         <div class="hangar-layout">
             <!-- ЛЕВАЯ ПАНЕЛЬ: Текущая сборка -->
@@ -75,3 +85,4 @@
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
