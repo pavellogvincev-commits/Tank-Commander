@@ -10,64 +10,41 @@ export class Arena {
         if (density <= 0) return;
 
         let count = density; 
-        let minGap = 70; 
-        let centerX = 400, centerY = 300, safeR = 80;
+        let minGap = 80; // Чуть увеличили зазор, так как танки стали больше
+        
+        // ОБНОВЛЕНО: Новый центр (500, 350)
+        let centerX = 500, centerY = 350, safeR = 90;
 
         for (let i = 0; i < count; i++) {
             let w, h;
-            
-            // ОБНОВЛЕНО: Разнообразие форм блоков
             let type = Math.random();
-            if (type < 0.3) { 
-                // Маленькие колонны-столбы
-                w = 40 + Math.random() * 20; h = 40 + Math.random() * 20; 
-            } else if (type < 0.7) { 
-                // Длинные тонкие стены
-                w = 120 + Math.random() * 100; h = 30 + Math.random() * 20; 
-            } else { 
-                // Массивные бункеры
-                w = 80 + Math.random() * 60; h = 80 + Math.random() * 60; 
-            }
-
+            if (type < 0.3) { w = 40 + Math.random() * 20; h = 40 + Math.random() * 20; } 
+            else if (type < 0.7) { w = 120 + Math.random() * 100; h = 30 + Math.random() * 20; } 
+            else { w = 80 + Math.random() * 60; h = 80 + Math.random() * 60; }
             if (Math.random() > 0.5) { let temp = w; w = h; h = temp; }
 
             let x, y, valid, attempts = 0;
             do {
                 valid = true;
-                
-                // Кидаем блок в случайную точку карты
                 x = Math.random() * (this.width - w);
                 y = Math.random() * (this.height - h);
 
-                // ОБНОВЛЕНО: ПРИЛИПАНИЕ К СТЕНАМ (если щель меньше 70px)
-                if (x < 70) x = 0; // Прилипнуть к левой стене
-                else if (this.width - (x + w) < 70) x = this.width - w; // К правой
+                if (x < 70) x = 0; else if (this.width - (x + w) < 70) x = this.width - w; 
+                if (y < 70) y = 0; else if (this.height - (y + h) < 70) y = this.height - h; 
 
-                if (y < 70) y = 0; // К верхней
-                else if (this.height - (y + h) < 70) y = this.height - h; // К нижней
-
-                // Проверка: не попали ли в центр (на игрока)
-                if (x < centerX + safeR && x + w > centerX - safeR &&
-                    y < centerY + safeR && y + h > centerY - safeR) {
-                    valid = false;
-                    attempts++;
-                    continue;
+                if (x < centerX + safeR && x + w > centerX - safeR && y < centerY + safeR && y + h > centerY - safeR) {
+                    valid = false; attempts++; continue;
                 }
 
-                // Проверка: не пересекаемся ли с другими блоками (с учетом minGap)
                 for (let obs of this.obstacles) {
-                    if (x < obs.x + obs.w + minGap && x + w > obs.x - minGap &&
-                        y < obs.y + obs.h + minGap && y + h > obs.y - minGap) {
-                        valid = false;
-                        break;
+                    if (x < obs.x + obs.w + minGap && x + w > obs.x - minGap && y < obs.y + obs.h + minGap && y + h > obs.y - minGap) {
+                        valid = false; break;
                     }
                 }
                 attempts++;
             } while (!valid && attempts < 500);
 
-            if (valid) {
-                this.obstacles.push({ x, y, w, h });
-            }
+            if (valid) this.obstacles.push({ x, y, w, h });
         }
     }
 
@@ -96,8 +73,15 @@ export class Arena {
 
     draw(ctx) {
         for (let obs of this.obstacles) {
-            ctx.fillStyle = '#8B4513'; ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-            ctx.lineWidth = 4; ctx.strokeStyle = '#3e1f08'; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+            // ОБНОВЛЕНО: Тень ящика (смещение на 8 пикселей вправо-вниз)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(obs.x + 8, obs.y + 8, obs.w, obs.h);
+
+            // Сам ящик
+            ctx.fillStyle = '#8B4513'; 
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            ctx.lineWidth = 4; ctx.strokeStyle = '#3e1f08'; 
+            ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
         }
     }
 }
