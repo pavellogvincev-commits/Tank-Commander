@@ -302,10 +302,34 @@ canvas {
 /* =========================================
    АПГРЕЙДЫ И ИНВЕНТАРЬ
 ========================================= */
-.inventory-box {
-    display: flex; gap: 15px; justify-content: center; margin-bottom: 10px;
-    font-size: 16px; font-weight: bold; background: #111; padding: 5px; border-radius: 5px;
+/* =========================================
+   ПАНЕЛЬ РЕСУРСОВ (ВВЕРХУ АНГАРА)
+========================================= */
+.resources-bar {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    margin: 5px auto 15px auto;
+    width: fit-content;
 }
+
+.res-item {
+    font-size: 24px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.res-icon { font-size: 26px; }
+.hull-star { color: #00ccff; text-shadow: 0 0 10px #00ccff; }
+.turret-star { color: #ff3333; text-shadow: 0 0 10px #ff3333; }
 .inv-hull { color: #00ccff; text-shadow: 0 0 5px #00ccff; }
 .inv-turret { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
 
@@ -335,4 +359,5 @@ canvas {
 .level-stars { display: flex; gap: 2px; justify-content: center; margin-top: 2px; }
 .star { font-size: 12px; color: #555; }
 .star.gold { color: #ffcc00; text-shadow: 0 0 5px #ffcc00; }
+
 
