@@ -17,6 +17,11 @@ export class Enemy extends Tank {
 
     updateAI(dt, arena, playerTank, enemies) {
         if (this.hp <= 0 || !playerTank || playerTank.hp <= 0) return;
+         // ЕСЛИ ВРАГ ОГЛУШЕН - ОН СТОИТ И НЕ СТРЕЛЯЕТ
+        if (this.stunTimer > 0) {
+            this.stunTimer -= dt;
+            return; 
+        }
 
         let distToPlayer = Math.sqrt(Math.pow(this.x - playerTank.x, 2) + Math.pow(this.y - playerTank.y, 2));
         let hasLoS = arena.hasLineOfSight(this.x, this.y, playerTank.x, playerTank.y);
@@ -118,3 +123,4 @@ export class Enemy extends Tank {
         }
     }
 }
+
