@@ -360,4 +360,27 @@ canvas {
 .star { font-size: 12px; color: #555; }
 .star.gold { color: #ffcc00; text-shadow: 0 0 5px #ffcc00; }
 
+/* =========================================
+   СЛУЧАЙНЫЙ АПГРЕЙД И АНИМАЦИИ
+========================================= */
+.random-upgrade-btn {
+    width: 100%; padding: 12px; margin-top: 10px;
+    background: linear-gradient(to right, #28a745, #218838);
+    color: white; border: none; border-radius: 5px;
+    font-size: 16px; font-weight: bold; cursor: pointer;
+    transition: 0.2s; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+}
+.random-upgrade-btn:hover { background: #218838; transform: scale(1.02); }
+.random-upgrade-btn:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+
+@keyframes flashStat {
+    0% { transform: scale(1.5); color: #fff; text-shadow: 0 0 20px #fff; }
+    50% { transform: scale(1.2); color: #00ffcc; text-shadow: 0 0 15px #00ffcc; }
+    100% { transform: scale(1); color: #00ffcc; text-shadow: none; }
+}
+
+.stat-flash {
+    display: inline-block;
+    animation: flashStat 0.8s ease-out forwards;
+}
 
