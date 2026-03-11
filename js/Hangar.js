@@ -39,7 +39,11 @@ export function initHangarUI(startLevelFn) {
 }
 
 export function updateHangarUI() {
+    // Обновляем верхнюю панель ресурсов
     document.getElementById('player-points').innerText = PlayerProgress.points;
+    document.getElementById('inv-hull-val').innerText = PlayerProgress.inventory.hullUpgrades;
+    document.getElementById('inv-turret-val').innerText = PlayerProgress.inventory.turretUpgrades;
+
     const assembly = PlayerProgress.currentAssembly;
     
     // Расчет текущего ХП с учетом прокачки
@@ -78,12 +82,6 @@ function showPartDetails(id) {
     const stats = PlayerProgress.partStats[id];
 
     let html = `<h3>${item.name}</h3>`;
-    
-    // Блок инвентаря
-    html += `<div class="inventory-box">
-                <span class="inv-hull">Корпуса: ${PlayerProgress.inventory.hullUpgrades}</span>
-                <span class="inv-turret">Башни: ${PlayerProgress.inventory.turretUpgrades}</span>
-             </div>`;
 
     if (isUnlocked) {
         // Блок потенциала
