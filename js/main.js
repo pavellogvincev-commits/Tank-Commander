@@ -25,7 +25,7 @@ let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, 
 let firstClearBonus = false, currentEnemyPool = [];
 
 // СИСТЕМА ДРОПОВ
-let dropCheckTimer = 10.0;
+let dropCheckTimer = 5.0;
 let currentDropChance = 0.10;
 let dropsSpawnedThisMatch = 0;
 let maxDropsForLevel = 0;
@@ -44,7 +44,7 @@ function startLevel(levelNum) {
     enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
 
     // Сброс счетчиков дропа
-    dropCheckTimer = 10.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0;
+    dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0;
     maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
 
     arena.generateObstacles(config.obstacles);
@@ -113,7 +113,7 @@ function gameLoop(timestamp) {
     if (dropsSpawnedThisMatch < maxDropsForLevel && playerTank.hp > 0 && !levelFinished) {
         dropCheckTimer -= dt;
         if (dropCheckTimer <= 0) {
-            dropCheckTimer = 10.0;
+            dropCheckTimer = 5.0;
             if (Math.random() <= currentDropChance) {
                 spawnDrop();
                 dropsSpawnedThisMatch++;
@@ -235,3 +235,4 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
+
