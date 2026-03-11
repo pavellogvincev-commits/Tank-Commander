@@ -59,12 +59,21 @@ export class Bullet {
         this.angle = Math.atan2(this.vy, this.vx);
     }
 
-    draw(ctx) {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        let alpha = this.isDecaying ? Math.max(0, this.decayTimer / this.maxDecayTime) : 1.0;
-        ctx.fillStyle = this.color; ctx.globalAlpha = alpha * 0.5;
-        ctx.fillRect(-this.radius * 6, -this.radius * 0.8, this.radius * 6, this.radius * 1.6);
-        ctx.globalAlpha = alpha; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        draw(ctx) {
+        // ОБНОВЛЕНО: Тень от пули (летит чуть выше земли)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.arc(this.x + 4, this.y + 4, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Свечение и сама пуля
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0; // Сбрасываем свечение
     }
 }
+
