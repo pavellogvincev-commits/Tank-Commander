@@ -282,4 +282,47 @@ function gameLoop(timestamp) {
     bullets = bullets.filter(b => !b.toDestroy);
     
     // Эффекты
-    for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt;
+    for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93; if (s.life <= 0) sparks.splice(i, 1); }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+
+    // РЕНДЕРИНГ
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    arena.draw(ctx);
+    for (let b of bullets) b.draw(ctx);
+    for (let s of sparks) { ctx.fillStyle = `rgba(${s.color}, ${Math.max(0, s.life / s.maxLife)})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); }
+    if (playerTank && playerTank.hp > 0) playerTank.draw(ctx);
+    for (let e of enemies) e.draw(ctx);
+
+    // Интерфейс боя
+    if (playerTank && playerTank.hp > 0) { 
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; 
+        ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); 
+    }
+    
+    // Всплывающие тексты
+    ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
+    for (let ft of floatingTexts) { 
+        let alpha = Math.max(0, ft.life / ft.maxLife); 
+        ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); 
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Тексты конца уровня
+    if (playerTank.hp <= 0) { 
+        ctx.font = '900 60px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; 
+        ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); 
+    } else if (levelFinished) { 
+        ctx.font = '900 60px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; 
+        ctx.strokeText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); 
+        if (firstClearBonus) { 
+            ctx.font = '900 35px Arial'; ctx.fillStyle = '#ffcc00'; 
+            ctx.strokeText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 40); 
+            ctx.fillText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 40); 
+        }
+    }
+    
+    animFrameId = requestAnimationFrame(gameLoop);
+}
+
+// Запуск инициализации
+initHangarUI(startLevel);
