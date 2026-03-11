@@ -122,7 +122,8 @@ function showPartDetails(id) {
     }
 }
 
-function generateLevelsGrid() { 
+// ОБНОВЛЕНО: Добавлено слово export
+export function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
     for (let i = 1; i <= 100; i++) { 
         let btn = document.createElement('button'); 
