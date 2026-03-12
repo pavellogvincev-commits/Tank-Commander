@@ -11,8 +11,15 @@ export class Tank {
 
         this.armor = { front: { current: hullStats.armor.front, max: hullStats.armor.front }, side: { current: hullStats.armor.side, max: hullStats.armor.side }, rear: { current: hullStats.armor.rear, max: hullStats.armor.rear } };
 
-        this.speed = 0; this.maxForwardSpeed = hullStats.speed; this.maxReverseSpeed = -hullStats.speed / 2;  
-        this.acceleration = 80; this.friction = 100; this.brakePower = 160;       
+        this.speed = 0; 
+        this.maxForwardSpeed = hullStats.speed; 
+        this.maxReverseSpeed = -hullStats.speed / 2;  
+        
+        // ОБНОВЛЕНО: Ускорение зависит от максимальной скорости!
+        this.acceleration = this.maxForwardSpeed * 3; 
+        this.friction = this.maxForwardSpeed * 1.5; 
+        this.brakePower = this.maxForwardSpeed * 4;       
+        
         this.hullRotationSpeed = 1.5; this.hullAngle = 0; this.turretRotationSpeed = 2; this.turretAngle = 0;
 
         this.particles = []; this.particleTimer = 0;
@@ -20,14 +27,19 @@ export class Tank {
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon';
-        this.bulletSpeed = turretStats.bulletSpeed || 400; // <-- ОБНОВЛЕНО: Читаем скорость пули
+        this.bulletSpeed = turretStats.bulletSpeed || 400; 
 
-        this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;   
-                // АБИЛКИ
+        this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
+
+        // ОБНОВЛЕНО: Новая система Дрона Леопарда
         this.hullName = hullStats.name;
-        this.droneActive = (this.hullName === "Леопард"); // Дрон сразу готов
+        this.droneState = (this.hullName === "Леопард") ? 'ready' : 'none'; // 'ready', 'attacking', 'cooldown'
         this.droneAngle = 0;
         this.droneCooldown = 0;
+        this.droneTarget = null;
+        this.droneX = 0;
+        this.droneY = 0;
+        this.droneExplodeRequest = false; // Сигнал для main.js нарисовать взрыв
     }
 
     updateSmoke(dt) {
@@ -59,27 +71,48 @@ export class Tank {
     getShots() { return this.shotsToFireThisFrame; }
 
     update(dt, input, arena, enemies) {
-        this.updateWeapons(dt); this.updateSmoke(dt);
-                // ЛОГИКА АБИЛОК (ЛЕОПАРД)
+        this.updateWeapons(dt); this.updateSmoke(dt); 
+
+        // ОБНОВЛЕНО: ЛОГИКА АБИЛОК (ДРОН ЛЕОПАРДА)
         if (this.hullName === "Леопард") {
-            if (!this.droneActive) {
+            if (this.droneState === 'cooldown') {
                 this.droneCooldown -= dt;
-                if (this.droneCooldown <= 0) this.droneActive = true;
-            } else {
-                this.droneAngle += dt * 3; // Дрон кружится
-                // Поиск жертвы в радиусе 180 пикселей
+                if (this.droneCooldown <= 0) this.droneState = 'ready';
+            } else if (this.droneState === 'ready') {
+                this.droneAngle += dt * 3; 
                 if (enemies) {
                     for (let e of enemies) {
                         if (e.hp > 0 && (!e.stunTimer || e.stunTimer <= 0)) {
                             let dist = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
-                            if (dist < 180) {
-                                e.stunTimer = 30.0; // ОГЛУШЕНИЕ НА 30 СЕКУНД!
-                                e.isJustStunned = true; // Флаг для надписи
-                                this.droneActive = false;
-                                this.droneCooldown = 15.0; // Перезарядка дрона
+                            if (dist < 180) { // Засекли цель
+                                this.droneState = 'attacking';
+                                this.droneTarget = e;
+                                this.droneX = this.x + Math.cos(this.droneAngle) * 55;
+                                this.droneY = this.y + Math.sin(this.droneAngle) * 55;
                                 break;
                             }
                         }
+                    }
+                }
+            } else if (this.droneState === 'attacking') {
+                if (!this.droneTarget || this.droneTarget.hp <= 0) { // Если цель умерла пока летели
+                    this.droneState = 'cooldown';
+                    this.droneCooldown = 15.0;
+                } else {
+                    let dx = this.droneTarget.x - this.droneX;
+                    let dy = this.droneTarget.y - this.droneY;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 15) { // Попадание!
+                        this.droneTarget.stunTimer = 30.0;
+                        this.droneTarget.isJustStunned = true;
+                        this.droneState = 'cooldown';
+                        this.droneCooldown = 15.0;
+                        this.droneExplodeRequest = true; // Даем сигнал на взрыв
+                    } else { // Летим к цели
+                        let flightSpeed = 500 * dt; 
+                        this.droneX += (dx / dist) * flightSpeed;
+                        this.droneY += (dy / dist) * flightSpeed;
                     }
                 }
             }
@@ -183,56 +216,19 @@ export class Tank {
     draw(ctx) {
         if (this.hp <= 0) return;
 
-        // Дым от выхлопной трубы
         for (let p of this.particles) { 
             ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; 
             ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); 
         }
 
-        // ==============================
-        // 1. ТЕНЬ КОРПУСА (смещение X+5, Y+5)
-        // ==============================
-        ctx.save(); 
-        ctx.translate(this.x + 5, this.y + 5); // Сдвигаем тень вправо-вниз
-        ctx.rotate(this.hullAngle); 
-        ctx.filter = 'brightness(0) opacity(0.4)'; // Делаем картинку черной и прозрачной
-        ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); 
-        ctx.restore();
+        ctx.save(); ctx.translate(this.x + 5, this.y + 5); ctx.rotate(this.hullAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
+        
+        ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
 
-        // ==============================
-        // 2. САМ КОРПУС ТАНКА
-        // ==============================
-        ctx.save(); 
-        ctx.translate(this.x, this.y); 
-        ctx.rotate(this.hullAngle); 
-        ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); 
-        ctx.restore();
-
-        // ==============================
-        // 3. ТЕНЬ БАШНИ (смещение больше X+8, Y+8, чтобы казалась выше)
-        // ==============================
-        ctx.save(); 
-        ctx.translate(this.x + 8, this.y + 8); 
-        ctx.rotate(this.turretAngle); 
-        ctx.filter = 'brightness(0) opacity(0.4)';
-        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); 
-        ctx.restore();
-
-        // ==============================
-        // 4. САМА БАШНЯ
-        // ==============================
-        ctx.save(); 
-        ctx.translate(this.x, this.y); 
-        ctx.rotate(this.turretAngle); 
-        ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); 
-        ctx.restore();
-
-        // Полоска здоровья
         let barWidth = 40; let hpPercent = this.hp / this.maxHp;
         ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth, 4);
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
-
-
-
