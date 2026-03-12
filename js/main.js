@@ -503,7 +503,7 @@ function gameLoop(timestamp) {
         ctx.fillStyle = ft.color; 
         ctx.fillText(ft.text, ft.x, ft.y); 
     }
-    
+    ctx.globalAlpha = 1.0;
     if (playerTank.hp <= 0) { 
         ctx.font = '900 60px Arial'; 
         ctx.fillStyle = '#ff0000'; 
@@ -525,3 +525,4 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
+
