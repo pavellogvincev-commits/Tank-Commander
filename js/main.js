@@ -122,15 +122,16 @@ function gameLoop(timestamp) {
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); }
 
-        // ТИТАН: Создание Мины-Паука
+               // ТИТАН: Создание Мины-Паука
         if (playerTank.mineRequest) {
             playerTank.mineRequest = false;
             let mineDamage = Math.floor(20 + Math.random() * 30 + (playerTank.hullUpgrades * 15));
-            mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 10 });
+            // Скорость установлена на 60 (очень медленно, но не стоит на месте)
+            mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 13 });
         }
     }
 
-    // ОБНОВЛЕНИЕ МИН-ПАУКОВ
+    // ОБНОВЛЕНИЕ МИН-ПАУКОВ (Умное огибание стен)
     for (let i = mines.length - 1; i >= 0; i--) {
         let m = mines[i];
         let nearest = null; let minDist = Infinity;
@@ -141,14 +142,26 @@ function gameLoop(timestamp) {
         }
         if (nearest) {
             let angle = Math.atan2(nearest.y - m.y, nearest.x - m.x);
-            m.x += Math.cos(angle) * m.speed * dt; m.y += Math.sin(angle) * m.speed * dt;
+            let vx = Math.cos(angle) * m.speed * dt; 
+            let vy = Math.sin(angle) * m.speed * dt;
+            
+            // Проверка коллизий по осям (СКОЛЬЖЕНИЕ)
+            let colX = arena.checkCollision(m.x + vx, m.y, m.radius);
+            let colY = arena.checkCollision(m.x, m.y + vy, m.radius);
+
+            if (!colX) m.x += vx;
+            if (!colY) m.y += vy;
+
+            // Взрыв при контакте
             if (minDist < m.radius + nearest.radius) {
-                nearest.hp -= m.damage; spawnText(nearest.x, nearest.y - 30, `-${m.damage}`, '#ff3333');
-                spawnExplosion(m.x, m.y); mines.splice(i, 1); continue;
+                nearest.hp -= m.damage; 
+                spawnText(nearest.x, nearest.y - 30, `-${m.damage}`, '#ff3333');
+                spawnExplosion(m.x, m.y); 
+                mines.splice(i, 1); 
+                continue;
             }
         }
     }
-
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
@@ -251,3 +264,4 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
+
