@@ -73,7 +73,7 @@ export class Tank {
     update(dt, input, arena, enemies) {
         this.updateWeapons(dt); this.updateSmoke(dt); 
 
-        // ЛОГИКА ДРОНА (ЛЕОПАРД)
+              // ЛОГИКА ДРОНА (ЛЕОПАРД)
         if (this.hullName === "Леопард") {
             if (this.droneState === 'cooldown') {
                 this.droneCooldown -= dt; if (this.droneCooldown <= 0) this.droneState = 'ready';
@@ -88,10 +88,18 @@ export class Tank {
                     }
                 }
             } else if (this.droneState === 'attacking') {
-                if (!this.droneTarget || this.droneTarget.hp <= 0) { this.droneState = 'cooldown'; this.droneCooldown = 15.0; } 
+                // ОБНОВЛЕНО: Перезарядка 10 сек
+                if (!this.droneTarget || this.droneTarget.hp <= 0) { this.droneState = 'cooldown'; this.droneCooldown = 10.0; } 
                 else {
                     let dx = this.droneTarget.x - this.droneX; let dy = this.droneTarget.y - this.droneY; let dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 15) { this.droneTarget.stunTimer = 30.0; this.droneTarget.isJustStunned = true; this.droneState = 'cooldown'; this.droneCooldown = 15.0; this.droneExplodeRequest = true; } 
+                    if (dist < 15) { 
+                        // ОБНОВЛЕНО: Стан 15 сек, перезарядка 10 сек
+                        this.droneTarget.stunTimer = 15.0; 
+                        this.droneTarget.isJustStunned = true; 
+                        this.droneState = 'cooldown'; 
+                        this.droneCooldown = 10.0; 
+                        this.droneExplodeRequest = true; 
+                    } 
                     else { let flightSpeed = 500 * dt; this.droneX += (dx / dist) * flightSpeed; this.droneY += (dy / dist) * flightSpeed; }
                 }
             }
@@ -189,3 +197,4 @@ export class Tank {
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
+
