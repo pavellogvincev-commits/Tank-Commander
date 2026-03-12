@@ -4,22 +4,31 @@ export class Enemy extends Tank {
     constructor(x, y, hullImg, turretImg, hullStats, turretStats) {
         super(x, y, hullImg, turretImg, hullStats, turretStats);
         
-        // Переменные для нового ИИ
-        this.aiType = hullStats.name; // Запоминаем тип танка (Базовый, Скаут, Демон)
+        this.aiType = hullStats.name; 
         this.stuckTimer = 0;
         this.lastX = x;
         this.lastY = y;
         this.evadeTimer = 0;
-        this.evadeDir = 1; // Направление обхода: 1 (вправо) или -1 (влево)
+        this.evadeDir = 1; 
         this.stateTimer = 0;
         this.randomAngleOffset = 0;
     }
 
     updateAI(dt, arena, playerTank, enemies) {
-        if (this.hp <= 0 || !playerTank || playerTank.hp <= 0) return;
-         // ЕСЛИ ВРАГ ОГЛУШЕН - ОН СТОИТ И НЕ СТРЕЛЯЕТ
-        if (this.stunTimer > 0) {
-            this.stunTimer -= dt;
+        if (this.hp <= 0) return;
+
+        // ФИКС БАГА С "ЛАЗЕРОМ": Создаем нейтральный ввод (не ехать, не стрелять)
+        let idleInput = {
+            isUp: () => false, isDown: () => false, isLeft: () => false, isRight: () => false,
+            getMouseX: () => this.x + Math.cos(this.turretAngle) * 100, 
+            getMouseY: () => this.y + Math.sin(this.turretAngle) * 100,
+            isShooting: () => false 
+        };
+
+        // Если игрок мертв или враг оглушен — враг просто плавно останавливается и остывает
+        if (!playerTank || playerTank.hp <= 0 || this.stunTimer > 0) {
+            if (this.stunTimer > 0) this.stunTimer -= dt;
+            super.update(dt, idleInput, arena, enemies); // Обновляем физику и перезарядку пушки!
             return; 
         }
 
@@ -30,21 +39,15 @@ export class Enemy extends Tank {
         let shouldMove = true;
         let targetHullAngle = angleToPlayer;
 
-        // ==========================================
-        // 1. ХАРАКТЕР ПОВЕДЕНИЯ (По типам танков)
-        // ==========================================
         if (this.aiType === "Враг-Базовый") {
-            // Классика: подъезжает и останавливается для выстрела
             if (hasLoS && distToPlayer < 400) shouldMove = false; 
         } 
         else if (this.aiType === "Скаут") {
-            // Скаут кружит вокруг игрока, постоянно в движении
             if (hasLoS && distToPlayer < 350) {
                 targetHullAngle = angleToPlayer + (Math.PI / 2.5) * this.evadeDir; 
             }
         } 
         else if (this.aiType === "Демон") {
-            // Демон рашит зигзагами, чтобы сложнее было попасть
             this.stateTimer += dt;
             if (this.stateTimer > 1.5) {
                 this.stateTimer = 0;
@@ -57,16 +60,11 @@ export class Enemy extends Tank {
             }
         }
 
-        // ==========================================
-        // 2. АНТИ-ЗАСТРЕВАНИЕ (Обход стен)
-        // ==========================================
         this.stuckTimer += dt;
         if (this.stuckTimer > 0.5) {
             let distMoved = Math.sqrt(Math.pow(this.x - this.lastX, 2) + Math.pow(this.y - this.lastY, 2));
-            
-            // Если танк должен ехать, но за 0.5 сек сдвинулся меньше чем на 15 пикселей - он застрял
             if (shouldMove && distMoved < 15) {
-                this.evadeTimer = 2.0; // Включаем режим обхода стены на 2 секунды
+                this.evadeTimer = 2.0; 
                 this.evadeDir = Math.random() > 0.5 ? 1 : -1;
             }
             this.lastX = this.x;
@@ -74,23 +72,18 @@ export class Enemy extends Tank {
             this.stuckTimer = 0;
         }
 
-        // Если включен режим обхода стены - едем вбок
         if (this.evadeTimer > 0) {
             this.evadeTimer -= dt;
             shouldMove = true;
             targetHullAngle = angleToPlayer + (Math.PI / 2) * this.evadeDir;
         }
 
-        // ==========================================
-        // 3. ПРИМЕНЕНИЕ ДВИЖЕНИЯ И ВРАЩЕНИЯ
-        // ==========================================
-        // Создаем "фейковый" ввод, чтобы скормить его базовому классу Tank
         let fakeInput = {
             isUp: () => shouldMove,
             isDown: () => false,
             isLeft: () => false,
             isRight: () => false,
-            getMouseX: () => playerTank.x, // Башня всегда следит за игроком
+            getMouseX: () => playerTank.x, 
             getMouseY: () => playerTank.y,
             isShooting: () => false 
         };
@@ -100,27 +93,20 @@ export class Enemy extends Tank {
              while (hullDiff > Math.PI) hullDiff -= Math.PI * 2;
              while (hullDiff < -Math.PI) hullDiff += Math.PI * 2;
              
-             // Поворачиваем корпус
              if (Math.abs(hullDiff) > 0.1) {
                  if (hullDiff > 0) fakeInput.isRight = () => true;
                  else fakeInput.isLeft = () => true;
              }
         }
 
-        // Вызываем базовую физику (движение корпуса и поворот башни за "мышкой")
         super.update(dt, fakeInput, arena, enemies);
 
-        // ==========================================
-        // 4. ЛОГИКА СТРЕЛЬБЫ
-        // ==========================================
         let aimDiff = angleToPlayer - this.turretAngle;
         while (aimDiff > Math.PI) aimDiff -= Math.PI * 2;
         while (aimDiff < -Math.PI) aimDiff += Math.PI * 2;
 
-        // Если есть прямая видимость и пушка смотрит примерно на игрока - стреляем!
         if (hasLoS && Math.abs(aimDiff) < 0.15) {
             this.tryShoot();
         }
     }
 }
-
