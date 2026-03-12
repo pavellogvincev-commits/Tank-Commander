@@ -246,10 +246,26 @@ function gameLoop(timestamp) {
         }
     }
 
-    for (let e of enemies) {
+      for (let e of enemies) {
         e.draw(ctx);
-        if (e.isJustStunned) { e.isJustStunned = false; spawnText(e.x, e.y - 30, "ОГЛУШЕН!", '#00ffcc'); }
-        if (e.stunTimer > 0) { ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(timestamp / 50) * 3, 0, Math.PI * 2); ctx.stroke(); }
+        if (e.isJustStunned) {
+            e.isJustStunned = false; 
+            spawnText(e.x, e.y - 30, "ОГЛУШЕН!", '#00ffcc');
+        }
+        
+        // ОБНОВЛЕНО: Мигание за 3 секунды до конца стана
+        if (e.stunTimer > 0) {
+            let isWakingUp = e.stunTimer <= 3.0;
+            let blink = isWakingUp ? (Math.floor(timestamp / 150) % 2 === 0) : true;
+            
+            if (blink) {
+                ctx.strokeStyle = isWakingUp ? '#ffcc00' : '#00ffcc'; // Желтый при пробуждении
+                ctx.lineWidth = isWakingUp ? 4 : 2; 
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(timestamp / 50) * 3, 0, Math.PI * 2); 
+                ctx.stroke();
+            }
+        }
     }
 
     if (playerTank && playerTank.hp > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); }
@@ -264,4 +280,5 @@ function gameLoop(timestamp) {
 }
 
 initHangarUI(startLevel);
+
 
