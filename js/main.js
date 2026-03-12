@@ -25,7 +25,6 @@ let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], dro
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
 
-// СИСТЕМА ДРОПОВ
 let dropCheckTimer = 5.0;
 let currentDropChance = 0.10;
 let dropsSpawnedThisMatch = 0;
@@ -68,23 +67,7 @@ function startLevel(levelNum) {
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId]);
     
     enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = [];
-    showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
-}
-
-function spawnEnemyOnArena() {
-    if (currentEnemyPool.length === 0) return;
-    let safeDist = 250; let spawnX, spawnY, validSpawn = false, attempts = 0; let enemyRadius = 40; 
-    do {
-        validSpawn = true;
-        spawnX = 100 + Math.random() * (canvas.width - 200); spawnY = 100 + Math.random() * (canvas.height - 200);
-        let distToPlayer = Math.sqrt(Math.pow(spawnX - playerTank.x, 2) + Math.pow(spawnY - playerTank.y, 2));
-        if (distToPlayer <= safeDist) validSpawn = false;
-        if (validSpawn && arena.checkCollision(spawnX, spawnY, enemyRadius)) validSpawn = false;
-        if (validSpawn) { for (let e of enemies) { let distToEnemy = Math.sqrt(Math.pow(spawnX - e.x, 2) + Math.pow(spawnY - e.y, 2)); if (distToEnemy < 100) { validSpawn = false; break; } } }
-        attempts++;
-    } while (!validSpawn && attempts < 100); 
-
-    let enemyType = currentEnemyPool.pop(); let hStats = GameData.enemyHulls[enemyType]; let tStats = GameData.enemyTurrets[enemyType];
+    showScreen('game'); lastTime =
     let useHullImg = enemyType === "scout" ? scoutHullImage : (enemyType === "demon" ? demonHullImage : enemyHullImage);
     let useTurretImg = enemyType === "scout" ? scoutTurretImage : (enemyType === "demon" ? demonTurretImage : enemyTurretImage);
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
@@ -114,18 +97,13 @@ function gameLoop(timestamp) {
             dropCheckTimer = 5.0;
             if (Math.random() <= currentDropChance) {
                 spawnDrop(); dropsSpawnedThisMatch++; currentDropChance = 0.10; 
-            } else {
-                currentDropChance += 0.10; 
-            }
+            } else { currentDropChance += 0.10; }
         }
     }
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
-        if (enemySpawnTimer <= 0) { 
-            spawnEnemyOnArena(); enemiesToSpawn--; 
-            enemySpawnTimer = enemies.length * 2.5; 
-        }
+        if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = enemies.length * 2.5; }
     }
     
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
@@ -160,8 +138,7 @@ function gameLoop(timestamp) {
 
     if (playerTank && playerTank.hp > 0) {
         for (let i = drops.length - 1; i >= 0; i--) {
-            let d = drops[i];
-            let dist = Math.sqrt(Math.pow(d.x - playerTank.x, 2) + Math.pow(d.y - playerTank.y, 2));
+            let d = drops[i]; let dist = Math.sqrt(Math.pow(d.x - playerTank.x, 2) + Math.pow(d.y - playerTank.y, 2));
             if (dist < playerTank.radius + d.radius) {
                 if (d.type === 'hull') { PlayerProgress.inventory.hullUpgrades++; spawnText(d.x, d.y, "+1 Корпус", '#00ccff'); } 
                 else { PlayerProgress.inventory.turretUpgrades++; spawnText(d.x, d.y, "+1 Башня", '#ff3333'); }
@@ -212,16 +189,30 @@ function gameLoop(timestamp) {
     for (let b of bullets) b.draw(ctx);
     for (let s of sparks) { ctx.fillStyle = `rgba(${s.color}, ${Math.max(0, s.life / s.maxLife)})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); }
     
-    // ОТРИСОВКА ИГРОКА И ДРОНА ЛЕОПАРДА
+    // ОТРИСОВКА ИГРОКА И ПОЛЕТА ДРОНА
     if (playerTank && playerTank.hp > 0) {
         playerTank.draw(ctx);
-        if (playerTank.hullName === "Леопард" && playerTank.droneActive) {
-            let dx = playerTank.x + Math.cos(playerTank.droneAngle) * 55;
-            let dy = playerTank.y + Math.sin(playerTank.droneAngle) * 55;
-            ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
-            ctx.fillStyle = '#00ffcc';
-            ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 0;
+        if (playerTank.hullName === "Леопард") {
+            if (playerTank.droneState === 'ready') {
+                let dx = playerTank.x + Math.cos(playerTank.droneAngle) * 55; let dy = playerTank.y + Math.sin(playerTank.droneAngle) * 55;
+                ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc';
+                ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            } else if (playerTank.droneState === 'attacking') {
+                ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc';
+                ctx.beginPath(); ctx.arc(playerTank.droneX, playerTank.droneY, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                // Красивый шлейф за дроном
+                sparks.push({ x: playerTank.droneX, y: playerTank.droneY, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '0, 255, 204' });
+            }
+            
+            // Взрыв дрона при попадании
+            if (playerTank.droneExplodeRequest) {
+                playerTank.droneExplodeRequest = false;
+                playSound(explodeSound);
+                for (let i = 0; i < 30; i++) { 
+                    let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 150; 
+                    sparks.push({ x: playerTank.droneX, y: playerTank.droneY, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 0.5+Math.random(), maxLife: 1.5, size: 3+Math.random()*6, color: '0, 255, 204' }); 
+                }
+            }
         }
     }
 
@@ -229,14 +220,11 @@ function gameLoop(timestamp) {
     for (let e of enemies) {
         e.draw(ctx);
         if (e.isJustStunned) {
-            e.isJustStunned = false;
-            spawnText(e.x, e.y - 30, "ОГЛУШЕН!", '#00ffcc');
+            e.isJustStunned = false; spawnText(e.x, e.y - 30, "ОГЛУШЕН!", '#00ffcc');
         }
         if (e.stunTimer > 0) {
-            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(timestamp / 50) * 3, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2; ctx.beginPath();
+            ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(timestamp / 50) * 3, 0, Math.PI * 2); ctx.stroke();
         }
     }
 
@@ -244,11 +232,18 @@ function gameLoop(timestamp) {
     
     ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
     for (let ft of floatingTexts) { let alpha = Math.max(0, ft.life / ft.maxLife); ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); }
-    ctx.globalAlpha = 1.0;
-
-    if (playerTank.hp <= 0) { ctx.font = '900 60px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; ctx.strokeText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); } 
-    else if (levelFinished) { ctx.font = '900 60px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; ctx.strokeText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); 
-        if (firstClearBonus) { ctx.font = '900 35px Arial'; ctx.fillStyle = '#ffcc00'; ctx.strokeText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 40); ctx.fillText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 40); }
+    
+    // ОТКЛЮЧЕНА белая обводка (убраны вызовы strokeText)
+    if (playerTank.hp <= 0) { 
+        ctx.font = '900 60px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; 
+        ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); 
+    } else if (levelFinished) { 
+        ctx.font = '900 60px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; 
+        ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); 
+        if (firstClearBonus) { 
+            ctx.font = '900 35px Arial'; ctx.fillStyle = '#ffcc00'; 
+            ctx.fillText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 40); 
+        }
     }
     
     animFrameId = requestAnimationFrame(gameLoop);
