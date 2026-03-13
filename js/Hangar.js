@@ -1,6 +1,10 @@
 import { GameData, PlayerProgress, LevelsConfig } from './GameData.js';
 
-export const screens = { hangar: document.getElementById('hangar-screen'), levels: document.getElementById('levels-screen'), game: document.getElementById('gameCanvas') };
+export const screens = { 
+    hangar: document.getElementById('hangar-screen'), 
+    levels: document.getElementById('levels-screen'), 
+    game: document.getElementById('gameCanvas') 
+};
 
 export function showScreen(screenName) { 
     screens.hangar.style.display = screenName === 'hangar' ? 'flex' : 'none'; 
@@ -11,13 +15,15 @@ export function showScreen(screenName) {
 let selectedTab = 'hulls';
 let selectedPartId = 'hunter';
 let onStartLevelCallback = null;
+let lastUpgradedStatId = null;
 
 export function initHangarUI(startLevelFn) {
     onStartLevelCallback = startLevelFn;
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.onclick = (e) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active'); selectedTab = e.target.dataset.tab;
+            e.target.classList.add('active'); 
+            selectedTab = e.target.dataset.tab;
             selectedPartId = selectedTab === 'hulls' ? PlayerProgress.currentAssembly.hullId : PlayerProgress.currentAssembly.turretId;
             updateHangarUI();
         };
@@ -60,22 +66,26 @@ export function updateHangarUI() {
 }
 
 function renderPartsList() {
-    const list = document.getElementById('parts-list'); list.innerHTML = '';
+    const list = document.getElementById('parts-list'); 
+    list.innerHTML = '';
     const dataGroup = GameData[selectedTab];
+    
     for (let id in dataGroup) {
-        const item = dataGroup[id]; const div = document.createElement('div');
+        const item = dataGroup[id]; 
+        const div = document.createElement('div');
         let isEquipped = (selectedTab === 'hulls' && PlayerProgress.currentAssembly.hullId === id) || (selectedTab === 'turrets' && PlayerProgress.currentAssembly.turretId === id);
         div.className = `part-item ${selectedPartId === id ? 'selected' : ''} ${isEquipped ? 'equipped' : ''}`;
+        
         const isUnlocked = selectedTab === 'hulls' ? PlayerProgress.unlockedHulls.includes(id) : PlayerProgress.unlockedTurrets.includes(id);
         if (!isUnlocked) div.classList.add('locked');
+        
         div.innerHTML = `<span>${item.name}</span>`;
         if (!isUnlocked) div.innerHTML += `<span class="part-price">${item.cost} ⚙️</span>`;
+        
         div.onclick = () => { selectedPartId = id; updateHangarUI(); };
         list.appendChild(div);
     }
 }
-
-let lastUpgradedStatId = null; // Запоминаем, что прокачалось, для анимации
 
 function showPartDetails(id) {
     const item = GameData[selectedTab][id];
@@ -91,14 +101,14 @@ function showPartDetails(id) {
     let html = ``;
 
     if (isUnlocked) {
-        // НОВОЕ: Отрисовка картинки и Уровня
+        // Отрисовка картинки и Уровня
         html += `
         <div class="details-image-box">
             <img src="${imgSrc}" alt="${item.name}">
             <div class="details-level-text">${item.name} ур. ${stats.usedCapacity}/${stats.maxCapacity}</div>
         </div>`;
 
-        // НОВОЕ: Кнопка расширения потенциала всегда доступна
+        // Кнопка расширения потенциала
         let expandCost = stats.maxCapacity + 1;
         html += `
         <div style="text-align:center; margin-bottom: 15px;">
@@ -126,12 +136,20 @@ function showPartDetails(id) {
             html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${frCalc}с</span></span></div>`;
         }
 
+        // Кнопка случайного апгрейда
         if (canUpgrade && hasPoints) {
             html += `<button class="random-upgrade-btn" onclick="buyRandomUpgrade('${id}')">СЛУЧАЙНЫЙ АПГРЕЙД (1 ★)</button>`;
         } else if (!hasPoints && canUpgrade) {
             html += `<button class="random-upgrade-btn" disabled>НЕТ ЗВЕЗД ДЛЯ АПГРЕЙДА</button>`;
         } else if (!canUpgrade) {
             html += `<button class="random-upgrade-btn" disabled>ПОТЕНЦИАЛ ИСЧЕРПАН</button>`;
+        }
+
+        // Кнопка извлечения потраченных звезд
+        if (stats.usedCapacity > 0) {
+            let resetCost = stats.usedCapacity * 3;
+            let canReset = PlayerProgress.points >= resetCost;
+            html += `<button class="reset-upgrade-btn" ${canReset ? '' : 'disabled'} onclick="resetUpgrades('${id}', ${resetCost})">ИЗВЛЕЧЬ ЗВЕЗДЫ (${resetCost} ⚙️)</button>`;
         }
 
     } else {
@@ -148,6 +166,7 @@ function showPartDetails(id) {
 
     document.getElementById('details-info').innerHTML = html;
 
+    // Запуск анимации, если был апгрейд
     if (lastUpgradedStatId) {
         let el = document.getElementById(lastUpgradedStatId);
         if (el) el.classList.add('stat-flash');
@@ -158,26 +177,51 @@ function showPartDetails(id) {
     if (!isUnlocked) {
         const btn = document.createElement('button'); btn.className = 'buy-btn'; btn.innerText = `КУПИТЬ ЗА ${item.cost} ⚙️`;
         btn.onclick = () => {
-            if (PlayerProgress.points >= item.cost) { PlayerProgress.points -= item.cost;
+            if (PlayerProgress.points >= item.cost) { 
+                PlayerProgress.points -= item.cost;
                 if (selectedTab === 'hulls') PlayerProgress.unlockedHulls.push(id); else PlayerProgress.unlockedTurrets.push(id);
                 updateHangarUI();
             }
-        }; actionArea.appendChild(btn);
+        }; 
+        actionArea.appendChild(btn);
     } else if (!isEquipped) {
         const btn = document.createElement('button'); btn.className = 'equip-btn'; btn.innerText = 'УСТАНОВИТЬ';
         btn.onclick = () => {
             if (selectedTab === 'hulls') PlayerProgress.currentAssembly.hullId = id; else PlayerProgress.currentAssembly.turretId = id;
             updateHangarUI();
-        }; actionArea.appendChild(btn);
+        }; 
+        actionArea.appendChild(btn);
     }
 }
 
-// НОВАЯ ФУНКЦИЯ: Рандомный апгрейд
+// Функция извлечения звезд
+window.resetUpgrades = function(id, cost) {
+    if (PlayerProgress.points >= cost && PlayerProgress.partStats[id].usedCapacity > 0) {
+        PlayerProgress.points -= cost;
+        
+        let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
+        PlayerProgress.inventory[type] += PlayerProgress.partStats[id].usedCapacity; // Возвращаем звезды в инвентарь
+        
+        // Сбрасываем характеристики
+        PlayerProgress.partStats[id].usedCapacity = 0;
+        if (GameData.hulls[id]) {
+            PlayerProgress.partStats[id].hp = 0;
+            PlayerProgress.partStats[id].armor = 0;
+            PlayerProgress.partStats[id].speed = 0;
+        } else {
+            PlayerProgress.partStats[id].penetration = 0;
+            PlayerProgress.partStats[id].fireRate = 0;
+        }
+        
+        updateHangarUI();
+    }
+}
+
+// Функция случайного апгрейда
 window.buyRandomUpgrade = function(id) {
     let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
     if (PlayerProgress.inventory[type] > 0 && PlayerProgress.partStats[id].usedCapacity < PlayerProgress.partStats[id].maxCapacity) {
         
-        // Выбираем случайную характеристику
         let statsOptions = GameData.hulls[id] ? ['hp', 'armor', 'speed'] : ['penetration', 'fireRate'];
         let randomStat = statsOptions[Math.floor(Math.random() * statsOptions.length)];
         
@@ -185,18 +229,23 @@ window.buyRandomUpgrade = function(id) {
         PlayerProgress.partStats[id][randomStat]++;
         PlayerProgress.partStats[id].usedCapacity++;
         
-        // Запоминаем для анимации
         lastUpgradedStatId = `val-${randomStat}`;
         updateHangarUI();
     }
 }
 
+// Функция расширения потенциала
 window.expandCapacity = function(id, cost) {
-    if (PlayerProgress.points >= cost) { PlayerProgress.points -= cost; PlayerProgress.partStats[id].maxCapacity++; updateHangarUI(); }
+    if (PlayerProgress.points >= cost) { 
+        PlayerProgress.points -= cost; 
+        PlayerProgress.partStats[id].maxCapacity++; 
+        updateHangarUI(); 
+    }
 }
 
 export function generateLevelsGrid() { 
-    const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
+    const grid = document.getElementById('levels-grid'); 
+    grid.innerHTML = ''; 
     for (let i = 1; i <= 100; i++) { 
         let btn = document.createElement('button'); 
         let classes = 'level-btn';
@@ -212,9 +261,13 @@ export function generateLevelsGrid() {
             for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; }
             starsHtml += `</div>`;
         }
+        
         btn.className = classes;
         btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><div>${i}</div>${starsHtml}</div>`; 
-        if (i <= PlayerProgress.unlockedLevel) { btn.onclick = () => { if (onStartLevelCallback) onStartLevelCallback(i); }; }
+        
+        if (i <= PlayerProgress.unlockedLevel) { 
+            btn.onclick = () => { if (onStartLevelCallback) onStartLevelCallback(i); }; 
+        }
         grid.appendChild(btn); 
     } 
 }
