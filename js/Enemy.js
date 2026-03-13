@@ -11,11 +11,14 @@ export class Enemy extends Tank {
     updateAI(dt, arena, playerTank, enemies) {
         if (this.hp <= 0) return;
 
+        // ОБНОВЛЕНО: Теперь боты видят физику игрока
+        let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
+
         let idleInput = { isUp: () => false, isDown: () => false, isLeft: () => false, isRight: () => false, getMouseX: () => this.x + Math.cos(this.turretAngle) * 100, getMouseY: () => this.y + Math.sin(this.turretAngle) * 100, isShooting: () => false };
 
         if (!playerTank || playerTank.hp <= 0 || this.stunTimer > 0) {
             if (this.stunTimer > 0) this.stunTimer -= dt;
-            super.update(dt, idleInput, arena, enemies); return; 
+            super.update(dt, idleInput, arena, allTanks); return; 
         }
 
         let distToPlayer = Math.sqrt(Math.pow(this.x - playerTank.x, 2) + Math.pow(this.y - playerTank.y, 2));
@@ -38,7 +41,6 @@ export class Enemy extends Tank {
             }
         }
 
-        // ОБНОВЛЕНО: Умный сенсор на СТЕНЫ и СОЮЗНИКОВ
         if (shouldMove) {
             let lookAhead = 70; let avoidForce = 0;
             let anglesToCheck = [-Math.PI/4, 0, Math.PI/4]; 
@@ -50,9 +52,8 @@ export class Enemy extends Tank {
 
                 let isBlocked = arena.checkCollision(checkX, checkY, this.radius);
                 
-                // Проверка на союзников
                 if (!isBlocked) {
-                    for (let e of enemies) {
+                    for (let e of allTanks) { // ПРОВЕРКА ВСЕХ ТАНКОВ
                         if (e !== this && e.hp > 0) {
                             let distToAlly = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2));
                             if (distToAlly < this.radius + e.radius + 15) { isBlocked = true; break; }
@@ -67,12 +68,11 @@ export class Enemy extends Tank {
 
             if (avoidForce !== 0) desiredAngle = this.hullAngle + avoidForce;
 
-            // Анти-слипание (разъезд при физическом контакте)
-            for (let e of enemies) {
+            for (let e of allTanks) { // РАЗДВИЖКА ОТ ВСЕХ ТАНКОВ
                 if (e !== this && e.hp > 0) {
                     let d = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
                     if (d < this.radius * 2) {
-                        desiredAngle = Math.atan2(this.y - e.y, this.x - e.x); // Едем прочь от центра союзника
+                        desiredAngle = Math.atan2(this.y - e.y, this.x - e.x); 
                     }
                 }
             }
@@ -86,7 +86,7 @@ export class Enemy extends Tank {
              if (Math.abs(hullDiff) > 0.1) { if (hullDiff > 0) fakeInput.isRight = () => true; else fakeInput.isLeft = () => true; }
         }
 
-        super.update(dt, fakeInput, arena, enemies);
+        super.update(dt, fakeInput, arena, allTanks);
 
         let aimDiff = angleToPlayer - this.turretAngle;
         while (aimDiff > Math.PI) aimDiff -= Math.PI * 2; while (aimDiff < -Math.PI) aimDiff += Math.PI * 2;
