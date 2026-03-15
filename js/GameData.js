@@ -24,27 +24,23 @@ export const GameData = {
 };
 
 export let PlayerProgress = {
-    points: 0,
-    unlockedLevel: 1,
+    // ДАЕМ 500 ДЕНЕГ И ОТКРЫВАЕМ 10 УРОВНЕЙ ДЛЯ ТЕСТОВ
+    points: 500, 
+    unlockedLevel: 10,
     passedLevels: [],
-    unlockedHulls: ["hunter"],
-    unlockedTurrets: ["scourge"],
+    collectedStars: {},
+    inventory: { hullUpgrades: 5, turretUpgrades: 5 }, // Дадим еще звезд для тестов
+    unlockedHulls: ["hunter"], unlockedTurrets: ["scourge"],
     currentAssembly: { hullId: "hunter", turretId: "scourge" },
     hullsHp: { "hunter": 150, "leopard": 120, "titan": 180 },
-    
-    // ИНВЕНТАРЬ ДЛЯ АПГРЕЙДОВ
-    inventory: { hullUpgrades: 0, turretUpgrades: 0 },
-    
-    // СОСТОЯНИЕ ПРОКАЧКИ КАЖДОЙ ДЕТАЛИ (сколько раз нажали "плюсик")
     partStats: {
-        "hunter": { hp: 0, armor: 0, speed: 0, maxCapacity: 3, usedCapacity: 0 },
-        "leopard": { hp: 0, armor: 0, speed: 0, maxCapacity: 3, usedCapacity: 0 },
-        "titan": { hp: 0, armor: 0, speed: 0, maxCapacity: 3, usedCapacity: 0 },
-        "scourge": { penetration: 0, fireRate: 0, maxCapacity: 3, usedCapacity: 0 }
-    },
-    
-    // СКОЛЬКО ЗВЕЗД СОБРАНО НА КАЖДОМ УРОВНЕ
-    collectedStars: { 1: 0, 2: 0, 3: 0, 4: 0 } 
+        "hunter": { maxCapacity: 2, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
+        "leopard": { maxCapacity: 2, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
+        "titan": { maxCapacity: 2, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
+        "scourge": { maxCapacity: 2, usedCapacity: 0, penetration: 0, fireRate: 0 },
+        "twins": { maxCapacity: 2, usedCapacity: 0, penetration: 0, fireRate: 0 },
+        "thunder": { maxCapacity: 2, usedCapacity: 0, penetration: 0, fireRate: 0 }
+    }
 };
 
 export const LevelsConfig = { 
@@ -53,6 +49,10 @@ export const LevelsConfig = {
     3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 5, barrels: 0, maxUpgrades: 2 },
     4: { pool: ["demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 6, barrels: 0, maxUpgrades: 2 },
     5: { pool: ["demon", "demon", "demon", "scout", "scout", "scout"], obstacles: 2, barrels: 0, maxUpgrades: 2 },
-    // НОВЫЙ 6 УРОВЕНЬ: 7 скаутов и 7 бочек с горючим!
-    6: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 }
+    6: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 2 },
+    // ДОБАВЛЕНЫ ЧЕРНОВИКИ ДЛЯ 7-10 УРОВНЕЙ
+    7: { pool: ["demon", "scout", "basic", "demon", "scout", "basic"], obstacles: 4, barrels: 5, maxUpgrades: 2 },
+    8: { pool: ["demon", "demon", "demon", "basic", "basic"], obstacles: 7, barrels: 3, maxUpgrades: 2 },
+    9: { pool: ["scout", "scout", "scout", "demon", "demon", "demon"], obstacles: 3, barrels: 6, maxUpgrades: 2 },
+    10: { pool: ["demon", "demon", "demon", "demon", "demon"], obstacles: 5, barrels: 8, maxUpgrades: 3 }
 };
