@@ -13,6 +13,9 @@ export class Tank {
         this.acceleration = this.maxForwardSpeed * 3; this.friction = this.maxForwardSpeed * 1.5; this.brakePower = this.maxForwardSpeed * 4;       
         this.hullRotationSpeed = 1.5; this.hullAngle = 0; this.turretRotationSpeed = 2; this.turretAngle = 0;
         
+        // НОВОЕ: Векторы отбрасывания взрывом
+        this.pushVx = 0; this.pushVy = 0;
+
         this.particles = []; this.particleTimer = 0;
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
@@ -98,7 +101,14 @@ export class Tank {
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
         
-        let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
+        // ОБНОВЛЕНО: Физика затухания взрывной волны
+        let damp = Math.pow(0.001, dt); 
+        this.pushVx *= damp; this.pushVy *= damp;
+        if (Math.abs(this.pushVx) < 5) this.pushVx = 0;
+        if (Math.abs(this.pushVy) < 5) this.pushVy = 0;
+
+        let vx = Math.cos(this.hullAngle) * this.speed + this.pushVx; 
+        let vy = Math.sin(this.hullAngle) * this.speed + this.pushVy;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
         
         let hitTanks = (checkX, checkY) => {
@@ -110,20 +120,15 @@ export class Tank {
         let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
         let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
 
-        // НОВОЕ: Толкание бочек и замедление танка
         if (arena.barrels) {
             if (!colX) {
                 for (let b of arena.barrels) {
                     let dist = Math.sqrt(Math.pow(nextX - b.x, 2) + Math.pow(this.y - b.y, 2));
                     if (dist < this.radius + b.radius) {
                         let bNextX = b.x + (nextX - this.x);
-                        // Если бочке есть куда двигаться
                         if (!arena.checkCollision(bNextX, b.y, b.radius)) { 
-                            b.x = bNextX; 
-                            this.speed *= 0.90; // Теряем 10% скорости
-                        } else { 
-                            colX = true; // Бочка уперлась в стену, танк тоже стопорится
-                        }
+                            b.x = bNextX; this.speed *= 0.90; 
+                        } else { colX = true; }
                     }
                 }
             }
@@ -133,18 +138,16 @@ export class Tank {
                     if (dist < this.radius + b.radius) {
                         let bNextY = b.y + (nextY - this.y);
                         if (!arena.checkCollision(b.x, bNextY, b.radius)) { 
-                            b.y = bNextY; 
-                            this.speed *= 0.90; 
-                        } else { 
-                            colY = true; 
-                        }
+                            b.y = bNextY; this.speed *= 0.90; 
+                        } else { colY = true; }
                     }
                 }
             }
         }
 
-        if (!colX) this.x = nextX; 
-        if (!colY) this.y = nextY;
+        // ОБНОВЛЕНО: Отскок от препятствий при отбрасывании
+        if (!colX) this.x = nextX; else this.pushVx *= -0.4; 
+        if (!colY) this.y = nextY; else this.pushVy *= -0.4;
 
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
@@ -231,7 +234,6 @@ export class Tank {
 
     draw(ctx) {
         if (this.hp <= 0) return;
-
         if (this.shieldTimer > 0) {
             ctx.save();
             ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff';
