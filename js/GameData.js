@@ -25,7 +25,7 @@ export const GameData = {
 
 export let PlayerProgress = {
     points: 0,
-    unlockedLevel: 1,1,1,1,1,1,
+    unlockedLevel: 1,
     passedLevels: [],
     unlockedHulls: ["hunter"],
     unlockedTurrets: ["scourge"],
