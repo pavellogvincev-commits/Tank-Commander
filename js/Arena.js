@@ -10,8 +10,8 @@ export class Arena {
         this.obstacles = [];
         this.barrels = [];
         let margin = 70;
-        let minGap = 110; // Минимальное расстояние между ящиками для проезда танков
-        let playerSpawn = { x: 500, y: 350, r: 120 }; // Защитная зона игрока (радиус 120)
+        let minGap = 110; 
+        let playerSpawn = { x: 500, y: 350, r: 120 }; 
 
         for (let i = 0; i < count; i++) {
             let w, h, x, y, valid, attempts = 0;
@@ -23,13 +23,11 @@ export class Arena {
                 x = margin + Math.random() * (this.width - margin * 2 - w);
                 y = margin + Math.random() * (this.height - margin * 2 - h);
 
-                // 1. Проверка: не упал ли ящик на голову игроку?
                 let rx = Math.max(x, Math.min(playerSpawn.x, x + w));
                 let ry = Math.max(y, Math.min(playerSpawn.y, y + h));
                 let distToPlayer = Math.sqrt(Math.pow(playerSpawn.x - rx, 2) + Math.pow(playerSpawn.y - ry, 2));
                 if (distToPlayer < playerSpawn.r) valid = false;
 
-                // 2. Проверка: есть ли зазор (minGap) до других ящиков?
                 if (valid) {
                     for (let obs of this.obstacles) {
                         if (x < obs.x + obs.w + minGap && x + w + minGap > obs.x &&
@@ -45,7 +43,6 @@ export class Arena {
             if (valid) this.obstacles.push({ x, y, w, h });
         }
 
-        // Спавн бочек рядом с ящиками
         for (let i = 0; i < barrelCount; i++) {
             if (this.obstacles.length === 0) break;
             let obs = this.obstacles[Math.floor(Math.random() * this.obstacles.length)];
@@ -60,10 +57,10 @@ export class Arena {
             bx = Math.max(30, Math.min(this.width - 30, bx));
             by = Math.max(30, Math.min(this.height - 30, by));
 
-            // Проверяем чтобы бочка тоже не появилась прямо на игроке
             let distToPlayerBarrel = Math.sqrt(Math.pow(playerSpawn.x - bx, 2) + Math.pow(playerSpawn.y - by, 2));
             if (distToPlayerBarrel > playerSpawn.r) {
-                this.barrels.push({ x: bx, y: by, radius: 14 });
+                // ОБНОВЛЕНО: Радиус 12 для картинки 24x24
+                this.barrels.push({ x: bx, y: by, radius: 12 });
             }
         }
     }
@@ -91,10 +88,9 @@ export class Arena {
         return true;
     }
 
-    draw(ctx) {
+    draw(ctx, barrelImg) {
         ctx.fillStyle = '#9e5a26'; ctx.strokeStyle = '#5a310e'; ctx.lineWidth = 4;
         for (let obs of this.obstacles) {
-            // ФИКС ТЕНЕЙ: Сохраняем и восстанавливаем чистую кисть
             ctx.save(); 
             ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
             ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
@@ -102,10 +98,16 @@ export class Arena {
             ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
         }
 
+        // ОБНОВЛЕНО: Отрисовка спрайта бочки
         for (let b of this.barrels) {
-            ctx.fillStyle = '#cc0000'; ctx.strokeStyle = '#660000'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#ffaa00'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); 
+            if (barrelImg && barrelImg.complete) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
+                ctx.drawImage(barrelImg, b.x - 12, b.y - 12, 24, 24);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#cc0000'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
+            }
         }
     }
 }
