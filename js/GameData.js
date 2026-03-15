@@ -25,7 +25,7 @@ export const GameData = {
 
 export let PlayerProgress = {
     points: 0,
-    unlockedLevel: 1,
+    unlockedLevel: 1,2,3,4,5,6,
     passedLevels: [],
     unlockedHulls: ["hunter"],
     unlockedTurrets: ["scourge"],
@@ -54,5 +54,5 @@ export const LevelsConfig = {
     4: { pool: ["demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 6, barrels: 0, maxUpgrades: 2 },
     5: { pool: ["demon", "demon", "demon", "scout", "scout", "scout"], obstacles: 2, barrels: 0, maxUpgrades: 2 },
     // НОВЫЙ 6 УРОВЕНЬ: 7 скаутов и 7 бочек с горючим!
-    6: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 7, maxUpgrades: 3 }
+    6: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 }
 };
