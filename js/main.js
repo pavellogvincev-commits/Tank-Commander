@@ -15,6 +15,9 @@ const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png'
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
 
+// НОВОЕ: Загрузка картинки бочки
+const barrelImage = new Image(); barrelImage.src = 'assets/barrel.png' + noCache;
+
 const shootSound = new Audio('assets/sounds/shoot.mp3'); const hitSound = new Audio('assets/sounds/hit.mp3'); const bounceSound = new Audio('assets/sounds/bounce.mp3'); const explodeSound = new Audio('assets/sounds/explode.mp3'); const mgShootSound = new Audio('assets/sounds/mg-shoot.mp3'); 
 mgShootSound.volume = 0.2; shootSound.volume = 0.3; hitSound.volume = 0.6; bounceSound.volume = 0.5; explodeSound.volume = 0.8;
 function playSound(audio) { let clone = audio.cloneNode(); clone.volume = audio.volume; clone.play().catch(e => {}); }
@@ -200,20 +203,18 @@ function gameLoop(timestamp) {
     for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93; if (s.life <= 0) sparks.splice(i, 1); }
     for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height); arena.draw(ctx);
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    
+    // ОБНОВЛЕНО: Передаем картинку бочки в функцию отрисовки
+    arena.draw(ctx, barrelImage);
+    
     for (let d of drops) {
-        // ФИКС ТЕНЕЙ: Обернули дропы в save() и restore()
-        ctx.save();
-        ctx.shadowBlur = 15; ctx.shadowColor = d.type === 'hull' ? '#00ccff' : '#ff3333'; ctx.fillStyle = d.type === 'hull' ? '#0055aa' : '#aa2222';
-        ctx.beginPath(); ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = d.type === 'hull' ? '#00ccff' : '#ff3333'; ctx.fillStyle = d.type === 'hull' ? '#0055aa' : '#aa2222';
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★', d.x, d.y + 2);
     }
     for (let m of mines) {
-        // ФИКС ТЕНЕЙ: Обернули мины в save() и restore()
-        ctx.save();
-        ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000'; ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000'; ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         ctx.fillStyle = Math.floor(timestamp/200)%2 === 0 ? '#ff0000' : '#440000'; ctx.beginPath(); ctx.arc(m.x, m.y, 3, 0, Math.PI * 2); ctx.fill(); 
     }
     for (let b of bullets) b.draw(ctx);
@@ -224,10 +225,8 @@ function gameLoop(timestamp) {
         if (playerTank.hullName === "Леопард") {
             if (playerTank.droneState === 'ready') {
                 let dx = playerTank.x + Math.cos(playerTank.droneAngle) * 55; let dy = playerTank.y + Math.sin(playerTank.droneAngle) * 55;
-                // ФИКС ТЕНЕЙ ДЛЯ ДРОНА
                 ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
             } else if (playerTank.droneState === 'attacking') {
-                // ФИКС ТЕНЕЙ ДЛЯ ДРОНА
                 ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(playerTank.droneX, playerTank.droneY, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
                 sparks.push({ x: playerTank.droneX, y: playerTank.droneY, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '0, 255, 204' });
             }
