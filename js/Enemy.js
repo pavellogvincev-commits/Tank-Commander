@@ -13,60 +13,91 @@ export class Enemy extends Tank {
         if (this.hp <= 0) return;
 
         let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
-        let idleInput = { isUp: () => false, isDown: () => false, isLeft: () => false, isRight: () => false, getMouseX: () => this.x + Math.cos(this.turretAngle) * 100, getMouseY: () => this.y + Math.sin(this.turretAngle) * 100, isShooting: () => false };
+        
+        let idleInput = { 
+            isUp: () => false, isDown: () => false, isLeft: () => false, isRight: () => false, 
+            getMouseX: () => this.x + Math.cos(this.turretAngle) * 100, 
+            getMouseY: () => this.y + Math.sin(this.turretAngle) * 100, 
+            isShooting: () => false 
+        };
 
+        // Если игрок мертв или бот оглушен
         if (!playerTank || playerTank.hp <= 0 || this.stunTimer > 0) {
             if (this.stunTimer > 0) this.stunTimer -= dt;
-            super.update(dt, idleInput, arena, allTanks); return; 
+            super.update(dt, idleInput, arena, allTanks); 
+            return; 
         }
 
         let distToPlayer = Math.sqrt(Math.pow(this.x - playerTank.x, 2) + Math.pow(this.y - playerTank.y, 2));
         let hasLoS = arena.hasLineOfSight(this.x, this.y, playerTank.x, playerTank.y);
         let angleToPlayer = Math.atan2(playerTank.y - this.y, playerTank.x - this.x);
-        let shouldMove = true; let desiredAngle = angleToPlayer; 
+        
+        let shouldMove = true; 
+        let desiredAngle = angleToPlayer; 
 
-        // === ИИ БАЗОВОГО ТАНКА ===
+        // ==========================================
+        // 1. СТРАТЕГИИ ПОВЕДЕНИЯ ВРАГОВ
+        // ==========================================
+
         if (this.aiType === "Враг-Базовый") {
+            // Тот самый крутой алгоритм смены позиции базового танка
             if (this.repositionTimer > 0) {
-                // Если меняем позицию, едем вбок от игрока
                 this.repositionTimer -= dt;
                 shouldMove = true;
                 desiredAngle = angleToPlayer + (Math.PI / 3) * this.evadeDir;
             } else if (hasLoS && distToPlayer < 450) {
-                // Иначе стоим и целимся
                 shouldMove = false; 
-                // Если только что выстрелили (перезарядка только началась)
-                if (this.fireCooldown > this.fireRate - 0.2) {
-                    this.repositionTimer = 1.0 + Math.random() * 0.5; // Сменяем позицию 1-1.5 сек
-                    this.evadeDir = Math.random() > 0.5 ? 1 : -1;
+                if (this.fireCooldown > this.fireRate - 0.2) { 
+                    this.repositionTimer = 1.0 + Math.random() * 0.5; 
+                    this.evadeDir = Math.random() > 0.5 ? 1 : -1; 
                 }
             }
         } 
-        // === ИИ СКАУТА ===
         else if (this.aiType === "Скаут") {
-            if (distToPlayer < 250) desiredAngle = angleToPlayer + (Math.PI / 2.2) * this.evadeDir;
-            else if (distToPlayer < 400 && hasLoS) desiredAngle = angleToPlayer + (Math.PI / 4) * this.evadeDir;
+            if (distToPlayer < 250) {
+                desiredAngle = angleToPlayer + (Math.PI / 2.2) * this.evadeDir;
+            } else if (distToPlayer < 400 && hasLoS) {
+                desiredAngle = angleToPlayer + (Math.PI / 4) * this.evadeDir;
+            }
         } 
-        // === ИИ ДЕМОНА ===
         else if (this.aiType === "Демон") {
             this.behaviorTimer -= dt;
-            if (this.behaviorTimer <= 0) { this.evadeDir = Math.random() > 0.5 ? 1 : -1; this.behaviorTimer = 1.5 + Math.random(); }
+            if (this.behaviorTimer <= 0) { 
+                this.evadeDir = Math.random() > 0.5 ? 1 : -1; 
+                this.behaviorTimer = 1.5 + Math.random(); 
+            }
             if (hasLoS) {
                 if (distToPlayer < 250) desiredAngle = angleToPlayer + Math.PI + (Math.PI / 3) * this.evadeDir; 
                 else if (distToPlayer > 350) desiredAngle = angleToPlayer + (Math.PI / 4) * this.evadeDir;
                 else desiredAngle = angleToPlayer + (Math.PI / 2) * this.evadeDir;
             }
+        } 
+        else if (this.aiType === "Марс") {
+            // Новый алгоритм артиллерии Марса
+            if (distToPlayer < 350) {
+                desiredAngle = angleToPlayer + Math.PI; // Убегает, если игрок слишком близко
+            } else if (distToPlayer > 600) {
+                desiredAngle = angleToPlayer; // Подъезжает, если слишком далеко
+            } else {
+                shouldMove = false; // Стоит на месте (ему не нужен прямой LoS)
+            }
         }
 
+        // ==========================================
+        // 2. ИЗБЕГАНИЕ ПРЕПЯТСТВИЙ И СОЮЗНИКОВ
+        // ==========================================
         if (shouldMove) {
-            let lookAhead = 70; let avoidForce = 0;
+            let lookAhead = 70; 
+            let avoidForce = 0; 
             let anglesToCheck = [-Math.PI/4, 0, Math.PI/4]; 
             
             for (let offset of anglesToCheck) {
                 let checkAngle = this.hullAngle + offset;
-                let checkX = this.x + Math.cos(checkAngle) * lookAhead;
+                let checkX = this.x + Math.cos(checkAngle) * lookAhead; 
                 let checkY = this.y + Math.sin(checkAngle) * lookAhead;
+                
                 let isBlocked = arena.checkCollision(checkX, checkY, this.radius);
+                
                 if (!isBlocked) {
                     for (let e of allTanks) { 
                         if (e !== this && e.hp > 0) {
@@ -75,9 +106,14 @@ export class Enemy extends Tank {
                         }
                     }
                 }
-                if (isBlocked) avoidForce += offset === 0 ? (Math.PI / 2) * this.evadeDir : (offset < 0 ? Math.PI/2 : -Math.PI/2);
+                if (isBlocked) {
+                    avoidForce += offset === 0 ? (Math.PI / 2) * this.evadeDir : (offset < 0 ? Math.PI/2 : -Math.PI/2);
+                }
             }
+            
             if (avoidForce !== 0) desiredAngle = this.hullAngle + avoidForce;
+            
+            // Раздвижка танков
             for (let e of allTanks) { 
                 if (e !== this && e.hp > 0) {
                     let d = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
@@ -86,18 +122,34 @@ export class Enemy extends Tank {
             }
         }
 
-        let fakeInput = { isUp: () => shouldMove, isDown: () => false, isLeft: () => false, isRight: () => false, getMouseX: () => playerTank.x, getMouseY: () => playerTank.y, isShooting: () => false };
+        let fakeInput = { 
+            isUp: () => shouldMove, isDown: () => false, isLeft: () => false, isRight: () => false, 
+            getMouseX: () => playerTank.x, getMouseY: () => playerTank.y, isShooting: () => false 
+        };
 
         if (shouldMove) {
              let hullDiff = desiredAngle - this.hullAngle;
-             while (hullDiff > Math.PI) hullDiff -= Math.PI * 2; while (hullDiff < -Math.PI) hullDiff += Math.PI * 2;
-             if (Math.abs(hullDiff) > 0.1) { if (hullDiff > 0) fakeInput.isRight = () => true; else fakeInput.isLeft = () => true; }
+             while (hullDiff > Math.PI) hullDiff -= Math.PI * 2; 
+             while (hullDiff < -Math.PI) hullDiff += Math.PI * 2;
+             
+             if (Math.abs(hullDiff) > 0.1) { 
+                 if (hullDiff > 0) fakeInput.isRight = () => true; 
+                 else fakeInput.isLeft = () => true; 
+             }
         }
 
         super.update(dt, fakeInput, arena, allTanks);
 
+        // ==========================================
+        // 3. ПРИЦЕЛИВАНИЕ И СТРЕЛЬБА
+        // ==========================================
         let aimDiff = angleToPlayer - this.turretAngle;
-        while (aimDiff > Math.PI) aimDiff -= Math.PI * 2; while (aimDiff < -Math.PI) aimDiff += Math.PI * 2;
-        if (hasLoS && Math.abs(aimDiff) < 0.15) this.tryShoot();
+        while (aimDiff > Math.PI) aimDiff -= Math.PI * 2; 
+        while (aimDiff < -Math.PI) aimDiff += Math.PI * 2;
+        
+        // Марс стреляет даже без визуального контакта (сквозь стены)
+        if ((hasLoS || this.aiType === "Марс") && Math.abs(aimDiff) < 0.15) {
+            this.tryShoot();
+        }
     }
 }
