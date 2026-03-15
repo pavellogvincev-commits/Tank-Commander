@@ -6,40 +6,29 @@ export class Tank {
         this.hitboxWidth = hullStats.hitbox.w; this.hitboxHeight = hullStats.hitbox.h; 
         this.radius = this.hitboxWidth / 2 + 2; 
 
-        this.maxHp = hullStats.hp; 
-        this.hp = startingHp !== null ? startingHp : this.maxHp;
+        this.maxHp = hullStats.hp; this.hp = startingHp !== null ? startingHp : this.maxHp;
         this.armor = { front: { current: hullStats.armor.front, max: hullStats.armor.front }, side: { current: hullStats.armor.side, max: hullStats.armor.side }, rear: { current: hullStats.armor.rear, max: hullStats.armor.rear } };
 
-        this.speed = 0; 
-        this.maxForwardSpeed = hullStats.speed; 
-        this.maxReverseSpeed = -hullStats.speed / 2;  
-        this.acceleration = this.maxForwardSpeed * 3; 
-        this.friction = this.maxForwardSpeed * 1.5; 
-        this.brakePower = this.maxForwardSpeed * 4;       
-        
+        this.speed = 0; this.maxForwardSpeed = hullStats.speed; this.maxReverseSpeed = -hullStats.speed / 2;  
+        this.acceleration = this.maxForwardSpeed * 3; this.friction = this.maxForwardSpeed * 1.5; this.brakePower = this.maxForwardSpeed * 4;       
         this.hullRotationSpeed = 1.5; this.hullAngle = 0; this.turretRotationSpeed = 2; this.turretAngle = 0;
+        
         this.particles = []; this.particleTimer = 0;
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
-        this.shootSoundType = turretStats.shootSound || 'cannon';
-        this.bulletSpeed = turretStats.bulletSpeed || 400; 
+        this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
         this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
 
-        // АБИЛКИ КОРПУСОВ
+        // НОВОЕ: Защитный щит при старте
+        this.shieldTimer = 0;
+
         this.hullName = hullStats.name;
-        
-        // ЛЕОПАРД: Дрон
         this.droneState = (this.hullName === "Леопард") ? 'ready' : 'none';
         this.droneAngle = 0; this.droneCooldown = 0; this.droneTarget = null; this.droneX = 0; this.droneY = 0; this.droneExplodeRequest = false;
 
-        // ТИТАН: Мина-Паук
-        this.mineTimer = 0;
-        this.mineRequest = false; // Сигнал для main.js создать мину в мире
-        this.hullUpgrades = 0;
-        if (hullId && window.PlayerProgress) {
-            this.hullUpgrades = window.PlayerProgress.partStats[hullId].usedCapacity;
-        }
+        this.mineTimer = 0; this.mineRequest = false; this.hullUpgrades = 0;
+        if (hullId && window.PlayerProgress) this.hullUpgrades = window.PlayerProgress.partStats[hullId].usedCapacity;
     }
 
     updateSmoke(dt) {
@@ -71,9 +60,9 @@ export class Tank {
     getShots() { return this.shotsToFireThisFrame; }
 
     update(dt, input, arena, enemies) {
-        this.updateWeapons(dt); this.updateSmoke(dt); 
+        if (this.shieldTimer > 0) this.shieldTimer -= dt;
 
-              // ЛОГИКА ДРОНА (ЛЕОПАРД)
+        this.updateWeapons(dt); this.updateSmoke(dt); 
         if (this.hullName === "Леопард") {
             if (this.droneState === 'cooldown') {
                 this.droneCooldown -= dt; if (this.droneCooldown <= 0) this.droneState = 'ready';
@@ -83,36 +72,20 @@ export class Tank {
                     for (let e of enemies) {
                         if (e.hp > 0 && (!e.stunTimer || e.stunTimer <= 0)) {
                             let dist = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
-                            if (dist < 180) { this.droneState = 'attacking'; this.droneTarget = e; this.droneX = this.x + Math.cos(this.droneAngle) * 55; this.droneY = this.y + Math.sin(this.droneAngle) * 55; break; }
+                            if (dist < 180 && e !== this) { this.droneState = 'attacking'; this.droneTarget = e; this.droneX = this.x + Math.cos(this.droneAngle) * 55; this.droneY = this.y + Math.sin(this.droneAngle) * 55; break; }
                         }
                     }
                 }
             } else if (this.droneState === 'attacking') {
-                // ОБНОВЛЕНО: Перезарядка 10 сек
                 if (!this.droneTarget || this.droneTarget.hp <= 0) { this.droneState = 'cooldown'; this.droneCooldown = 10.0; } 
                 else {
                     let dx = this.droneTarget.x - this.droneX; let dy = this.droneTarget.y - this.droneY; let dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 15) { 
-                        // ОБНОВЛЕНО: Стан 15 сек, перезарядка 10 сек
-                        this.droneTarget.stunTimer = 15.0; 
-                        this.droneTarget.isJustStunned = true; 
-                        this.droneState = 'cooldown'; 
-                        this.droneCooldown = 10.0; 
-                        this.droneExplodeRequest = true; 
-                    } 
+                    if (dist < 15) { this.droneTarget.stunTimer = 15.0; this.droneTarget.isJustStunned = true; this.droneState = 'cooldown'; this.droneCooldown = 10.0; this.droneExplodeRequest = true; } 
                     else { let flightSpeed = 500 * dt; this.droneX += (dx / dist) * flightSpeed; this.droneY += (dy / dist) * flightSpeed; }
                 }
             }
         }
-
-        // ЛОГИКА МИНЫ (ТИТАН)
-        if (this.hullName === "Титан") {
-            this.mineTimer += dt;
-            if (this.mineTimer >= 8.0) {
-                this.mineTimer = 0;
-                this.mineRequest = true; // Запрос на спавн в main.js
-            }
-        }
+        if (this.hullName === "Титан") { this.mineTimer += dt; if (this.mineTimer >= 8.0) { this.mineTimer = 0; this.mineRequest = true; } }
 
         let isMoving = false;
         if (input.isUp()) { this.speed += this.acceleration * dt; isMoving = true; }
@@ -123,10 +96,12 @@ export class Tank {
         }
         if (this.speed > this.maxForwardSpeed) this.speed = this.maxForwardSpeed;
         if (this.speed < this.maxReverseSpeed) this.speed = this.maxReverseSpeed;
+
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
         let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
+        
         let hitTanks = (checkX, checkY) => {
             if (!enemies) return false;
             for (let e of enemies) { if (e === this || e.hp <= 0) continue; let dist = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2)); if (dist < this.radius + e.radius) return true; }
@@ -135,10 +110,45 @@ export class Tank {
         let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
         let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
         if (!colX) this.x = nextX; if (!colY) this.y = nextY;
+
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
+    }
+
+    // НОВОЕ: Обработка урона от ВЗРЫВА БОЧЕК
+    applyExplosionDamage(ex, ey, maxDamage, maxRadius) {
+        if (this.hp <= 0) return { hit: false };
+        let dist = Math.sqrt(Math.pow(ex - this.x, 2) + Math.pow(ey - this.y, 2));
+        if (dist > maxRadius) return { hit: false };
+
+        if (this.shieldTimer > 0) return { hit: true, damage: 0, destroyed: false }; 
+
+        let baseDamage = maxDamage * (1 - (dist / maxRadius));
+        
+        // Определяем какой стороной танк стоит к взрыву
+        let angleToExplosion = Math.atan2(ey - this.y, ex - this.x);
+        let relAngle = angleToExplosion - this.hullAngle;
+        while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+        while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+        let hitZone = 'side';
+        if (Math.abs(relAngle) < Math.PI / 4) hitZone = 'front';
+        else if (Math.abs(relAngle) > 3 * Math.PI / 4) hitZone = 'rear';
+
+        // Броня против взрыва работает только на 50%
+        let effectiveArmor = this.armor[hitZone].current * 0.5;
+        this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1); 
+
+        let finalDamage = Math.floor(baseDamage - effectiveArmor);
+        if (finalDamage < 5) finalDamage = 5; 
+
+        this.hp -= finalDamage;
+        let isDestroyed = this.hp <= 0;
+        if (this.hp < 0) this.hp = 0;
+
+        return { hit: true, damage: finalDamage, destroyed: isDestroyed };
     }
 
     checkHit(bullet) {
@@ -152,6 +162,7 @@ export class Tank {
             let cos = Math.cos(-this.hullAngle); let sin = Math.sin(-this.hullAngle);
             let localX = dx * cos - dy * sin; let localY = dx * sin + dy * cos;
             let halfW = this.hitboxWidth / 2; let halfH = this.hitboxHeight / 2;
+            
             if (localX > -halfW && localX < halfW && localY > -halfH && localY < halfH) {
                 let distFront = Math.abs(halfW - localX); let distRear = Math.abs(-halfW - localX); let distSide1 = Math.abs(halfH - localY); let distSide2 = Math.abs(-halfH - localY); 
                 let minDist = Math.min(distFront, distRear, distSide1, distSide2);
@@ -167,10 +178,17 @@ export class Tank {
                 let cosHull = Math.cos(this.hullAngle); let sinHull = Math.sin(this.hullAngle);
                 let worldNx = normalX * cosHull - normalY * sinHull; let worldNy = normalX * sinHull + normalY * cosHull;
                 let hitResult = { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy };
+                
+                // НОВОЕ: Если активен щит - пули отскакивают
+                if (this.shieldTimer > 0) {
+                    hitResult.type = 'ricochet'; hitResult.damage = 0; return hitResult;
+                }
+
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 let currentArmor = this.armor[hitZone].current;
                 this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1);
+                
                 if (effectivePenetration > currentArmor) {
                     let baseDamage = effectivePenetration - currentArmor;
                     let finalDamage = Math.floor(baseDamage + (Math.random() * (baseDamage * 0.1) * 2 - (baseDamage * 0.1)));
@@ -187,6 +205,16 @@ export class Tank {
 
     draw(ctx) {
         if (this.hp <= 0) return;
+
+        // НОВОЕ: Отрисовка защитного силового поля
+        if (this.shieldTimer > 0) {
+            ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff';
+            ctx.strokeStyle = `rgba(0, 136, 255, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
         for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
         ctx.save(); ctx.translate(this.x + 5, this.y + 5); ctx.rotate(this.hullAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
@@ -197,4 +225,3 @@ export class Tank {
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
     }
 }
-
