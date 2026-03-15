@@ -14,6 +14,8 @@ playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hul
 const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png' + noCache; const enemyTurretImage = new Image(); enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
+// НОВЫЕ ИЗОБРАЖЕНИЯ МАРСА
+const marsHullImage = new Image(); marsHullImage.src = 'assets/mars-hull.png' + noCache; const marsTurretImage = new Image(); marsTurretImage.src = 'assets/mars-turret.png' + noCache;
 
 const barrelImage = new Image(); barrelImage.src = 'assets/barrel.png' + noCache;
 
@@ -26,6 +28,8 @@ canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [];
+// НОВЫЙ МАССИВ ДЛЯ АРТИЛЛЕРИИ
+let artilleryShells = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
@@ -35,54 +39,35 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
-// ОБНОВЛЕНО: Эпичный взрыв бочки!
-function detonateBarrel(x, y) {
-    spawnExplosion(x, y); 
-    spawnExplosion(x + (Math.random()-0.5)*30, y + (Math.random()-0.5)*30); 
-    playSound(explodeSound);
-    
-    let radius = 150; let maxDmg = 200; 
+// УНИВЕРСАЛЬНЫЙ ВЗРЫВ (Используется бочками и снарядами Марса)
+function createExplosionDamage(x, y, maxDmg, radius, pushForce) {
+    spawnExplosion(x, y); playSound(explodeSound);
     let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
-    
-    // Откидывание и урон по танкам
     for (let t of allTanks) {
         if (t.hp > 0) {
             let dist = Math.sqrt(Math.pow(t.x - x, 2) + Math.pow(t.y - y, 2));
             if (dist <= radius) {
                 let res = t.applyExplosionDamage(x, y, maxDmg, radius);
-                if (res.hit && res.damage > 0) { 
-                    spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); 
-                    if (res.destroyed) spawnExplosion(t.x, t.y); 
-                }
-                // Сила отбрасывания танка
+                if (res.hit && res.damage > 0) { spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); if (res.destroyed) spawnExplosion(t.x, t.y); }
                 if (dist < 20) dist = 20;
-                let force = (1 - dist / radius) * 1200; 
-                t.pushVx += ((t.x - x) / dist) * force;
-                t.pushVy += ((t.y - y) / dist) * force;
+                let force = (1 - dist / radius) * pushForce;
+                t.pushVx += ((t.x - x) / dist) * force; t.pushVy += ((t.y - y) / dist) * force;
             }
         }
     }
+}
 
-    // Цепная реакция: соседние бочки разлетаются и взрываются в полете!
+function detonateBarrel(x, y) {
+    createExplosionDamage(x, y, 200, 150, 1200);
+    spawnExplosion(x + (Math.random()-0.5)*30, y + (Math.random()-0.5)*30); 
     for (let i = arena.barrels.length - 1; i >= 0; i--) {
-        let b = arena.barrels[i];
-        if (b.isDetonating) continue; 
-        
+        let b = arena.barrels[i]; if (b.isDetonating) continue; 
         let dist = Math.sqrt(Math.pow(b.x - x, 2) + Math.pow(b.y - y, 2));
-        if (dist <= radius) { 
-            b.isDetonating = true; 
-            if (dist < 15) dist = 15;
-            let force = (1 - dist / radius) * 1500; // Бочки легкие, летят быстрее танков
-            b.vx += ((b.x - x) / dist) * force;
-            b.vy += ((b.y - y) / dist) * force;
-            
-            setTimeout(() => { 
-                let idx = arena.barrels.indexOf(b);
-                if (idx !== -1) { 
-                    arena.barrels.splice(idx, 1); 
-                    detonateBarrel(b.x, b.y); 
-                }
-            }, 250); // Бочка летит 0.25 секунды перед детонацией
+        if (dist <= 150) { 
+            b.isDetonating = true; if (dist < 15) dist = 15;
+            let force = (1 - dist / 150) * 1500;
+            b.vx += ((b.x - x) / dist) * force; b.vy += ((b.y - y) / dist) * force;
+            setTimeout(() => { let idx = arena.barrels.indexOf(b); if (idx !== -1) { arena.barrels.splice(idx, 1); detonateBarrel(b.x, b.y); } }, 250); 
         }
     }
 }
@@ -106,7 +91,7 @@ function startLevel(levelNum) {
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId);
     playerTank.shieldTimer = 3.0;
 
-    enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = [];
+    enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = []; artilleryShells = [];
     showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
 }
 
@@ -121,9 +106,16 @@ function spawnEnemyOnArena() {
         if (validSpawn) { for (let e of enemies) { let distToEnemy = Math.sqrt(Math.pow(spawnX - e.x, 2) + Math.pow(spawnY - e.y, 2)); if (distToEnemy < 100) { validSpawn = false; break; } } }
         attempts++;
     } while (!validSpawn && attempts < 100); 
+    
     let enemyType = currentEnemyPool.pop(); let hStats = GameData.enemyHulls[enemyType]; let tStats = GameData.enemyTurrets[enemyType];
-    let useHullImg = enemyType === "scout" ? scoutHullImage : (enemyType === "demon" ? demonHullImage : enemyHullImage);
-    let useTurretImg = enemyType === "scout" ? scoutTurretImage : (enemyType === "demon" ? demonTurretImage : enemyTurretImage);
+    
+    // ВЫБОР КАРТИНКИ
+    let useHullImg, useTurretImg;
+    if (enemyType === "scout") { useHullImg = scoutHullImage; useTurretImg = scoutTurretImage; }
+    else if (enemyType === "demon") { useHullImg = demonHullImage; useTurretImg = demonTurretImage; }
+    else if (enemyType === "mars") { useHullImg = marsHullImage; useTurretImg = marsTurretImage; } // МАРС
+    else { useHullImg = enemyHullImage; useTurretImg = enemyTurretImage; }
+    
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
 }
 
@@ -172,17 +164,13 @@ function gameLoop(timestamp) {
         if (playerTank.mineRequest) { playerTank.mineRequest = false; let mineDamage = Math.floor(20 + Math.random() * 30 + (playerTank.hullUpgrades * 15)); mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 13 }); }
     }
 
-    // ОБНОВЛЕНО: Физика полета бочек
     for (let b of arena.barrels) {
         if (b.vx || b.vy) {
-            let bNextX = b.x + b.vx * dt;
-            let bNextY = b.y + b.vy * dt;
+            let bNextX = b.x + b.vx * dt; let bNextY = b.y + b.vy * dt;
             if (!arena.checkCollision(bNextX, b.y, b.radius)) b.x = bNextX; else b.vx *= -0.5;
             if (!arena.checkCollision(b.x, bNextY, b.radius)) b.y = bNextY; else b.vy *= -0.5;
-            let damp = Math.pow(0.01, dt);
-            b.vx *= damp; b.vy *= damp;
-            if (Math.abs(b.vx) < 5) b.vx = 0;
-            if (Math.abs(b.vy) < 5) b.vy = 0;
+            let damp = Math.pow(0.01, dt); b.vx *= damp; b.vy *= damp;
+            if (Math.abs(b.vx) < 5) b.vx = 0; if (Math.abs(b.vy) < 5) b.vy = 0;
         }
     }
 
@@ -203,9 +191,46 @@ function gameLoop(timestamp) {
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         if (enemy.hp > 0) {
-            enemy.updateAI(dt, arena, playerTank, enemies); let eShots = enemy.getShots();
-            for (let j = 0; j < eShots; j++) { bullets.push(new Bullet(enemy.x + Math.cos(enemy.turretAngle)*45, enemy.y + Math.sin(enemy.turretAngle)*45, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor, enemy.bulletSpeed)); playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); }
+            enemy.updateAI(dt, arena, playerTank, enemies); 
+            let eShots = enemy.getShots();
+            for (let j = 0; j < eShots; j++) { 
+                let startX = enemy.x + Math.cos(enemy.turretAngle)*45;
+                let startY = enemy.y + Math.sin(enemy.turretAngle)*45;
+                
+                // ЕСЛИ СТРЕЛЯЕТ МАРС -> Вызываем артиллерийский снаряд
+                if (enemy.aiType === "Марс") {
+                    let spread = 40; // Разброс +/- 20 пикселей
+                    let tx = playerTank.x + (Math.random() - 0.5) * spread;
+                    let ty = playerTank.y + (Math.random() - 0.5) * spread;
+                    let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
+                    
+                    artilleryShells.push({
+                        startX, startY, tx, ty, x: startX, y: startY,
+                        time: 0, maxTime: dist / enemy.bulletSpeed, 
+                        damage: 120, radius: 100 // Урон и радиус взрыва Марса
+                    });
+                    playSound(shootSound);
+                } else {
+                    bullets.push(new Bullet(startX, startY, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor, enemy.bulletSpeed)); 
+                    playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); 
+                }
+            }
         } else { PlayerProgress.points += 1; spawnText(enemy.x, enemy.y, "+1 ⚙️", '#ffcc00'); enemies.splice(i, 1); }
+    }
+
+    // ОБНОВЛЕНИЕ АРТИЛЛЕРИЙСКИХ СНАРЯДОВ
+    for (let i = artilleryShells.length - 1; i >= 0; i--) {
+        let s = artilleryShells[i];
+        s.time += dt;
+        if (s.time >= s.maxTime) {
+            // Снаряд приземлился — ВЗРЫВ! (1200 - сила отбрасывания)
+            createExplosionDamage(s.tx, s.ty, s.damage, s.radius, 1200);
+            artilleryShells.splice(i, 1);
+        } else {
+            let progress = s.time / s.maxTime;
+            s.x = s.startX + (s.tx - s.startX) * progress;
+            s.y = s.startY + (s.ty - s.startY) * progress;
+        }
     }
 
     if (playerTank && playerTank.hp > 0) {
@@ -225,16 +250,9 @@ function gameLoop(timestamp) {
         if (!hasHit) {
             for (let j = arena.barrels.length - 1; j >= 0; j--) {
                 let bar = arena.barrels[j]; 
-                if (bar.isDetonating) continue; // Пули не попадают в летящую бочку-бомбу
+                if (bar.isDetonating) continue;
                 let distToBarrel = Math.sqrt(Math.pow(bar.x - b.x, 2) + Math.pow(bar.y - b.y, 2));
-                if (distToBarrel < bar.radius + b.radius) { 
-                    hasHit = true; b.toDestroy = true; 
-                    bar.isDetonating = true; 
-                    let bx = bar.x, by = bar.y; 
-                    arena.barrels.splice(j, 1); 
-                    detonateBarrel(bx, by); 
-                    break; 
-                }
+                if (distToBarrel < bar.radius + b.radius) { hasHit = true; b.toDestroy = true; bar.isDetonating = true; let bx = bar.x, by = bar.y; arena.barrels.splice(j, 1); detonateBarrel(bx, by); break; }
             }
         }
 
@@ -265,6 +283,26 @@ function gameLoop(timestamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     arena.draw(ctx, barrelImage);
     
+    // ОТРИСОВКА АРТИЛЛЕРИЙСКИХ СНАРЯДОВ (с эффектом высоты)
+    for (let s of artilleryShells) {
+        let progress = s.time / s.maxTime;
+        let height = Math.sin(progress * Math.PI) * 50; // Высота дуги
+        let scale = 1 + Math.sin(progress * Math.PI) * 1.5; // Снаряд увеличивается в высшей точке
+
+        ctx.save();
+        // Тень на земле
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, Math.PI*2); ctx.fill();
+
+        // Сам снаряд (поднимается по Y и масштабируется)
+        ctx.translate(s.x, s.y - height);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = '#ff00ff';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff';
+        ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+
     for (let d of drops) {
         ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = d.type === 'hull' ? '#00ccff' : '#ff3333'; ctx.fillStyle = d.type === 'hull' ? '#0055aa' : '#aa2222';
         ctx.beginPath(); ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
