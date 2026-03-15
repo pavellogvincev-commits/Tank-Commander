@@ -26,7 +26,6 @@ const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.he
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
-
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
 
 function spawnText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -30 }); }
@@ -34,34 +33,18 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
-// НОВОЕ: Взрыв бочки (урон по радиусу и цепная реакция)
 function detonateBarrel(x, y) {
-    spawnExplosion(x, y);
-    spawnExplosion(x + (Math.random()-0.5)*20, y + (Math.random()-0.5)*20); 
-    playSound(explodeSound);
-
-    let radius = 100; let maxDmg = 150;
-    let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
-
-    // Урон танкам
+    spawnExplosion(x, y); spawnExplosion(x + (Math.random()-0.5)*20, y + (Math.random()-0.5)*20); playSound(explodeSound);
+    let radius = 100; let maxDmg = 150; let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
     for (let t of allTanks) {
         if (t.hp > 0) {
             let res = t.applyExplosionDamage(x, y, maxDmg, radius);
-            if (res.hit && res.damage > 0) {
-                spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333');
-                if (res.destroyed) spawnExplosion(t.x, t.y);
-            }
+            if (res.hit && res.damage > 0) { spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); if (res.destroyed) spawnExplosion(t.x, t.y); }
         }
     }
-
-    // Цепная реакция других бочек
     for (let i = arena.barrels.length - 1; i >= 0; i--) {
-        let b = arena.barrels[i];
-        let dist = Math.sqrt(Math.pow(b.x - x, 2) + Math.pow(b.y - y, 2));
-        if (dist <= radius) {
-            arena.barrels.splice(i, 1);
-            setTimeout(() => detonateBarrel(b.x, b.y), 150); 
-        }
+        let b = arena.barrels[i]; let dist = Math.sqrt(Math.pow(b.x - x, 2) + Math.pow(b.y - y, 2));
+        if (dist <= radius) { arena.barrels.splice(i, 1); setTimeout(() => detonateBarrel(b.x, b.y), 150); }
     }
 }
 
@@ -69,11 +52,8 @@ function startLevel(levelNum) {
     if (animFrameId) cancelAnimationFrame(animFrameId);
     gameRunning = false; currentLevelNum = levelNum;
     let config = LevelsConfig[levelNum] || { pool: ["basic"], obstacles: 1, barrels: 0, maxUpgrades: 0 };
-    currentEnemyPool = shuffleArray([...config.pool]);
-    enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
-    dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0;
-    maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
-    
+    currentEnemyPool = shuffleArray([...config.pool]); enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
+    dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0; maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
     arena.generateObstacles(config.obstacles, config.barrels || 0);
     
     const hullId = PlayerProgress.currentAssembly.hullId; const turretId = PlayerProgress.currentAssembly.turretId;
@@ -81,13 +61,10 @@ function startLevel(levelNum) {
     let calcHull = JSON.parse(JSON.stringify(bHull)); 
     calcHull.hp += sHull.hp * bHull.upgrades.hp; calcHull.speed += sHull.speed * bHull.upgrades.speed;
     calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front; calcHull.armor.side += sHull.armor * bHull.upgrades.armor.side; calcHull.armor.rear += sHull.armor * bHull.upgrades.armor.rear;
-    let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId];
-    let calcTurr = JSON.parse(JSON.stringify(bTurr));
+    let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     calcTurr.penetration += sTurr.penetration * bTurr.upgrades.penetration; calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
     
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId);
-    
-    // ДАЕМ ЩИТ НА 3 СЕКУНДЫ
     playerTank.shieldTimer = 3.0;
 
     enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = [];
@@ -127,11 +104,7 @@ function gameLoop(timestamp) {
 
     if (dropsSpawnedThisMatch < maxDropsForLevel && playerTank.hp > 0 && !levelFinished) {
         dropCheckTimer -= dt;
-        if (dropCheckTimer <= 0) {
-            dropCheckTimer = 5.0;
-            if (Math.random() <= currentDropChance) { spawnDrop(); dropsSpawnedThisMatch++; currentDropChance = 0.10; } 
-            else { currentDropChance += 0.10; }
-        }
+        if (dropCheckTimer <= 0) { dropCheckTimer = 5.0; if (Math.random() <= currentDropChance) { spawnDrop(); dropsSpawnedThisMatch++; currentDropChance = 0.10; } else { currentDropChance += 0.10; } }
     }
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
@@ -157,10 +130,7 @@ function gameLoop(timestamp) {
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); }
-        if (playerTank.mineRequest) {
-            playerTank.mineRequest = false; let mineDamage = Math.floor(20 + Math.random() * 30 + (playerTank.hullUpgrades * 15));
-            mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 13 });
-        }
+        if (playerTank.mineRequest) { playerTank.mineRequest = false; let mineDamage = Math.floor(20 + Math.random() * 30 + (playerTank.hullUpgrades * 15)); mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 13 }); }
     }
 
     for (let i = mines.length - 1; i >= 0; i--) {
@@ -170,13 +140,10 @@ function gameLoop(timestamp) {
             if (d < minDist) { minDist = d; nearest = e; }
         }
         if (nearest) {
-            let angle = Math.atan2(nearest.y - m.y, nearest.x - m.x);
-            let vx = Math.cos(angle) * m.speed * dt; let vy = Math.sin(angle) * m.speed * dt;
+            let angle = Math.atan2(nearest.y - m.y, nearest.x - m.x); let vx = Math.cos(angle) * m.speed * dt; let vy = Math.sin(angle) * m.speed * dt;
             let colX = arena.checkCollision(m.x + vx, m.y, m.radius); let colY = arena.checkCollision(m.x, m.y + vy, m.radius);
             if (!colX) m.x += vx; if (!colY) m.y += vy;
-            if (minDist < m.radius + nearest.radius) {
-                nearest.hp -= m.damage; spawnText(nearest.x, nearest.y - 30, `-${m.damage}`, '#ff3333'); spawnExplosion(m.x, m.y); mines.splice(i, 1); continue;
-            }
+            if (minDist < m.radius + nearest.radius) { nearest.hp -= m.damage; spawnText(nearest.x, nearest.y - 30, `-${m.damage}`, '#ff3333'); spawnExplosion(m.x, m.y); mines.splice(i, 1); continue; }
         }
     }
 
@@ -192,8 +159,7 @@ function gameLoop(timestamp) {
         for (let i = drops.length - 1; i >= 0; i--) {
             let d = drops[i]; let dist = Math.sqrt(Math.pow(d.x - playerTank.x, 2) + Math.pow(d.y - playerTank.y, 2));
             if (dist < playerTank.radius + d.radius) {
-                if (d.type === 'hull') { PlayerProgress.inventory.hullUpgrades++; spawnText(d.x, d.y, "+1 Корпус", '#00ccff'); } 
-                else { PlayerProgress.inventory.turretUpgrades++; spawnText(d.x, d.y, "+1 Башня", '#ff3333'); }
+                if (d.type === 'hull') { PlayerProgress.inventory.hullUpgrades++; spawnText(d.x, d.y, "+1 Корпус", '#00ccff'); } else { PlayerProgress.inventory.turretUpgrades++; spawnText(d.x, d.y, "+1 Башня", '#ff3333'); }
                 PlayerProgress.collectedStars[currentLevelNum] = (PlayerProgress.collectedStars[currentLevelNum] || 0) + 1; drops.splice(i, 1);
             }
         }
@@ -203,18 +169,10 @@ function gameLoop(timestamp) {
         let b = bullets[i]; b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
         if (b.toDestroy) continue; let hasHit = false;
         
-        // НОВОЕ: Проверка попадания пули в БОЧКУ
         if (!hasHit) {
             for (let j = arena.barrels.length - 1; j >= 0; j--) {
-                let bar = arena.barrels[j];
-                let distToBarrel = Math.sqrt(Math.pow(bar.x - b.x, 2) + Math.pow(bar.y - b.y, 2));
-                if (distToBarrel < bar.radius + b.radius) {
-                    hasHit = true; b.toDestroy = true;
-                    let bx = bar.x, by = bar.y;
-                    arena.barrels.splice(j, 1);
-                    detonateBarrel(bx, by);
-                    break;
-                }
+                let bar = arena.barrels[j]; let distToBarrel = Math.sqrt(Math.pow(bar.x - b.x, 2) + Math.pow(bar.y - b.y, 2));
+                if (distToBarrel < bar.radius + b.radius) { hasHit = true; b.toDestroy = true; let bx = bar.x, by = bar.y; arena.barrels.splice(j, 1); detonateBarrel(bx, by); break; }
             }
         }
 
@@ -244,13 +202,19 @@ function gameLoop(timestamp) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); arena.draw(ctx);
     for (let d of drops) {
+        // ФИКС ТЕНЕЙ: Обернули дропы в save() и restore()
+        ctx.save();
         ctx.shadowBlur = 15; ctx.shadowColor = d.type === 'hull' ? '#00ccff' : '#ff3333'; ctx.fillStyle = d.type === 'hull' ? '#0055aa' : '#aa2222';
         ctx.beginPath(); ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★', d.x, d.y + 2);
+        ctx.restore();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★', d.x, d.y + 2);
     }
     for (let m of mines) {
+        // ФИКС ТЕНЕЙ: Обернули мины в save() и restore()
+        ctx.save();
         ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000'; ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = Math.floor(timestamp/200)%2 === 0 ? '#ff0000' : '#440000'; ctx.beginPath(); ctx.arc(m.x, m.y, 3, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.restore();
+        ctx.fillStyle = Math.floor(timestamp/200)%2 === 0 ? '#ff0000' : '#440000'; ctx.beginPath(); ctx.arc(m.x, m.y, 3, 0, Math.PI * 2); ctx.fill(); 
     }
     for (let b of bullets) b.draw(ctx);
     for (let s of sparks) { ctx.fillStyle = `rgba(${s.color}, ${Math.max(0, s.life / s.maxLife)})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); }
@@ -260,9 +224,11 @@ function gameLoop(timestamp) {
         if (playerTank.hullName === "Леопард") {
             if (playerTank.droneState === 'ready') {
                 let dx = playerTank.x + Math.cos(playerTank.droneAngle) * 55; let dy = playerTank.y + Math.sin(playerTank.droneAngle) * 55;
-                ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                // ФИКС ТЕНЕЙ ДЛЯ ДРОНА
+                ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(dx, dy, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
             } else if (playerTank.droneState === 'attacking') {
-                ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(playerTank.droneX, playerTank.droneY, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                // ФИКС ТЕНЕЙ ДЛЯ ДРОНА
+                ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(playerTank.droneX, playerTank.droneY, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
                 sparks.push({ x: playerTank.droneX, y: playerTank.droneY, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '0, 255, 204' });
             }
             if (playerTank.droneExplodeRequest) {
