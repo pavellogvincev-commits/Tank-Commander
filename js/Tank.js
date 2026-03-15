@@ -20,9 +20,7 @@ export class Tank {
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
         this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
 
-        // НОВОЕ: Защитный щит при старте
         this.shieldTimer = 0;
-
         this.hullName = hullStats.name;
         this.droneState = (this.hullName === "Леопард") ? 'ready' : 'none';
         this.droneAngle = 0; this.droneCooldown = 0; this.droneTarget = null; this.droneX = 0; this.droneY = 0; this.droneExplodeRequest = false;
@@ -61,7 +59,6 @@ export class Tank {
 
     update(dt, input, arena, enemies) {
         if (this.shieldTimer > 0) this.shieldTimer -= dt;
-
         this.updateWeapons(dt); this.updateSmoke(dt); 
         if (this.hullName === "Леопард") {
             if (this.droneState === 'cooldown') {
@@ -117,17 +114,13 @@ export class Tank {
         if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
     }
 
-    // НОВОЕ: Обработка урона от ВЗРЫВА БОЧЕК
     applyExplosionDamage(ex, ey, maxDamage, maxRadius) {
         if (this.hp <= 0) return { hit: false };
         let dist = Math.sqrt(Math.pow(ex - this.x, 2) + Math.pow(ey - this.y, 2));
         if (dist > maxRadius) return { hit: false };
-
         if (this.shieldTimer > 0) return { hit: true, damage: 0, destroyed: false }; 
 
         let baseDamage = maxDamage * (1 - (dist / maxRadius));
-        
-        // Определяем какой стороной танк стоит к взрыву
         let angleToExplosion = Math.atan2(ey - this.y, ex - this.x);
         let relAngle = angleToExplosion - this.hullAngle;
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
@@ -137,7 +130,6 @@ export class Tank {
         if (Math.abs(relAngle) < Math.PI / 4) hitZone = 'front';
         else if (Math.abs(relAngle) > 3 * Math.PI / 4) hitZone = 'rear';
 
-        // Броня против взрыва работает только на 50%
         let effectiveArmor = this.armor[hitZone].current * 0.5;
         this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1); 
 
@@ -147,7 +139,6 @@ export class Tank {
         this.hp -= finalDamage;
         let isDestroyed = this.hp <= 0;
         if (this.hp < 0) this.hp = 0;
-
         return { hit: true, damage: finalDamage, destroyed: isDestroyed };
     }
 
@@ -179,10 +170,7 @@ export class Tank {
                 let worldNx = normalX * cosHull - normalY * sinHull; let worldNy = normalX * sinHull + normalY * cosHull;
                 let hitResult = { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy };
                 
-                // НОВОЕ: Если активен щит - пули отскакивают
-                if (this.shieldTimer > 0) {
-                    hitResult.type = 'ricochet'; hitResult.damage = 0; return hitResult;
-                }
+                if (this.shieldTimer > 0) { hitResult.type = 'ricochet'; hitResult.damage = 0; return hitResult; }
 
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
@@ -206,13 +194,14 @@ export class Tank {
     draw(ctx) {
         if (this.hp <= 0) return;
 
-        // НОВОЕ: Отрисовка защитного силового поля
+        // ФИКС ТЕНЕЙ: Обернули щит в save() и restore()
         if (this.shieldTimer > 0) {
+            ctx.save();
             ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff';
             ctx.strokeStyle = `rgba(0, 136, 255, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
             ctx.lineWidth = 4;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2); ctx.stroke();
-            ctx.shadowBlur = 0;
+            ctx.restore();
         }
 
         for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
