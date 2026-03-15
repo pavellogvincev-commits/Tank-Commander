@@ -11,19 +11,19 @@ export const GameData = {
         "scourge": { name: "Плеть", fireRate: 1.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon', bulletSpeed: 400, cost: 0,
             upgrades: { penetration: 5, fireRate: -0.05 } } 
     },
-       enemyHulls: { 
-        "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 20, side: 10, rear: 5 }, speed: 40, size: {w: 80, h: 60}, hitbox: {w: 70, h: 50} },
-        "scout": { name: "Скаут", hp: 60, armor: { front: 10, side: 5, rear: 5 }, speed: 70, size: {w: 70, h: 50}, hitbox: {w: 60, h: 40} },
-        "demon": { name: "Демон", hp: 180, armor: { front: 60, side: 40, rear: 20 }, speed: 45, size: {w: 85, h: 65}, hitbox: {w: 75, h: 55} },
-        // НОВЫЙ ВРАГ: МАРС
-        "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 10 }, speed: 20, size: {w: 85, h: 65}, hitbox: {w: 77, h: 54} }
+          enemyHulls: { 
+        "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
+        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 80, h: 60}, hitbox: {w: 65, h: 48} },
+        "demon": { name: "Демон", hp: 120, armor: { front: 40, side: 30, rear: 10 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 45} },
+        // МАРС
+        "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 10 }, speed: 20, size: {w: 80, h: 60}, hitbox: {w: 77, h: 54} }
     },
     enemyTurrets: { 
         "basic": { name: "Враг-Пушка", fireRate: 3.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon', bulletSpeed: 400 },
         "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 400 },
-        "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 600 },
-        // ПУШКА МАРСА (Урон и радиус обрабатываются отдельно в логике снаряда)
-        "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#ff00ff', shootSound: 'cannon', bulletSpeed: 250 }
+        "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
+        // МАРС (Изменен цвет на темный металл)
+        "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 250 }
     }
 };
 
