@@ -9,15 +9,40 @@ export class Arena {
     generateObstacles(count, barrelCount = 0) {
         this.obstacles = [];
         this.barrels = [];
-        let margin = 100;
+        let margin = 70;
+        let minGap = 110; // Минимальное расстояние между ящиками для проезда танков
+        let playerSpawn = { x: 500, y: 350, r: 120 }; // Защитная зона игрока (радиус 120)
 
         for (let i = 0; i < count; i++) {
-            let w = 80 + Math.random() * 150;
-            let h = 80 + Math.random() * 150;
-            if (Math.random() > 0.5) { if (w > h) h = 80; else w = 80; }
-            let x = margin + Math.random() * (this.width - margin * 2 - w);
-            let y = margin + Math.random() * (this.height - margin * 2 - h);
-            this.obstacles.push({ x, y, w, h });
+            let w, h, x, y, valid, attempts = 0;
+            do {
+                valid = true;
+                w = 80 + Math.random() * 150;
+                h = 80 + Math.random() * 150;
+                if (Math.random() > 0.5) { if (w > h) h = 80; else w = 80; }
+                x = margin + Math.random() * (this.width - margin * 2 - w);
+                y = margin + Math.random() * (this.height - margin * 2 - h);
+
+                // 1. Проверка: не упал ли ящик на голову игроку?
+                let rx = Math.max(x, Math.min(playerSpawn.x, x + w));
+                let ry = Math.max(y, Math.min(playerSpawn.y, y + h));
+                let distToPlayer = Math.sqrt(Math.pow(playerSpawn.x - rx, 2) + Math.pow(playerSpawn.y - ry, 2));
+                if (distToPlayer < playerSpawn.r) valid = false;
+
+                // 2. Проверка: есть ли зазор (minGap) до других ящиков?
+                if (valid) {
+                    for (let obs of this.obstacles) {
+                        if (x < obs.x + obs.w + minGap && x + w + minGap > obs.x &&
+                            y < obs.y + obs.h + minGap && y + h + minGap > obs.y) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                }
+                attempts++;
+            } while (!valid && attempts < 100);
+
+            if (valid) this.obstacles.push({ x, y, w, h });
         }
 
         // Спавн бочек рядом с ящиками
@@ -35,7 +60,11 @@ export class Arena {
             bx = Math.max(30, Math.min(this.width - 30, bx));
             by = Math.max(30, Math.min(this.height - 30, by));
 
-            this.barrels.push({ x: bx, y: by, radius: 14 });
+            // Проверяем чтобы бочка тоже не появилась прямо на игроке
+            let distToPlayerBarrel = Math.sqrt(Math.pow(playerSpawn.x - bx, 2) + Math.pow(playerSpawn.y - by, 2));
+            if (distToPlayerBarrel > playerSpawn.r) {
+                this.barrels.push({ x: bx, y: by, radius: 14 });
+            }
         }
     }
 
@@ -65,16 +94,18 @@ export class Arena {
     draw(ctx) {
         ctx.fillStyle = '#9e5a26'; ctx.strokeStyle = '#5a310e'; ctx.lineWidth = 4;
         for (let obs of this.obstacles) {
+            // ФИКС ТЕНЕЙ: Сохраняем и восстанавливаем чистую кисть
+            ctx.save(); 
             ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
             ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-            ctx.shadowColor = 'transparent'; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+            ctx.restore(); 
+            ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
         }
 
-        // Отрисовка бочек
         for (let b of this.barrels) {
             ctx.fillStyle = '#cc0000'; ctx.strokeStyle = '#660000'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#ffaa00'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); // Предупреждающий знак
+            ctx.fillStyle = '#ffaa00'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); 
         }
     }
 }
