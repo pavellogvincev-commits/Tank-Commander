@@ -60,6 +60,7 @@ export class Tank {
     update(dt, input, arena, enemies) {
         if (this.shieldTimer > 0) this.shieldTimer -= dt;
         this.updateWeapons(dt); this.updateSmoke(dt); 
+
         if (this.hullName === "Леопард") {
             if (this.droneState === 'cooldown') {
                 this.droneCooldown -= dt; if (this.droneCooldown <= 0) this.droneState = 'ready';
@@ -96,6 +97,7 @@ export class Tank {
 
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
+        
         let vx = Math.cos(this.hullAngle) * this.speed; let vy = Math.sin(this.hullAngle) * this.speed;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
         
@@ -104,9 +106,45 @@ export class Tank {
             for (let e of enemies) { if (e === this || e.hp <= 0) continue; let dist = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2)); if (dist < this.radius + e.radius) return true; }
             return false;
         };
+        
         let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
         let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
-        if (!colX) this.x = nextX; if (!colY) this.y = nextY;
+
+        // НОВОЕ: Толкание бочек и замедление танка
+        if (arena.barrels) {
+            if (!colX) {
+                for (let b of arena.barrels) {
+                    let dist = Math.sqrt(Math.pow(nextX - b.x, 2) + Math.pow(this.y - b.y, 2));
+                    if (dist < this.radius + b.radius) {
+                        let bNextX = b.x + (nextX - this.x);
+                        // Если бочке есть куда двигаться
+                        if (!arena.checkCollision(bNextX, b.y, b.radius)) { 
+                            b.x = bNextX; 
+                            this.speed *= 0.90; // Теряем 10% скорости
+                        } else { 
+                            colX = true; // Бочка уперлась в стену, танк тоже стопорится
+                        }
+                    }
+                }
+            }
+            if (!colY) {
+                for (let b of arena.barrels) {
+                    let dist = Math.sqrt(Math.pow(this.x - b.x, 2) + Math.pow(nextY - b.y, 2));
+                    if (dist < this.radius + b.radius) {
+                        let bNextY = b.y + (nextY - this.y);
+                        if (!arena.checkCollision(b.x, bNextY, b.radius)) { 
+                            b.y = bNextY; 
+                            this.speed *= 0.90; 
+                        } else { 
+                            colY = true; 
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!colX) this.x = nextX; 
+        if (!colY) this.y = nextY;
 
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
@@ -194,7 +232,6 @@ export class Tank {
     draw(ctx) {
         if (this.hp <= 0) return;
 
-        // ФИКС ТЕНЕЙ: Обернули щит в save() и restore()
         if (this.shieldTimer > 0) {
             ctx.save();
             ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff';
