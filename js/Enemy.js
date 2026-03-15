@@ -6,14 +6,13 @@ export class Enemy extends Tank {
         this.aiType = hullStats.name; 
         this.evadeDir = Math.random() > 0.5 ? 1 : -1; 
         this.behaviorTimer = 0;
+        this.repositionTimer = 0; // Таймер смены позиции
     }
 
     updateAI(dt, arena, playerTank, enemies) {
         if (this.hp <= 0) return;
 
-        // ОБНОВЛЕНО: Теперь боты видят физику игрока
         let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
-
         let idleInput = { isUp: () => false, isDown: () => false, isLeft: () => false, isRight: () => false, getMouseX: () => this.x + Math.cos(this.turretAngle) * 100, getMouseY: () => this.y + Math.sin(this.turretAngle) * 100, isShooting: () => false };
 
         if (!playerTank || playerTank.hp <= 0 || this.stunTimer > 0) {
@@ -26,12 +25,30 @@ export class Enemy extends Tank {
         let angleToPlayer = Math.atan2(playerTank.y - this.y, playerTank.x - this.x);
         let shouldMove = true; let desiredAngle = angleToPlayer; 
 
+        // === ИИ БАЗОВОГО ТАНКА ===
         if (this.aiType === "Враг-Базовый") {
-            if (hasLoS && distToPlayer < 450) shouldMove = false; 
-        } else if (this.aiType === "Скаут") {
+            if (this.repositionTimer > 0) {
+                // Если меняем позицию, едем вбок от игрока
+                this.repositionTimer -= dt;
+                shouldMove = true;
+                desiredAngle = angleToPlayer + (Math.PI / 3) * this.evadeDir;
+            } else if (hasLoS && distToPlayer < 450) {
+                // Иначе стоим и целимся
+                shouldMove = false; 
+                // Если только что выстрелили (перезарядка только началась)
+                if (this.fireCooldown > this.fireRate - 0.2) {
+                    this.repositionTimer = 1.0 + Math.random() * 0.5; // Сменяем позицию 1-1.5 сек
+                    this.evadeDir = Math.random() > 0.5 ? 1 : -1;
+                }
+            }
+        } 
+        // === ИИ СКАУТА ===
+        else if (this.aiType === "Скаут") {
             if (distToPlayer < 250) desiredAngle = angleToPlayer + (Math.PI / 2.2) * this.evadeDir;
             else if (distToPlayer < 400 && hasLoS) desiredAngle = angleToPlayer + (Math.PI / 4) * this.evadeDir;
-        } else if (this.aiType === "Демон") {
+        } 
+        // === ИИ ДЕМОНА ===
+        else if (this.aiType === "Демон") {
             this.behaviorTimer -= dt;
             if (this.behaviorTimer <= 0) { this.evadeDir = Math.random() > 0.5 ? 1 : -1; this.behaviorTimer = 1.5 + Math.random(); }
             if (hasLoS) {
@@ -49,31 +66,22 @@ export class Enemy extends Tank {
                 let checkAngle = this.hullAngle + offset;
                 let checkX = this.x + Math.cos(checkAngle) * lookAhead;
                 let checkY = this.y + Math.sin(checkAngle) * lookAhead;
-
                 let isBlocked = arena.checkCollision(checkX, checkY, this.radius);
-                
                 if (!isBlocked) {
-                    for (let e of allTanks) { // ПРОВЕРКА ВСЕХ ТАНКОВ
+                    for (let e of allTanks) { 
                         if (e !== this && e.hp > 0) {
                             let distToAlly = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2));
                             if (distToAlly < this.radius + e.radius + 15) { isBlocked = true; break; }
                         }
                     }
                 }
-
-                if (isBlocked) {
-                    avoidForce += offset === 0 ? (Math.PI / 2) * this.evadeDir : (offset < 0 ? Math.PI/2 : -Math.PI/2);
-                }
+                if (isBlocked) avoidForce += offset === 0 ? (Math.PI / 2) * this.evadeDir : (offset < 0 ? Math.PI/2 : -Math.PI/2);
             }
-
             if (avoidForce !== 0) desiredAngle = this.hullAngle + avoidForce;
-
-            for (let e of allTanks) { // РАЗДВИЖКА ОТ ВСЕХ ТАНКОВ
+            for (let e of allTanks) { 
                 if (e !== this && e.hp > 0) {
                     let d = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
-                    if (d < this.radius * 2) {
-                        desiredAngle = Math.atan2(this.y - e.y, this.x - e.x); 
-                    }
+                    if (d < this.radius * 2) desiredAngle = Math.atan2(this.y - e.y, this.x - e.x); 
                 }
             }
         }
