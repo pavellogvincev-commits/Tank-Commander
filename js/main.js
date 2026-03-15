@@ -197,9 +197,9 @@ function gameLoop(timestamp) {
                 let startX = enemy.x + Math.cos(enemy.turretAngle)*45;
                 let startY = enemy.y + Math.sin(enemy.turretAngle)*45;
                 
-                // ЕСЛИ СТРЕЛЯЕТ МАРС -> Вызываем артиллерийский снаряд
+             // ЕСЛИ СТРЕЛЯЕТ МАРС -> Вызываем артиллерийский снаряд
                 if (enemy.aiType === "Марс") {
-                    let spread = 40; // Разброс +/- 20 пикселей
+                    let spread = 40; 
                     let tx = playerTank.x + (Math.random() - 0.5) * spread;
                     let ty = playerTank.y + (Math.random() - 0.5) * spread;
                     let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
@@ -207,7 +207,8 @@ function gameLoop(timestamp) {
                     artilleryShells.push({
                         startX, startY, tx, ty, x: startX, y: startY,
                         time: 0, maxTime: dist / enemy.bulletSpeed, 
-                        damage: 120, radius: 100 // Урон и радиус взрыва Марса
+                        totalDist: dist, // НОВОЕ: Запоминаем общее расстояние для расчета дуги
+                        damage: 120, radius: 100 
                     });
                     playSound(shootSound);
                 } else {
@@ -283,23 +284,36 @@ function gameLoop(timestamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     arena.draw(ctx, barrelImage);
     
-    // ОТРИСОВКА АРТИЛЛЕРИЙСКИХ СНАРЯДОВ (с эффектом высоты)
+       // ОТРИСОВКА АРТИЛЛЕРИЙСКИХ СНАРЯДОВ (Умная высота и новый визуал)
     for (let s of artilleryShells) {
         let progress = s.time / s.maxTime;
-        let height = Math.sin(progress * Math.PI) * 50; // Высота дуги
-        let scale = 1 + Math.sin(progress * Math.PI) * 1.5; // Снаряд увеличивается в высшей точке
+        
+        // Коэффициент дальности: чем дальше стреляем, тем выше летит снаряд
+        let distanceFactor = Math.min(1, s.totalDist / 500); // 500 пикселей - условный "дальний" выстрел
+        
+        let height = Math.sin(progress * Math.PI) * (80 * distanceFactor); // Высота дуги
+        let scale = 1 + Math.sin(progress * Math.PI) * (1.5 * distanceFactor); // Увеличение масштаба
 
         ctx.save();
-        // Тень на земле
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        // Тень на земле (бледнеет, когда снаряд высоко в воздухе)
+        let shadowAlpha = 0.4 - (0.3 * Math.sin(progress * Math.PI) * distanceFactor);
+        ctx.fillStyle = `rgba(0,0,0,${Math.max(0.05, shadowAlpha)})`;
         ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, Math.PI*2); ctx.fill();
 
         // Сам снаряд (поднимается по Y и масштабируется)
         ctx.translate(s.x, s.y - height);
         ctx.scale(scale, scale);
-        ctx.fillStyle = '#ff00ff';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff';
+        
+        // Темный металлический корпус снаряда с раскаленным свечением
+        ctx.shadowBlur = 15; ctx.shadowColor = '#ff4400';
+        ctx.fillStyle = '#333333';
         ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+        
+        // Яркое оранжевое ядро (эффект раскаленности)
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffaa00';
+        ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, Math.PI*2); ctx.fill();
+        
         ctx.restore();
     }
 
