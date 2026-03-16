@@ -43,22 +43,40 @@ export class Arena {
             if (valid) this.obstacles.push({ x, y, w, h });
         }
 
+        let barrelAttempts = 0;
         for (let i = 0; i < barrelCount; i++) {
             if (this.obstacles.length === 0) break;
-            let obs = this.obstacles[Math.floor(Math.random() * this.obstacles.length)];
-            let side = Math.floor(Math.random() * 4);
-            let bx, by; let offset = 25;
+            let validBarrel = false;
+            let bx, by;
+            
+            do {
+                validBarrel = true;
+                let obs = this.obstacles[Math.floor(Math.random() * this.obstacles.length)];
+                let side = Math.floor(Math.random() * 4);
+                let offset = 25;
 
-            if (side === 0) { bx = obs.x + Math.random()*obs.w; by = obs.y - offset; } 
-            else if (side === 1) { bx = obs.x + obs.w + offset; by = obs.y + Math.random()*obs.h; } 
-            else if (side === 2) { bx = obs.x + Math.random()*obs.w; by = obs.y + obs.h + offset; } 
-            else { bx = obs.x - offset; by = obs.y + Math.random()*obs.h; } 
+                if (side === 0) { bx = obs.x + Math.random()*obs.w; by = obs.y - offset; } 
+                else if (side === 1) { bx = obs.x + obs.w + offset; by = obs.y + Math.random()*obs.h; } 
+                else if (side === 2) { bx = obs.x + Math.random()*obs.w; by = obs.y + obs.h + offset; } 
+                else { bx = obs.x - offset; by = obs.y + Math.random()*obs.h; } 
 
-            bx = Math.max(30, Math.min(this.width - 30, bx));
-            by = Math.max(30, Math.min(this.height - 30, by));
+                bx = Math.max(30, Math.min(this.width - 30, bx));
+                by = Math.max(30, Math.min(this.height - 30, by));
 
-            let distToPlayerBarrel = Math.sqrt(Math.pow(playerSpawn.x - bx, 2) + Math.pow(playerSpawn.y - by, 2));
-            if (distToPlayerBarrel > playerSpawn.r) {
+                let distToPlayerBarrel = Math.sqrt(Math.pow(playerSpawn.x - bx, 2) + Math.pow(playerSpawn.y - by, 2));
+                if (distToPlayerBarrel <= playerSpawn.r) validBarrel = false;
+
+                // ПРОБЛЕМА РЕШЕНА: Проверка чтобы бочки не ставились друг на друга
+                if (validBarrel) {
+                    for (let existing of this.barrels) {
+                        let distToOther = Math.sqrt(Math.pow(existing.x - bx, 2) + Math.pow(existing.y - by, 2));
+                        if (distToOther < 30) { validBarrel = false; break; }
+                    }
+                }
+                barrelAttempts++;
+            } while(!validBarrel && barrelAttempts < 200);
+
+            if (validBarrel) {
                 this.barrels.push({ x: bx, y: by, radius: 12, vx: 0, vy: 0, isDetonating: false });
             }
         }
