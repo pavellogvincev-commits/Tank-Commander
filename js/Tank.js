@@ -13,15 +13,18 @@ export class Tank {
         this.acceleration = this.maxForwardSpeed * 3; this.friction = this.maxForwardSpeed * 1.5; this.brakePower = this.maxForwardSpeed * 4;       
         this.hullRotationSpeed = 1.5; this.hullAngle = 0; this.turretRotationSpeed = 2; this.turretAngle = 0;
         
-        // НОВОЕ: Векторы отбрасывания взрывом
         this.pushVx = 0; this.pushVy = 0;
+        this.isExploded = false; // Флаг для взрыва при смерти
 
         this.particles = []; this.particleTimer = 0;
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
-        this.fireCooldown = 0; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
+        
+        // РЕШЕНО: Со старта орудие разряжено
+        this.fireCooldown = this.fireRate; 
+        this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
 
         this.shieldTimer = 0;
         this.hullName = hullStats.name;
@@ -101,14 +104,40 @@ export class Tank {
         if (input.isLeft()) this.hullAngle -= this.hullRotationSpeed * dt;
         if (input.isRight()) this.hullAngle += this.hullRotationSpeed * dt;
         
-        // ОБНОВЛЕНО: Физика затухания взрывной волны
         let damp = Math.pow(0.001, dt); 
         this.pushVx *= damp; this.pushVy *= damp;
         if (Math.abs(this.pushVx) < 5) this.pushVx = 0;
         if (Math.abs(this.pushVy) < 5) this.pushVy = 0;
 
-        let vx = Math.cos(this.hullAngle) * this.speed + this.pushVx; 
-        let vy = Math.sin(this.hullAngle) * this.speed + this.pushVy;
+        // ПРОБЛЕМА РЕШЕНА: Правильная физика толкания бочек (без залипания)
+        let isPushingBarrel = false;
+        if (arena.barrels) {
+            for (let b of arena.barrels) {
+                let dx = b.x - this.x; let dy = b.y - this.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let minDist = this.radius + b.radius;
+                
+                if (dist < minDist && dist > 0) {
+                    isPushingBarrel = true;
+                    // Расталкиваем танк и бочку друг от друга
+                    let overlap = minDist - dist;
+                    let nx = dx / dist; let ny = dy / dist;
+                    
+                    let bNextX = b.x + nx * overlap;
+                    let bNextY = b.y + ny * overlap;
+                    
+                    // Если бочке некуда двигаться (стена), толкаем танк обратно
+                    if (!arena.checkCollision(bNextX, b.y, b.radius)) b.x = bNextX; else this.x -= nx * overlap;
+                    if (!arena.checkCollision(b.x, bNextY, b.radius)) b.y = bNextY; else this.y -= ny * overlap;
+                }
+            }
+        }
+
+        // Применяем штраф 10% к скорости только если танк толкает бочку в ЭТОМ кадре
+        let actualSpeed = isPushingBarrel ? this.speed * 0.9 : this.speed;
+
+        let vx = Math.cos(this.hullAngle) * actualSpeed + this.pushVx; 
+        let vy = Math.sin(this.hullAngle) * actualSpeed + this.pushVy;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
         
         let hitTanks = (checkX, checkY) => {
@@ -120,32 +149,6 @@ export class Tank {
         let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
         let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
 
-        if (arena.barrels) {
-            if (!colX) {
-                for (let b of arena.barrels) {
-                    let dist = Math.sqrt(Math.pow(nextX - b.x, 2) + Math.pow(this.y - b.y, 2));
-                    if (dist < this.radius + b.radius) {
-                        let bNextX = b.x + (nextX - this.x);
-                        if (!arena.checkCollision(bNextX, b.y, b.radius)) { 
-                            b.x = bNextX; this.speed *= 0.90; 
-                        } else { colX = true; }
-                    }
-                }
-            }
-            if (!colY) {
-                for (let b of arena.barrels) {
-                    let dist = Math.sqrt(Math.pow(this.x - b.x, 2) + Math.pow(nextY - b.y, 2));
-                    if (dist < this.radius + b.radius) {
-                        let bNextY = b.y + (nextY - this.y);
-                        if (!arena.checkCollision(b.x, bNextY, b.radius)) { 
-                            b.y = bNextY; this.speed *= 0.90; 
-                        } else { colY = true; }
-                    }
-                }
-            }
-        }
-
-        // ОБНОВЛЕНО: Отскок от препятствий при отбрасывании
         if (!colX) this.x = nextX; else this.pushVx *= -0.4; 
         if (!colY) this.y = nextY; else this.pushVy *= -0.4;
 
@@ -235,12 +238,8 @@ export class Tank {
     draw(ctx) {
         if (this.hp <= 0) return;
         if (this.shieldTimer > 0) {
-            ctx.save();
-            ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff';
-            ctx.strokeStyle = `rgba(0, 136, 255, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
-            ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
+            ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff'; ctx.strokeStyle = `rgba(0, 136, 255, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
+            ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
         }
 
         for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
@@ -248,8 +247,21 @@ export class Tank {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
-        let barWidth = 40; let hpPercent = this.hp / this.maxHp;
-        ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth, 4);
-        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, this.y - this.hullHeight / 2 - 20, barWidth * hpPercent, 4);
+        
+        // ПРОБЛЕМА РЕШЕНА: Отрисовка ХП и ПОЛОСЫ ПЕРЕЗАРЯДКИ
+        let barWidth = 40; 
+        let hpPercent = this.hp / this.maxHp;
+        let yOffset = this.y - this.hullHeight / 2 - 20;
+        
+        // Полоса ХП
+        ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth, 4);
+        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth * hpPercent, 4);
+
+        // Полоса перезарядки
+        let reloadPercent = 1 - (this.fireCooldown / this.fireRate);
+        if (reloadPercent < 0) reloadPercent = 0;
+        if (reloadPercent > 1) reloadPercent = 1;
+        ctx.fillStyle = '#444'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth, 3);
+        ctx.fillStyle = '#ffaa00'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
     }
 }
