@@ -13,17 +13,24 @@ export class Tank {
         this.acceleration = this.maxForwardSpeed * 3; this.friction = this.maxForwardSpeed * 1.5; this.brakePower = this.maxForwardSpeed * 4;       
         this.hullRotationSpeed = 1.5; this.hullAngle = 0; this.turretRotationSpeed = 2; this.turretAngle = 0;
         
-        this.pushVx = 0; this.pushVy = 0;
-        this.isExploded = false; // Флаг для взрыва при смерти
+        this.pushVx = 0; this.pushVy = 0; this.isExploded = false;
 
         this.particles = []; this.particleTimer = 0;
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
-        this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
+        this.spread = turretStats.spread || 0; // НОВОЕ: Разброс пули
         
-        // РЕШЕНО: Со старта орудие разряжено
-        this.fireCooldown = this.fireRate; 
+        // НОВОЕ: Логика магазина (барабана)
+        this.isMagazineWeapon = turretStats.magazineSize !== undefined;
+        this.maxAmmo = this.isMagazineWeapon ? turretStats.magazineSize : 0;
+        this.ammo = this.maxAmmo;
+        this.reloadTime = turretStats.reloadTime || 0;
+        this.isReloading = false;
+
+        // Логика обычных выстрелов
+        this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
+        this.fireCooldown = this.isMagazineWeapon ? 0 : this.fireRate; 
         this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
 
         this.shieldTimer = 0;
@@ -50,14 +57,41 @@ export class Tank {
         if (this.fireCooldown > 0) this.fireCooldown -= dt;
         if (this.recoil > 0) this.recoil -= dt * 10; if (this.recoil < 0) this.recoil = 0;
         this.shotsToFireThisFrame = 0;
-        if (this.burstsRemaining > 0) {
-            this.burstTimer -= dt;
-            if (this.burstTimer <= 0) { this.shotsToFireThisFrame++; this.burstsRemaining--; this.burstTimer = this.burstDelay; this.recoil = 4; }
+
+        // НОВОЕ: Обработка перезарядки магазина
+        if (this.isMagazineWeapon) {
+            if (this.isReloading && this.fireCooldown <= 0) {
+                this.isReloading = false;
+                this.ammo = this.maxAmmo;
+            }
+        } else {
+            if (this.burstsRemaining > 0) {
+                this.burstTimer -= dt;
+                if (this.burstTimer <= 0) { this.shotsToFireThisFrame++; this.burstsRemaining--; this.burstTimer = this.burstDelay; this.recoil = 4; }
+            }
         }
     }
 
     tryShoot() {
-        if (this.fireCooldown <= 0 && this.burstsRemaining === 0) { this.fireCooldown = this.fireRate; this.burstsRemaining = this.burstCount; this.burstTimer = 0; return true; }
+        if (this.isMagazineWeapon) {
+            // Огонь из Гатлинга (один патрон за раз, пока нажата кнопка)
+            if (!this.isReloading && this.fireCooldown <= 0 && this.ammo > 0) {
+                this.shotsToFireThisFrame = 1;
+                this.ammo--;
+                this.fireCooldown = this.fireRate; // Короткая задержка между пулями
+                this.recoil = 3;
+                if (this.ammo <= 0) {
+                    this.isReloading = true;
+                    this.fireCooldown = this.reloadTime; // Долгая перезарядка барабана
+                }
+                return true;
+            }
+        } else {
+            // Обычный выстрел
+            if (this.fireCooldown <= 0 && this.burstsRemaining === 0) { 
+                this.fireCooldown = this.fireRate; this.burstsRemaining = this.burstCount; this.burstTimer = 0; return true; 
+            }
+        }
         return false;
     }
 
@@ -109,33 +143,24 @@ export class Tank {
         if (Math.abs(this.pushVx) < 5) this.pushVx = 0;
         if (Math.abs(this.pushVy) < 5) this.pushVy = 0;
 
-        // ПРОБЛЕМА РЕШЕНА: Правильная физика толкания бочек (без залипания)
         let isPushingBarrel = false;
         if (arena.barrels) {
             for (let b of arena.barrels) {
                 let dx = b.x - this.x; let dy = b.y - this.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
                 let minDist = this.radius + b.radius;
-                
                 if (dist < minDist && dist > 0) {
                     isPushingBarrel = true;
-                    // Расталкиваем танк и бочку друг от друга
                     let overlap = minDist - dist;
                     let nx = dx / dist; let ny = dy / dist;
-                    
-                    let bNextX = b.x + nx * overlap;
-                    let bNextY = b.y + ny * overlap;
-                    
-                    // Если бочке некуда двигаться (стена), толкаем танк обратно
+                    let bNextX = b.x + nx * overlap; let bNextY = b.y + ny * overlap;
                     if (!arena.checkCollision(bNextX, b.y, b.radius)) b.x = bNextX; else this.x -= nx * overlap;
                     if (!arena.checkCollision(b.x, bNextY, b.radius)) b.y = bNextY; else this.y -= ny * overlap;
                 }
             }
         }
 
-        // Применяем штраф 10% к скорости только если танк толкает бочку в ЭТОМ кадре
         let actualSpeed = isPushingBarrel ? this.speed * 0.9 : this.speed;
-
         let vx = Math.cos(this.hullAngle) * actualSpeed + this.pushVx; 
         let vy = Math.sin(this.hullAngle) * actualSpeed + this.pushVy;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
@@ -248,20 +273,31 @@ export class Tank {
         ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
         
-        // ПРОБЛЕМА РЕШЕНА: Отрисовка ХП и ПОЛОСЫ ПЕРЕЗАРЯДКИ
         let barWidth = 40; 
         let hpPercent = this.hp / this.maxHp;
         let yOffset = this.y - this.hullHeight / 2 - 20;
         
-        // Полоса ХП
         ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth, 4);
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth * hpPercent, 4);
 
-        // Полоса перезарядки
-        let reloadPercent = 1 - (this.fireCooldown / this.fireRate);
+        // НОВОЕ: Отрисовка бара перезарядки / магазина
+        let reloadPercent = 0;
+        if (this.isMagazineWeapon) {
+            if (this.isReloading) {
+                reloadPercent = 1 - (this.fireCooldown / this.reloadTime);
+            } else {
+                reloadPercent = this.ammo / this.maxAmmo; // Синяя полоса патронов
+            }
+        } else {
+            reloadPercent = 1 - (this.fireCooldown / this.fireRate);
+        }
+        
         if (reloadPercent < 0) reloadPercent = 0;
         if (reloadPercent > 1) reloadPercent = 1;
+        
         ctx.fillStyle = '#444'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth, 3);
-        ctx.fillStyle = '#ffaa00'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
+        // Если это магазин и он полон/тратится - цвет синий. Если перезарядка - оранжевый.
+        ctx.fillStyle = (this.isMagazineWeapon && !this.isReloading) ? '#00ccff' : '#ffaa00'; 
+        ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
     }
 }
