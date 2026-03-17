@@ -9,8 +9,10 @@ import { initHangarUI, showScreen, updateHangarUI, screens, generateLevelsGrid }
 window.PlayerProgress = PlayerProgress;
 
 const noCache = '?v=' + new Date().getTime(); 
-const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image() } };
-playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hulls["leopard"].src = 'assets/leopard.png' + noCache; playerImages.hulls["titan"].src = 'assets/titan.png' + noCache; playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache;
+const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image(), "gatling": new Image() } }; // ДОБАВЛЕН ГАТЛИНГ
+playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hulls["leopard"].src = 'assets/leopard.png' + noCache; playerImages.hulls["titan"].src = 'assets/titan.png' + noCache; 
+playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache;
+playerImages.turrets["gatling"].src = 'assets/gatling.png' + noCache; // ЗАГРУЗКА
 const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png' + noCache; const enemyTurretImage = new Image(); enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
@@ -101,7 +103,10 @@ function startLevel(levelNum) {
     calcHull.hp += sHull.hp * bHull.upgrades.hp; calcHull.speed += sHull.speed * bHull.upgrades.speed;
     calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front; calcHull.armor.side += sHull.armor * bHull.upgrades.armor.side; calcHull.armor.rear += sHull.armor * bHull.upgrades.armor.rear;
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
-    calcTurr.penetration += sTurr.penetration * bTurr.upgrades.penetration; calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
+    calcTurr.penetration += sTurr.penetration * (bTurr.upgrades.penetration || 0); 
+    if (bTurr.upgrades.fireRate) calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
+    // НОВОЕ: Применяем прокачку барабана
+    if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += sTurr.magazineSize * bTurr.upgrades.magazineSize;
     
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId);
     playerTank.shieldTimer = 3.0;
@@ -175,11 +180,19 @@ function gameLoop(timestamp) {
         createExplosionDamage(playerTank.x, playerTank.y, playerTank.maxHp * 0.5, 100, 1000);
     }
 
-    if (playerTank.hp > 0) {
+        if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena, enemies);
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
-        for (let i = 0; i < pShots; i++) { bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, playerTank.turretAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); }
+        for (let i = 0; i < pShots; i++) { 
+            // НОВОЕ: Применение разброса (spread) пулемета
+            let finalAngle = playerTank.turretAngle;
+            if (playerTank.spread > 0) {
+                finalAngle += (Math.random() - 0.5) * playerTank.spread;
+            }
+            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
+            playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
+        }
         if (playerTank.mineRequest) { playerTank.mineRequest = false; let mineDamage = Math.floor(20 + Math.random() * 30 + (playerTank.hullUpgrades * 15)); mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 13 }); }
     }
 
