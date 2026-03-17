@@ -10,10 +10,10 @@ export const GameData = {
     turrets: { 
         // Переименовали в "Плеть"
         "scourge": { name: "Плеть", fireRate: 1.2, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
-            upgrades: { penetration: 10, fireRate: -0.1 } },
+            upgrades: { penetration: 8, fireRate: -0.07 } },
         // ГАТЛИНГ: fireRate 0.04, скорость 800, разброс (spread) 0.08
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 30, penetration: 20, spread: 0.17, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 30 выстр.",
-            upgrades: { penetration: 4, magazineSize: 7 } }
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 40, penetration: 25, spread: 0.17, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 30 выстр.",
+            upgrades: { penetration: 5, magazineSize: 10 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
