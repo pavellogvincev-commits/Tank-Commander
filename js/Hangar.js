@@ -27,10 +27,35 @@ export function updateHangarUI() {
     document.getElementById('player-points').innerText = PlayerProgress.points;
     document.getElementById('inv-hull-val').innerText = PlayerProgress.inventory.hullUpgrades;
     document.getElementById('inv-turret-val').innerText = PlayerProgress.inventory.turretUpgrades;
+    
     const assembly = PlayerProgress.currentAssembly;
     const baseHp = GameData.hulls[assembly.hullId].hp; const bonusHp = PlayerProgress.partStats[assembly.hullId].hp * GameData.hulls[assembly.hullId].upgrades.hp;
-    document.getElementById('current-hp-val').innerText = PlayerProgress.hullsHp[assembly.hullId]; document.getElementById('max-hp-val').innerText = baseHp + bonusHp;
-    document.getElementById('hangar-hull-layer').src = `assets/${assembly.hullId === 'hunter' ? 'hull' : assembly.hullId}.png`;
+    document.getElementById('current-hp-val').innerText = PlayerProgress.hullsHp[assembly.hullId]; 
+    document.getElementById('max-hp-val').innerText = baseHp + bonusHp;
+    
+    // ИСПРАВЛЕНИЕ: Динамическое отображение башни поверх корпуса в ангаре!
+    let hullImg = document.getElementById('hangar-hull-layer');
+    let hId = assembly.hullId;
+    let tId = assembly.turretId;
+    hullImg.src = `assets/${hId === 'hunter' ? 'hull' : hId}.png`;
+
+    let turretImg = document.getElementById('hangar-turret-layer');
+    if (!turretImg && hullImg) {
+        turretImg = document.createElement('img');
+        turretImg.id = 'hangar-turret-layer';
+        turretImg.style.position = 'absolute';
+        turretImg.style.top = '0';
+        turretImg.style.left = '0';
+        turretImg.style.width = '100%';
+        turretImg.style.height = '100%';
+        turretImg.style.pointerEvents = 'none';
+        hullImg.parentElement.style.position = 'relative'; 
+        hullImg.parentElement.appendChild(turretImg);
+    }
+    if (turretImg) {
+        turretImg.src = `assets/${tId === 'scourge' ? 'turret' : tId}.png`;
+    }
+
     renderPartsList(); showPartDetails(selectedPartId);
 }
 
@@ -66,13 +91,8 @@ function showPartDetails(id) {
             html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + (stats.speed * item.upgrades.speed)}</span></span></div>`;
         } else {
             html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + (stats.penetration * item.upgrades.penetration)}</span></span></div>`;
-            // УМНАЯ ОТРИСОВКА СТАТОВ
-            if (item.upgrades.fireRate) {
-                html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
-            }
-            if (item.upgrades.magazineSize) {
-                html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + (stats.magazineSize * item.upgrades.magazineSize)}</span></span></div>`;
-            }
+            if (item.upgrades.fireRate) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
+            if (item.upgrades.magazineSize) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + (stats.magazineSize * item.upgrades.magazineSize)}</span></span></div>`;
         }
 
         if (canUpgrade && hasPoints) html += `<button class="random-upgrade-btn" onclick="buyRandomUpgrade('${id}')">СЛУЧАЙНЫЙ АПГРЕЙД (1 ★)</button>`;
@@ -104,24 +124,15 @@ function showPartDetails(id) {
 
 window.resetUpgrades = function(id, cost) {
     if (PlayerProgress.points >= cost && PlayerProgress.partStats[id].usedCapacity > 0) {
-        PlayerProgress.points -= cost;
-        let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
-        PlayerProgress.inventory[type] += PlayerProgress.partStats[id].usedCapacity;
-        PlayerProgress.partStats[id].usedCapacity = 0;
-        
-        // УМНЫЙ СБРОС (сбрасывает только те ключи, которые есть в upgrades)
-        let itemData = GameData.hulls[id] || GameData.turrets[id];
-        for (let key in itemData.upgrades) {
-            PlayerProgress.partStats[id][key] = 0;
-        }
-        updateHangarUI();
+        PlayerProgress.points -= cost; let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
+        PlayerProgress.inventory[type] += PlayerProgress.partStats[id].usedCapacity; PlayerProgress.partStats[id].usedCapacity = 0;
+        let itemData = GameData.hulls[id] || GameData.turrets[id]; for (let key in itemData.upgrades) { PlayerProgress.partStats[id][key] = 0; } updateHangarUI();
     }
 }
 
 window.buyRandomUpgrade = function(id) {
     let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
     if (PlayerProgress.inventory[type] > 0 && PlayerProgress.partStats[id].usedCapacity < PlayerProgress.partStats[id].maxCapacity) {
-        // УМНЫЙ ВЫБОР АПГРЕЙДА
         let statsOptions = GameData.hulls[id] ? ['hp', 'armor', 'speed'] : Object.keys(GameData.turrets[id].upgrades);
         let randomStat = statsOptions[Math.floor(Math.random() * statsOptions.length)];
         PlayerProgress.inventory[type]--; PlayerProgress.partStats[id][randomStat]++; PlayerProgress.partStats[id].usedCapacity++;
