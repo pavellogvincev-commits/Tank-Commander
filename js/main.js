@@ -9,10 +9,11 @@ import { initHangarUI, showScreen, updateHangarUI, screens, generateLevelsGrid }
 window.PlayerProgress = PlayerProgress;
 
 const noCache = '?v=' + new Date().getTime(); 
-const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image(), "gatling": new Image() } }; // ДОБАВЛЕН ГАТЛИНГ
+// ИСПРАВЛЕНИЕ: Оставили только Гатлинг и Плеть
+const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image(), "gatling": new Image() } };
 playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hulls["leopard"].src = 'assets/leopard.png' + noCache; playerImages.hulls["titan"].src = 'assets/titan.png' + noCache; 
-playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache;
-playerImages.turrets["gatling"].src = 'assets/gatling.png' + noCache; // ЗАГРУЗКА
+playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache; playerImages.turrets["gatling"].src = 'assets/gatling.png' + noCache;
+
 const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png' + noCache; const enemyTurretImage = new Image(); enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
@@ -37,23 +38,18 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
-// ПРОБЛЕМА РЕШЕНА: Единая логика взрывов (с учетом массы брони)
 function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     spawnExplosion(x, y); playSound(explodeSound);
     let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
     
-    // Взрывная волна воздействует на танки
     for (let t of allTanks) {
         if (t.hp > 0) {
             let dist = Math.sqrt(Math.pow(t.x - x, 2) + Math.pow(t.y - y, 2));
             if (dist <= radius) {
                 let res = t.applyExplosionDamage(x, y, maxDmg, radius);
                 if (res.hit && res.damage > 0) { spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); }
-                
-                // РАСЧЕТ МАССЫ ПО БРОНЕ: Базовый вес = 100. Чем больше брони, тем тяжелее танк.
                 let armorSum = t.armor.front.max + t.armor.side.max + t.armor.rear.max;
                 let massMultiplier = 100 / (100 + armorSum); 
-                
                 if (dist < 20) dist = 20;
                 let force = (1 - dist / radius) * basePushForce * massMultiplier;
                 t.pushVx += ((t.x - x) / dist) * force; t.pushVy += ((t.y - y) / dist) * force;
@@ -61,29 +57,17 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
         }
     }
 
-    // Взрывная волна воздействует на бочки
     for (let i = arena.barrels.length - 1; i >= 0; i--) {
         let b = arena.barrels[i];
         if (b.isDetonating) continue; 
-        
         let dist = Math.sqrt(Math.pow(b.x - x, 2) + Math.pow(b.y - y, 2));
         if (dist <= radius) { 
-            b.isDetonating = true; 
-            if (dist < 15) dist = 15;
-            
-            // У бочек масса = 0, поэтому множитель массы = 1.0 (летят далеко)
-            let force = (1 - dist / radius) * basePushForce * 1.5; // Бочки отлетают резче
-            b.vx += ((b.x - x) / dist) * force;
-            b.vy += ((b.y - y) / dist) * force;
-            
+            b.isDetonating = true; if (dist < 15) dist = 15;
+            let force = (1 - dist / radius) * basePushForce * 1.5; 
+            b.vx += ((b.x - x) / dist) * force; b.vy += ((b.y - y) / dist) * force;
             setTimeout(() => { 
                 let idx = arena.barrels.indexOf(b);
-                if (idx !== -1) { 
-                    arena.barrels.splice(idx, 1); 
-                    // Бочка детонирует с характеристиками 200 урона, 150 радиус
-                    createExplosionDamage(b.x, b.y, 200, 150, 1200); 
-                    spawnExplosion(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30);
-                }
+                if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 200, 150, 1200); spawnExplosion(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30); }
             }, 250); 
         }
     }
@@ -102,10 +86,10 @@ function startLevel(levelNum) {
     let calcHull = JSON.parse(JSON.stringify(bHull)); 
     calcHull.hp += sHull.hp * bHull.upgrades.hp; calcHull.speed += sHull.speed * bHull.upgrades.speed;
     calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front; calcHull.armor.side += sHull.armor * bHull.upgrades.armor.side; calcHull.armor.rear += sHull.armor * bHull.upgrades.armor.rear;
+    
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     calcTurr.penetration += sTurr.penetration * (bTurr.upgrades.penetration || 0); 
     if (bTurr.upgrades.fireRate) calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
-    // НОВОЕ: Применяем прокачку барабана
     if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += sTurr.magazineSize * bTurr.upgrades.magazineSize;
     
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId);
@@ -174,22 +158,20 @@ function gameLoop(timestamp) {
         setTimeout(() => { gameRunning = false; updateHangarUI(); showScreen('hangar'); }, 3000); 
     }
 
-    // ПРОБЛЕМА РЕШЕНА: Взрыв при смерти игрока
     if (playerTank.hp <= 0 && !playerTank.isExploded) {
         playerTank.isExploded = true;
         createExplosionDamage(playerTank.x, playerTank.y, playerTank.maxHp * 0.5, 100, 1000);
     }
 
-        if (playerTank.hp > 0) {
+    if (playerTank.hp > 0) {
         playerTank.update(dt, input, arena, enemies);
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { 
-            // НОВОЕ: Применение разброса (spread) пулемета
+            // ИСПРАВЛЕНИЕ: Разброс (Spread) для Гатлинга
             let finalAngle = playerTank.turretAngle;
-            if (playerTank.spread > 0) {
-                finalAngle += (Math.random() - 0.5) * playerTank.spread;
-            }
+            if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
+            
             bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
         }
@@ -242,7 +224,6 @@ function gameLoop(timestamp) {
                 }
             }
         } else { 
-            // ПРОБЛЕМА РЕШЕНА: Взрыв при смерти врага
             if (!enemy.isExploded) {
                 enemy.isExploded = true;
                 createExplosionDamage(enemy.x, enemy.y, enemy.maxHp * 0.5, 100, 1000);
