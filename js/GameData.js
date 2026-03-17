@@ -8,14 +8,11 @@ export const GameData = {
             upgrades: { hp: 18, armor: { front: 6, side: 4, rear: 3 }, speed: 4 } }
     },
     turrets: { 
-        "scourge": { name: "Бич", fireRate: 1.5, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
+        // Переименовали в "Плеть"
+        "scourge": { name: "Плеть", fireRate: 1.5, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 10, fireRate: -0.1 } },
-        "twins": { name: "Близнецы", fireRate: 1.8, penetration: 50, burstCount: 2, burstDelay: 0.15, bulletRadius: 2.5, bulletColor: '#ffaa00', shootSound: 'cannon', bulletSpeed: 550, cost: 10, ability: "Двойной выстрел",
-            upgrades: { penetration: 8, fireRate: -0.15 } },
-        "thunder": { name: "Гром", fireRate: 3.0, penetration: 150, burstCount: 1, burstDelay: 0, bulletRadius: 4, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 800, cost: 20, ability: "Пробитие брони",
-            upgrades: { penetration: 20, fireRate: -0.2 } },
-        // НОВАЯ БАШНЯ: ГАТЛИНГ
-        "gatling": { name: "Гатлинг", fireRate: 0.08, reloadTime: 5.0, magazineSize: 30, penetration: 20, spread: 0.17, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 700, cost: 10, ability: "Барабан на 30 выстр.",
+        // ГАТЛИНГ: fireRate 0.04, скорость 800, разброс (spread) 0.08
+        "gatling": { name: "Гатлинг", fireRate: 0.04, reloadTime: 5.0, magazineSize: 30, penetration: 20, spread: 0.17, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 30 выстр.",
             upgrades: { penetration: 4, magazineSize: 7 } }
     },
     enemyHulls: { 
@@ -54,9 +51,6 @@ export let PlayerProgress = {
         "leopard": { maxCapacity: 2, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
         "titan": { maxCapacity: 2, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
         "scourge": { maxCapacity: 2, usedCapacity: 0, penetration: 0, fireRate: 0 },
-        "twins": { maxCapacity: 2, usedCapacity: 0, penetration: 0, fireRate: 0 },
-        "thunder": { maxCapacity: 2, usedCapacity: 0, penetration: 0, fireRate: 0 },
-        // НОВОЕ: Статистика для Гатлинга
         "gatling": { maxCapacity: 2, usedCapacity: 0, penetration: 0, magazineSize: 0 }
     }
 };
