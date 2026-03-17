@@ -16,21 +16,23 @@ export class Tank {
         this.pushVx = 0; this.pushVy = 0; this.isExploded = false;
 
         this.particles = []; this.particleTimer = 0;
+        
+        this.turretName = turretStats.name; // НОВОЕ: Запоминаем имя башни для визуальных эффектов
+        this.gatlingSpinTimer = 0; // Таймер эффекта вращения пулемета
+
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
-        this.spread = turretStats.spread || 0; // НОВОЕ: Разброс пули
+        this.spread = turretStats.spread || 0;
         
-        // НОВОЕ: Логика магазина (барабана)
         this.isMagazineWeapon = turretStats.magazineSize !== undefined;
         this.maxAmmo = this.isMagazineWeapon ? turretStats.magazineSize : 0;
         this.ammo = this.maxAmmo;
         this.reloadTime = turretStats.reloadTime || 0;
         this.isReloading = false;
 
-        // Логика обычных выстрелов
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
-        this.fireCooldown = this.isMagazineWeapon ? 0 : this.fireRate; 
+        this.fireCooldown = this.fireRate; 
         this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
 
         this.shieldTimer = 0;
@@ -56,9 +58,10 @@ export class Tank {
     updateWeapons(dt) {
         if (this.fireCooldown > 0) this.fireCooldown -= dt;
         if (this.recoil > 0) this.recoil -= dt * 10; if (this.recoil < 0) this.recoil = 0;
+        if (this.gatlingSpinTimer > 0) this.gatlingSpinTimer -= dt;
+
         this.shotsToFireThisFrame = 0;
 
-        // НОВОЕ: Обработка перезарядки магазина
         if (this.isMagazineWeapon) {
             if (this.isReloading && this.fireCooldown <= 0) {
                 this.isReloading = false;
@@ -74,20 +77,19 @@ export class Tank {
 
     tryShoot() {
         if (this.isMagazineWeapon) {
-            // Огонь из Гатлинга (один патрон за раз, пока нажата кнопка)
             if (!this.isReloading && this.fireCooldown <= 0 && this.ammo > 0) {
+                this.gatlingSpinTimer = 0.1; // Активируем эффект пулемета (тряска + пламя)
                 this.shotsToFireThisFrame = 1;
                 this.ammo--;
-                this.fireCooldown = this.fireRate; // Короткая задержка между пулями
-                this.recoil = 3;
+                this.fireCooldown = this.fireRate; 
+                this.recoil = 2; // Небольшая, но постоянная отдача
                 if (this.ammo <= 0) {
                     this.isReloading = true;
-                    this.fireCooldown = this.reloadTime; // Долгая перезарядка барабана
+                    this.fireCooldown = this.reloadTime; 
                 }
                 return true;
             }
         } else {
-            // Обычный выстрел
             if (this.fireCooldown <= 0 && this.burstsRemaining === 0) { 
                 this.fireCooldown = this.fireRate; this.burstsRemaining = this.burstCount; this.burstTimer = 0; return true; 
             }
@@ -270,9 +272,26 @@ export class Tank {
         for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
         ctx.save(); ctx.translate(this.x + 5, this.y + 5); ctx.rotate(this.hullAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
-        ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil, -this.turretHeight / 2, this.turretWidth, this.turretHeight); ctx.restore();
         
+        // НОВОЕ: Эффект вибрации Гатлинга
+        let isGatlingSpinning = this.turretName === "Гатлинг" && this.gatlingSpinTimer > 0;
+        let vibX = isGatlingSpinning ? (Math.random() - 0.5) * 2 : 0;
+        let vibY = isGatlingSpinning ? (Math.random() - 0.5) * 4 : 0;
+
+        ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight); ctx.restore();
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight);
+        
+        // НОВОЕ: Вспышка пламени у Гатлинга при стрельбе
+        if (isGatlingSpinning) {
+            ctx.fillStyle = Math.random() > 0.5 ? '#ffaa00' : '#ffea00';
+            ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(this.turretWidth / 2 + 5 + Math.random()*10, vibY, 3 + Math.random()*3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+
         let barWidth = 40; 
         let hpPercent = this.hp / this.maxHp;
         let yOffset = this.y - this.hullHeight / 2 - 20;
@@ -280,13 +299,12 @@ export class Tank {
         ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth, 4);
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth * hpPercent, 4);
 
-        // НОВОЕ: Отрисовка бара перезарядки / магазина
         let reloadPercent = 0;
         if (this.isMagazineWeapon) {
             if (this.isReloading) {
                 reloadPercent = 1 - (this.fireCooldown / this.reloadTime);
             } else {
-                reloadPercent = this.ammo / this.maxAmmo; // Синяя полоса патронов
+                reloadPercent = this.ammo / this.maxAmmo;
             }
         } else {
             reloadPercent = 1 - (this.fireCooldown / this.fireRate);
@@ -296,7 +314,6 @@ export class Tank {
         if (reloadPercent > 1) reloadPercent = 1;
         
         ctx.fillStyle = '#444'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth, 3);
-        // Если это магазин и он полон/тратится - цвет синий. Если перезарядка - оранжевый.
         ctx.fillStyle = (this.isMagazineWeapon && !this.isReloading) ? '#00ccff' : '#ffaa00'; 
         ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
     }
