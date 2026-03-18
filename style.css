@@ -1,8 +1,21 @@
-body { margin: 0; padding: 0; background-color: #08100a; color: #d0e0d0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
-.screen { display: none; width: 100vw; height: 100vh; flex-direction: column; align-items: center; justify-content: center; }
-#gameCanvas { display: block; margin: 0 auto; background: #222; box-shadow: 0 0 20px rgba(0, 0, 0, 0.8); cursor: crosshair; }
+body { margin: 0; padding: 0; background-color: #08100a; color: #d0e0d0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; overflow: hidden; }
 
-/* Общий стиль панелей (Милитари зеленый) */
+/* Применяем растягивание на весь экран ТОЛЬКО к меню (div), а не к холсту */
+div.screen { display: none; width: 100vw; height: 100vh; flex-direction: column; align-items: center; justify-content: center; }
+
+/* Жестко фиксируем размер игрового поля и ставим точно по центру */
+#gameCanvas { 
+    width: 1000px !important; 
+    height: 700px !important; 
+    position: absolute; 
+    top: 0; bottom: 0; left: 0; right: 0; 
+    margin: auto; 
+    background: #0d140f; /* Темно-зеленый военный фон */
+    box-shadow: 0 0 40px rgba(0, 0, 0, 1); 
+    cursor: crosshair; 
+}
+
+/* Общий стиль панелей Ангара */
 .hangar-container { display: flex; flex-direction: column; width: 900px; height: 650px; background: #0c180e; border: 2px solid #1a331e; border-radius: 10px; box-shadow: 0 0 30px rgba(10, 30, 15, 0.9); overflow: hidden; }
 .hangar-header { background: #122416; padding: 15px; text-align: center; border-bottom: 2px solid #1a331e; }
 .hangar-header h1 { margin: 0 0 10px 0; color: #ffcc00; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
