@@ -20,8 +20,6 @@ export function initHangarUI(startLevelFn) {
     };
     document.getElementById('to-levels-btn').onclick = () => { generateLevelsGrid(); showScreen('levels'); };
     document.getElementById('back-to-hangar-btn').onclick = () => { showScreen('hangar'); updateHangarUI(); };
-    
-    // ИСПРАВЛЕНО: Принудительно показываем ангар при загрузке!
     showScreen('hangar'); 
     updateHangarUI();
 }
@@ -40,12 +38,11 @@ export function updateHangarUI() {
     let hId = assembly.hullId; let tId = assembly.turretId;
     hullImg.src = `assets/${hId === 'hunter' ? 'hull' : hId}.png`;
 
+    // ИСПРАВЛЕНО: Башня больше не растягивается скриптом, размер контролирует CSS
     let turretImg = document.getElementById('hangar-turret-layer');
     if (!turretImg && hullImg) {
         turretImg = document.createElement('img'); turretImg.id = 'hangar-turret-layer';
-        turretImg.style.position = 'absolute'; turretImg.style.top = '0'; turretImg.style.left = '0';
-        turretImg.style.width = '100%'; turretImg.style.height = '100%'; turretImg.style.pointerEvents = 'none';
-        hullImg.parentElement.style.position = 'relative'; hullImg.parentElement.appendChild(turretImg);
+        hullImg.parentElement.appendChild(turretImg);
     }
     if (turretImg) turretImg.src = `assets/${tId === 'scourge' ? 'turret' : tId}.png`;
 
