@@ -3,86 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Танки: Ангар 2.0</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Tank Commander</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div id="game-container">
-    
-    <!-- ЭКРАН АНГАРА 2.0 -->
-    <div id="hangar-screen" class="screen">
-       <div class="hangar-header">
-    <h1>АНГАР</h1>
-    <div class="resources-bar">
-        <div class="res-item" title="Шестеренки">
-            <span class="res-icon">⚙️</span> <span id="player-points">0</span>
-        </div>
-        <div class="res-item" title="Апгрейды Корпуса">
-            <span class="res-icon hull-star">★</span> <span id="inv-hull-val">0</span>
-        </div>
-        <div class="res-item" title="Апгрейды Башни">
-            <span class="res-icon turret-star">★</span> <span id="inv-turret-val">0</span>
-        </div>
-    </div>
-</div>
-
-        <div class="hangar-layout">
-            <!-- ЛЕВАЯ ПАНЕЛЬ: Текущая сборка -->
-            <div class="hangar-panel hangar-left">
-                <h3>ТЕКУЩАЯ СБОРКА</h3>
-                <div class="hangar-visual-box">
-                    <img id="hangar-hull-layer" src="assets/hull.png">
-                    <img id="hangar-turret-layer" src="assets/turret.png">
-                </div>
-                <div class="current-hp-box">
-                    Прочность: <span id="current-hp-val">0</span> / <span id="max-hp-val">0</span>
-                </div>
-                <button id="heal-btn" class="action-btn">Ремонт 20% (1 ⚙️)</button>
-                <button id="to-levels-btn" class="menu-btn start-btn">В БОЙ</button>
-            </div>
-
-            <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ: Список деталей -->
-            <div class="hangar-panel hangar-center">
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="hulls">КОРПУСА</button>
-                    <button class="tab-btn" data-tab="turrets">БАШНИ</button>
-                </div>
-                <div id="parts-list" class="parts-list">
-                    <!-- Сюда JS добавит кнопки деталей -->
+    <!-- ЭКРАН АНГАРА -->
+    <div id="hangar-screen" class="screen" style="display: flex;">
+        <div class="hangar-container">
+            <div class="hangar-header">
+                <h1>АНГАР</h1>
+                <div class="resources">
+                    <span class="res-item">⚙️ <span id="player-points">0</span></span>
+                    <span class="res-item" style="color: #00ccff;">★ <span id="inv-hull-val">0</span></span>
+                    <span class="res-item" style="color: #ff3333;">★ <span id="inv-turret-val">0</span></span>
                 </div>
             </div>
+            
+            <div class="hangar-body">
+                <!-- ЛЕВАЯ ПАНЕЛЬ: Текущая сборка -->
+                <div class="panel left-panel">
+                    <h2 style="margin-top:0; color:#ffcc00; text-align:center; font-size:18px;">ТЕКУЩАЯ СБОРКА</h2>
+                    <div class="assembly-box">
+                        <img id="hangar-hull-layer" src="" alt="Корпус">
+                        <!-- Башня добавится скриптом -->
+                    </div>
+                    <div class="hp-info">Прочность: <span id="current-hp-val">0</span> / <span id="max-hp-val">0</span></div>
+                    <button id="heal-btn">РЕМОНТ 20% (1 ⚙️)</button>
+                    <button id="to-levels-btn">В БОЙ</button>
+                </div>
 
-            <!-- ПРАВАЯ ПАНЕЛЬ: Характеристики выбранной детали -->
-            <div class="hangar-panel hangar-right">
-                <div id="details-info">
-                    <h3>ДЕТАЛЬ</h3>
-                    <div class="details-stats">
-                        <p id="det-name" class="highlight">-</p>
-                        <p>HP: <span id="det-hp">-</span></p>
-                        <p>Броня: <span id="det-armor">-</span></p>
-                        <p>Скорость: <span id="det-speed">-</span></p>
-                        <p>Особенность: <span id="det-ability" style="color: #00ffcc;">-</span></p>
+                <!-- СРЕДНЯЯ ПАНЕЛЬ: Выбор детали -->
+                <div class="panel mid-panel">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="hulls">КОРПУСА</button>
+                        <button class="tab-btn" data-tab="turrets">БАШНИ</button>
                     </div>
-                    <div id="action-area" class="action-area">
-                        <!-- Кнопка КУПИТЬ или УСТАНОВИТЬ -->
+                    <div id="parts-list">
+                        <!-- Список деталей генерируется скриптом -->
                     </div>
+                </div>
+
+                <!-- ПРАВАЯ ПАНЕЛЬ: Характеристики и Прокачка -->
+                <div class="panel right-panel" id="details-info">
+                    <!-- Характеристики генерируются скриптом -->
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ЭКРАН ВЫБОРА УРОВНЯ -->
-    <div id="levels-screen" class="screen" style="display: none;">
-        <h1>СЕКТОРА</h1>
+    <div id="levels-screen" class="screen" style="background: #08100a;">
+        <h1 style="color:#ffcc00; text-align:center; font-size:40px; margin-top:50px; text-shadow:0 0 20px rgba(255, 170, 0, 0.5);">ВЫБОР СЕКТОРА</h1>
         <div id="levels-grid"></div>
-        <button id="back-to-hangar-btn" class="menu-btn">В ангар</button>
+        <button id="back-to-hangar-btn" style="margin-top:20px; width:300px; padding: 15px; font-size:18px;">В АНГАР</button>
     </div>
 
-    <canvas id="gameCanvas" style="display: none;"></canvas>
-</div>
+    <!-- ЭКРАН ИГРЫ -->
+    <canvas id="gameCanvas" class="screen"></canvas>
 
-<script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
