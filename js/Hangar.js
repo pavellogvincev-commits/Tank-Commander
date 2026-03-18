@@ -20,6 +20,9 @@ export function initHangarUI(startLevelFn) {
     };
     document.getElementById('to-levels-btn').onclick = () => { generateLevelsGrid(); showScreen('levels'); };
     document.getElementById('back-to-hangar-btn').onclick = () => { showScreen('hangar'); updateHangarUI(); };
+    
+    // ИСПРАВЛЕНО: Принудительно показываем ангар при загрузке!
+    showScreen('hangar'); 
     updateHangarUI();
 }
 
@@ -49,7 +52,6 @@ export function updateHangarUI() {
     renderPartsList(); showPartDetails(selectedPartId);
 }
 
-// НОВОЕ: Перенос кнопок и уровней в список деталей (средний столбец)
 function renderPartsList() {
     const list = document.getElementById('parts-list'); list.innerHTML = ''; const dataGroup = GameData[selectedTab];
     for (let id in dataGroup) {
@@ -67,14 +69,13 @@ function renderPartsList() {
         innerHTML += `</div>`;
         div.innerHTML = innerHTML;
 
-        // Создаем контейнер для кнопок, чтобы клики по ним не переключали выделение, если не надо
         const actionDiv = document.createElement('div');
         actionDiv.className = 'part-item-actions';
 
         if (!isUnlocked) {
             const buyBtn = document.createElement('button'); buyBtn.className = 'list-buy-btn'; buyBtn.innerText = `КУПИТЬ (${item.cost} ⚙️)`;
             buyBtn.onclick = (e) => { 
-                e.stopPropagation(); // Не выделяем строку при клике на покупку
+                e.stopPropagation(); 
                 if (PlayerProgress.points >= item.cost) { 
                     PlayerProgress.points -= item.cost; 
                     if (selectedTab === 'hulls') PlayerProgress.unlockedHulls.push(id); else PlayerProgress.unlockedTurrets.push(id); 
@@ -101,7 +102,6 @@ function renderPartsList() {
     }
 }
 
-// НОВОЕ: Перестановка кнопок и улучшение визуала правого столбца
 function showPartDetails(id) {
     const item = GameData[selectedTab][id]; const isUnlocked = selectedTab === 'hulls' ? PlayerProgress.unlockedHulls.includes(id) : PlayerProgress.unlockedTurrets.includes(id);
     const stats = PlayerProgress.partStats[id];
@@ -109,7 +109,6 @@ function showPartDetails(id) {
     let html = ``;
 
     if (isUnlocked) {
-        // Красивое изображение
         html += `<div class="details-image-box unlocked-box"><img src="${imgSrc}" alt="${item.name}"></div>`;
         html += `<div class="details-title">${item.name}</div>`;
 
@@ -127,7 +126,6 @@ function showPartDetails(id) {
 
         let canUpgrade = stats.usedCapacity < stats.maxCapacity; let pointsType = selectedTab === 'hulls' ? 'hullUpgrades' : 'turretUpgrades'; let hasPoints = PlayerProgress.inventory[pointsType] > 0;
         
-        // Главные кнопки (Случайный апгрейд и Расширить потенциал стали больше)
         if (canUpgrade && hasPoints) html += `<button class="random-upgrade-btn main-action-btn" onclick="buyRandomUpgrade('${id}')">СЛУЧАЙНЫЙ АПГРЕЙД (1 ★)</button>`;
         else if (!hasPoints && canUpgrade) html += `<button class="random-upgrade-btn main-action-btn" disabled>НЕТ ЗВЕЗД ДЛЯ АПГРЕЙДА</button>`;
         else if (!canUpgrade) html += `<button class="random-upgrade-btn main-action-btn" disabled>ПОТЕНЦИАЛ ИСЧЕРПАН</button>`;
@@ -135,7 +133,6 @@ function showPartDetails(id) {
         let expandCost = stats.maxCapacity + 1;
         html += `<button class="expand-btn main-action-btn" onclick="expandCapacity('${id}', ${expandCost})">РАСШИРИТЬ ПОТЕНЦИАЛ (${expandCost} ⚙️)</button>`;
 
-        // Кнопка извлечения стала маленькой и ушла вниз
         if (stats.usedCapacity > 0) {
             let resetCost = stats.usedCapacity * 3; let canReset = PlayerProgress.points >= resetCost;
             html += `<button class="reset-upgrade-btn small-action-btn" ${canReset ? '' : 'disabled'} onclick="resetUpgrades('${id}', ${resetCost})">Извлечь звезды (${resetCost} ⚙️)</button>`;
