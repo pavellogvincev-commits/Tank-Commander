@@ -1,96 +1,98 @@
 body { margin: 0; padding: 0; background-color: #08100a; color: #d0e0d0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; overflow: hidden; }
 
-/* Применяем растягивание на весь экран ТОЛЬКО к меню (div), а не к холсту */
+/* Применяем растягивание на весь экран ТОЛЬКО к меню (div) */
 div.screen { display: none; width: 100vw; height: 100vh; flex-direction: column; align-items: center; justify-content: center; }
 
-/* Жестко фиксируем размер игрового поля и ставим точно по центру */
+/* Жестко фиксируем размер игрового поля и ставим по центру */
 #gameCanvas { 
     width: 1000px !important; 
     height: 700px !important; 
     position: absolute; 
     top: 0; bottom: 0; left: 0; right: 0; 
     margin: auto; 
-    background: #0d140f; /* Темно-зеленый военный фон */
+    /* НОВЫЙ ФОН АРЕНЫ: Травянисто-военный зеленый */
+    background: #2a3d24; 
     box-shadow: 0 0 40px rgba(0, 0, 0, 1); 
     cursor: crosshair; 
 }
 
 /* Общий стиль панелей Ангара */
-.hangar-container { display: flex; flex-direction: column; width: 900px; height: 650px; background: #0c180e; border: 2px solid #1a331e; border-radius: 10px; box-shadow: 0 0 30px rgba(10, 30, 15, 0.9); overflow: hidden; }
-.hangar-header { background: #122416; padding: 15px; text-align: center; border-bottom: 2px solid #1a331e; }
-.hangar-header h1 { margin: 0 0 10px 0; color: #ffcc00; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
-.resources { display: flex; justify-content: center; gap: 30px; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; width: fit-content; margin: 0 auto; border: 1px solid #1a331e; }
+.hangar-container { display: flex; flex-direction: column; width: 900px; height: 560px; background: #0c180e; border: 2px solid #1a331e; border-radius: 10px; box-shadow: 0 0 30px rgba(10, 30, 15, 0.9); overflow: hidden; }
+.hangar-header { background: #122416; padding: 10px; text-align: center; border-bottom: 2px solid #1a331e; }
+.resources { display: flex; justify-content: center; gap: 30px; font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 8px; width: fit-content; margin: 0 auto; border: 1px solid #1a331e; }
 .res-item { display: flex; align-items: center; gap: 8px; }
 
-.hangar-body { display: flex; flex: 1; padding: 20px; gap: 20px; background: radial-gradient(circle at center, #102013 0%, #08100a 100%); }
-.panel { background: rgba(14, 28, 17, 0.8); border: 1px solid #234028; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
+.hangar-body { display: flex; flex: 1; padding: 15px; gap: 15px; background: radial-gradient(circle at center, #102013 0%, #08100a 100%); }
+.panel { background: rgba(14, 28, 17, 0.8); border: 1px solid #234028; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; }
 .left-panel { flex: 1; align-items: center; justify-content: space-between; }
 .mid-panel { flex: 1.2; }
 .right-panel { flex: 1; }
 
-.tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-.tab-btn { flex: 1; padding: 10px; background: #1a331e; border: 1px solid #2a4d2d; color: #a0baa0; font-weight: bold; cursor: pointer; transition: 0.2s; border-radius: 5px; text-transform: uppercase; }
+.tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.tab-btn { flex: 1; padding: 8px; background: #1a331e; border: 1px solid #2a4d2d; color: #a0baa0; font-weight: bold; cursor: pointer; transition: 0.2s; border-radius: 5px; text-transform: uppercase; font-size: 13px; }
 .tab-btn:hover { background: #234028; color: #fff; }
 .tab-btn.active { background: #ffcc00; color: #111; border-color: #ffaa00; box-shadow: 0 0 10px rgba(255, 204, 0, 0.3); }
 
 /* СПИСОК ДЕТАЛЕЙ (Средний столбец) */
-#parts-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; padding-right: 5px; }
-#parts-list::-webkit-scrollbar { width: 6px; }
-#parts-list::-webkit-scrollbar-thumb { background: #2a4d2d; border-radius: 3px; }
+#parts-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; padding-right: 5px; }
+#parts-list::-webkit-scrollbar { width: 4px; }
+#parts-list::-webkit-scrollbar-thumb { background: #2a4d2d; border-radius: 2px; }
 
-.part-item { background: #122416; padding: 12px; border: 1px solid #1a331e; border-left: 4px solid #335533; border-radius: 5px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; }
+.part-item { background: #122416; padding: 10px; border: 1px solid #1a331e; border-left: 4px solid #335533; border-radius: 5px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; }
 .part-item:hover { background: #18301c; border-color: #335533; }
 .part-item.selected { border-left-color: #ffcc00; background: #1e3623; }
 .part-item.equipped { border-left-color: #00ffaa; }
 .part-item.locked { border-left-color: #444; filter: grayscale(0.8); opacity: 0.6; }
 
 .part-item-header { display: flex; justify-content: space-between; align-items: center; }
-.part-item-name { font-size: 16px; font-weight: bold; color: #ffcc00; }
-.part-item-level { font-size: 13px; color: #88aa88; font-weight: bold; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
-.part-item-actions { margin-top: 10px; display: flex; justify-content: flex-end; align-items: center; }
+.part-item-name { font-size: 14px; font-weight: bold; color: #ffcc00; }
+.part-item-level { font-size: 12px; color: #88aa88; font-weight: bold; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+.part-item-actions { margin-top: 8px; display: flex; justify-content: flex-end; align-items: center; }
 
 /* Кнопки в списке */
-.list-buy-btn, .list-equip-btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 12px; }
+.list-buy-btn, .list-equip-btn { padding: 5px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 11px; }
 .list-buy-btn { background: #ffaa00; color: #111; }
 .list-buy-btn:hover { background: #ffcc00; transform: scale(1.05); }
 .list-equip-btn { background: #00cc88; color: #111; }
 .list-equip-btn:hover { background: #00ffaa; transform: scale(1.05); }
-.list-equipped-text { color: #00ffaa; font-size: 12px; font-weight: bold; padding: 6px 0; }
+.list-equipped-text { color: #00ffaa; font-size: 11px; font-weight: bold; padding: 4px 0; }
 
 /* ПРАВЫЙ СТОЛБЕЦ (Детали) */
-.details-image-box { position: relative; width: 100%; height: 160px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; overflow: hidden; background: repeating-linear-gradient(45deg, #0d1a10, #0d1a10 10px, #122416 10px, #122416 20px); border: 2px solid #234028; }
+.details-image-box { position: relative; width: 100%; height: 110px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: center; align-items: center; overflow: hidden; background: repeating-linear-gradient(45deg, #0d1a10, #0d1a10 10px, #122416 10px, #122416 20px); border: 2px solid #234028; }
 .details-image-box.unlocked-box::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: radial-gradient(circle, rgba(255,204,0,0.15) 0%, transparent 70%); }
 .details-image-box img { max-height: 80%; z-index: 1; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8)); }
 .details-image-box.locked-box img { filter: brightness(0.2) drop-shadow(0 10px 10px rgba(0,0,0,0.8)); }
 
-.details-title { font-size: 22px; font-weight: bold; color: #ffcc00; text-align: center; margin-bottom: 15px; text-transform: uppercase; }
-.ability-text { margin-top: 15px; font-size: 14px; text-align: center; color: #a0baa0; }
+.details-title { font-size: 18px; font-weight: bold; color: #ffcc00; text-align: center; margin-bottom: 10px; text-transform: uppercase; }
+.ability-text { margin-top: 10px; font-size: 13px; text-align: center; color: #a0baa0; }
 .ability-text span { color: #00ffaa; font-weight: bold; }
 
-/* Больгие кнопки действий справа */
-.main-action-btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
-.random-upgrade-btn { background: linear-gradient(to right, #ffaa00, #ff8800); color: #111; box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); }
-.random-upgrade-btn:hover:not(:disabled) { background: #ffcc00; transform: translateY(-2px); }
-.expand-btn { background: linear-gradient(to right, #00cc88, #009966); color: #111; box-shadow: 0 0 15px rgba(0, 204, 136, 0.4); }
-.expand-btn:hover { background: #00ffaa; transform: translateY(-2px); }
+/* Большие кнопки действий справа */
+.main-action-btn { width: 100%; padding: 8px; margin-top: 6px; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+.random-upgrade-btn { background: linear-gradient(to right, #ffaa00, #ff8800); color: #111; box-shadow: 0 0 10px rgba(255, 170, 0, 0.3); }
+.random-upgrade-btn:hover:not(:disabled) { background: #ffcc00; transform: translateY(-1px); }
+.expand-btn { background: linear-gradient(to right, #00cc88, #009966); color: #111; box-shadow: 0 0 10px rgba(0, 204, 136, 0.3); }
+.expand-btn:hover { background: #00ffaa; transform: translateY(-1px); }
 .random-upgrade-btn:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
 
 /* Маленькая кнопка сброса (ушла вниз) */
-.small-action-btn { width: 100%; padding: 8px; margin-top: auto; background: transparent; color: #ff5555; border: 1px solid #ff5555; border-radius: 5px; font-size: 12px; cursor: pointer; transition: 0.2s; }
+.small-action-btn { width: 100%; padding: 6px; margin-top: auto; background: transparent; color: #ff5555; border: 1px solid #ff5555; border-radius: 4px; font-size: 11px; cursor: pointer; transition: 0.2s; }
 .small-action-btn:hover:not(:disabled) { background: rgba(255, 85, 85, 0.1); }
 .small-action-btn:disabled { color: #555; border-color: #333; cursor: not-allowed; }
 
 /* Сборка и ХП слева */
-.assembly-box { width: 180px; height: 180px; border-radius: 50%; border: 3px solid #ffcc00; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #234028 0%, #0d1a10 70%); box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); position: relative; }
-.assembly-box img { position: absolute; max-width: 60%; max-height: 60%; filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.8)); }
-.hp-info { text-align: center; margin: 15px 0; font-size: 18px; font-weight: bold; color: #a0baa0; }
-#heal-btn { width: 100%; padding: 12px; background: #00cc88; color: #111; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: auto; }
+.assembly-box { width: 140px; height: 140px; border-radius: 50%; border: 3px solid #ffcc00; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #234028 0%, #0d1a10 70%); box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); position: relative; }
+/* Центрирование и масштабирование изображений в сборке */
+.assembly-box img { position: absolute; max-width: 60%; max-height: 60%; left: 50%; top: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.8)); }
+
+.hp-info { text-align: center; margin: 10px 0; font-size: 15px; font-weight: bold; color: #a0baa0; }
+#heal-btn { width: 100%; padding: 8px; background: #00cc88; color: #111; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: auto; }
 #heal-btn:hover { background: #00ffaa; transform: scale(1.02); }
-#to-levels-btn, #back-to-hangar-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #ffaa00; color: #111; border: none; border-radius: 5px; cursor: pointer; transition: 0.2s; margin-top: auto; }
-#to-levels-btn:hover, #back-to-hangar-btn:hover { background: #ffcc00; box-shadow: 0 0 20px rgba(255, 204, 0, 0.5); }
+#to-levels-btn, #back-to-hangar-btn { width: 100%; padding: 10px; font-size: 16px; font-weight: bold; background: #ffaa00; color: #111; border: none; border-radius: 4px; cursor: pointer; transition: 0.2s; margin-top: auto; }
+#to-levels-btn:hover, #back-to-hangar-btn:hover { background: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.4); }
 
 /* Характеристики */
-.upgrade-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #d0e0d0; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px; }
+.upgrade-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; color: #d0e0d0; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; }
 .upgrade-val { font-weight: bold; color: #00ffaa; transition: 0.3s; }
 .stat-flash { color: #fff !important; text-shadow: 0 0 10px #fff, 0 0 20px #00ffaa; transform: scale(1.2); }
 
