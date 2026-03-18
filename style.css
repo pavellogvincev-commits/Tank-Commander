@@ -1,415 +1,95 @@
-/* =========================================
-   БАЗОВЫЕ НАСТРОЙКИ
-========================================= */
-body {
-    margin: 0; 
-    padding: 0;
-    background-color: #1a1a1a;
-    color: #fff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex; 
-    justify-content: center; 
-    align-items: center;
-    height: 100vh; 
-    overflow: hidden;
-}
+body { margin: 0; padding: 0; background-color: #08100a; color: #d0e0d0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+.screen { display: none; width: 100vw; height: 100vh; flex-direction: column; align-items: center; justify-content: center; }
+#gameCanvas { display: block; margin: 0 auto; background: #222; box-shadow: 0 0 20px rgba(0, 0, 0, 0.8); cursor: crosshair; }
 
-#game-container {
-    position: relative; 
-    width: 1000px;  /* БЫЛО 800 */
-    height: 700px;  /* БЫЛО 600 */
-    background-color: #2a2a2a;
-    box-shadow: 0 0 30px rgba(0,0,0,0.9);
-}
+/* Общий стиль панелей (Милитари зеленый) */
+.hangar-container { display: flex; flex-direction: column; width: 900px; height: 650px; background: #0c180e; border: 2px solid #1a331e; border-radius: 10px; box-shadow: 0 0 30px rgba(10, 30, 15, 0.9); overflow: hidden; }
+.hangar-header { background: #122416; padding: 15px; text-align: center; border-bottom: 2px solid #1a331e; }
+.hangar-header h1 { margin: 0 0 10px 0; color: #ffcc00; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
+.resources { display: flex; justify-content: center; gap: 30px; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; width: fit-content; margin: 0 auto; border: 1px solid #1a331e; }
+.res-item { display: flex; align-items: center; gap: 8px; }
 
-.screen {
-    width: 100%; 
-    height: 100%;
-    display: flex; 
-    flex-direction: column;
-    align-items: center;
-}
+.hangar-body { display: flex; flex: 1; padding: 20px; gap: 20px; background: radial-gradient(circle at center, #102013 0%, #08100a 100%); }
+.panel { background: rgba(14, 28, 17, 0.8); border: 1px solid #234028; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
+.left-panel { flex: 1; align-items: center; justify-content: space-between; }
+.mid-panel { flex: 1.2; }
+.right-panel { flex: 1; }
 
-h1 { 
-    margin: 15px 0 5px 0; 
-    font-size: 32px; 
-    text-shadow: 2px 2px 4px #000; 
-    letter-spacing: 2px; 
-}
+.tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+.tab-btn { flex: 1; padding: 10px; background: #1a331e; border: 1px solid #2a4d2d; color: #a0baa0; font-weight: bold; cursor: pointer; transition: 0.2s; border-radius: 5px; text-transform: uppercase; }
+.tab-btn:hover { background: #234028; color: #fff; }
+.tab-btn.active { background: #ffcc00; color: #111; border-color: #ffaa00; box-shadow: 0 0 10px rgba(255, 204, 0, 0.3); }
 
-/* =========================================
-   АНГАР: ШАПКА
-========================================= */
-.hangar-header {
-    text-align: center;
-    margin-bottom: 10px;
-}
+/* СПИСОК ДЕТАЛЕЙ (Средний столбец) */
+#parts-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; padding-right: 5px; }
+#parts-list::-webkit-scrollbar { width: 6px; }
+#parts-list::-webkit-scrollbar-thumb { background: #2a4d2d; border-radius: 3px; }
 
-#points-display { 
-    font-size: 22px; 
-    font-weight: bold; 
-    color: #ffcc00; 
-    text-shadow: 1px 1px 2px #000;
-}
+.part-item { background: #122416; padding: 12px; border: 1px solid #1a331e; border-left: 4px solid #335533; border-radius: 5px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; }
+.part-item:hover { background: #18301c; border-color: #335533; }
+.part-item.selected { border-left-color: #ffcc00; background: #1e3623; }
+.part-item.equipped { border-left-color: #00ffaa; }
+.part-item.locked { border-left-color: #444; filter: grayscale(0.8); opacity: 0.6; }
 
-/* =========================================
-   АНГАР: 3 КОЛОНКИ (МАКЕТ)
-========================================= */
-.hangar-layout {
-    display: flex; 
-    width: 96%; 
-    height: 75%; 
-    gap: 15px; 
-}
+.part-item-header { display: flex; justify-content: space-between; align-items: center; }
+.part-item-name { font-size: 16px; font-weight: bold; color: #ffcc00; }
+.part-item-level { font-size: 13px; color: #88aa88; font-weight: bold; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+.part-item-actions { margin-top: 10px; display: flex; justify-content: flex-end; align-items: center; }
 
-.hangar-panel {
-    background: rgba(0, 0, 0, 0.5); 
-    border: 2px solid #444; 
-    border-radius: 8px;
-    display: flex; 
-    flex-direction: column; 
-    padding: 15px;
-    box-sizing: border-box;
-}
+/* Кнопки в списке */
+.list-buy-btn, .list-equip-btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 12px; }
+.list-buy-btn { background: #ffaa00; color: #111; }
+.list-buy-btn:hover { background: #ffcc00; transform: scale(1.05); }
+.list-equip-btn { background: #00cc88; color: #111; }
+.list-equip-btn:hover { background: #00ffaa; transform: scale(1.05); }
+.list-equipped-text { color: #00ffaa; font-size: 12px; font-weight: bold; padding: 6px 0; }
 
-.hangar-left { flex: 1.2; align-items: center; text-align: center; }
-.hangar-center { flex: 1.5; }
-.hangar-right { flex: 1.2; }
+/* ПРАВЫЙ СТОЛБЕЦ (Детали) */
+.details-image-box { position: relative; width: 100%; height: 160px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; overflow: hidden; background: repeating-linear-gradient(45deg, #0d1a10, #0d1a10 10px, #122416 10px, #122416 20px); border: 2px solid #234028; }
+.details-image-box.unlocked-box::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: radial-gradient(circle, rgba(255,204,0,0.15) 0%, transparent 70%); }
+.details-image-box img { max-height: 80%; z-index: 1; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8)); }
+.details-image-box.locked-box img { filter: brightness(0.2) drop-shadow(0 10px 10px rgba(0,0,0,0.8)); }
 
-/* =========================================
-   ЛЕВАЯ ПАНЕЛЬ (Сборка и Старт)
-========================================= */
-.hangar-left h3 { margin-top: 0; color: #ccc; }
+.details-title { font-size: 22px; font-weight: bold; color: #ffcc00; text-align: center; margin-bottom: 15px; text-transform: uppercase; }
+.ability-text { margin-top: 15px; font-size: 14px; text-align: center; color: #a0baa0; }
+.ability-text span { color: #00ffaa; font-weight: bold; }
 
-.hangar-visual-box {
-    position: relative; 
-    width: 150px; 
-    height: 150px; 
-    margin: 15px 0;
-    background: radial-gradient(circle, #555 0%, #111 80%); 
-    border-radius: 50%; 
-    border: 3px solid #ffaa00;
-    box-shadow: inset 0 0 20px #000;
-}
+/* Больгие кнопки действий справа */
+.main-action-btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+.random-upgrade-btn { background: linear-gradient(to right, #ffaa00, #ff8800); color: #111; box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); }
+.random-upgrade-btn:hover:not(:disabled) { background: #ffcc00; transform: translateY(-2px); }
+.expand-btn { background: linear-gradient(to right, #00cc88, #009966); color: #111; box-shadow: 0 0 15px rgba(0, 204, 136, 0.4); }
+.expand-btn:hover { background: #00ffaa; transform: translateY(-2px); }
+.random-upgrade-btn:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
 
-.hangar-visual-box img { 
-    position: absolute; 
-    top: 50%; left: 50%; 
-    transform: translate(-50%, -50%) rotate(-90deg); 
-    width: 90px; 
-    filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.8));
-}
+/* Маленькая кнопка сброса (ушла вниз) */
+.small-action-btn { width: 100%; padding: 8px; margin-top: auto; background: transparent; color: #ff5555; border: 1px solid #ff5555; border-radius: 5px; font-size: 12px; cursor: pointer; transition: 0.2s; }
+.small-action-btn:hover:not(:disabled) { background: rgba(255, 85, 85, 0.1); }
+.small-action-btn:disabled { color: #555; border-color: #333; cursor: not-allowed; }
 
-.current-hp-box { 
-    font-size: 18px; 
-    margin-bottom: 15px; 
-    font-weight: bold; 
-}
+/* Сборка и ХП слева */
+.assembly-box { width: 180px; height: 180px; border-radius: 50%; border: 3px solid #ffcc00; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #234028 0%, #0d1a10 70%); box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); position: relative; }
+.assembly-box img { position: absolute; max-width: 60%; max-height: 60%; filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.8)); }
+.hp-info { text-align: center; margin: 15px 0; font-size: 18px; font-weight: bold; color: #a0baa0; }
+#heal-btn { width: 100%; padding: 12px; background: #00cc88; color: #111; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: auto; }
+#heal-btn:hover { background: #00ffaa; transform: scale(1.02); }
+#to-levels-btn, #back-to-hangar-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #ffaa00; color: #111; border: none; border-radius: 5px; cursor: pointer; transition: 0.2s; margin-top: auto; }
+#to-levels-btn:hover, #back-to-hangar-btn:hover { background: #ffcc00; box-shadow: 0 0 20px rgba(255, 204, 0, 0.5); }
 
-.action-btn {
-    padding: 12px; 
-    font-size: 16px; 
-    font-weight: bold; 
-    cursor: pointer;
-    background: #28a745; 
-    color: white; 
-    border: none; 
-    border-radius: 5px; 
-    transition: 0.2s;
-    width: 100%;
-}
-.action-btn:hover { background: #218838; transform: scale(1.02); }
+/* Характеристики */
+.upgrade-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #d0e0d0; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px; }
+.upgrade-val { font-weight: bold; color: #00ffaa; transition: 0.3s; }
+.stat-flash { color: #fff !important; text-shadow: 0 0 10px #fff, 0 0 20px #00ffaa; transform: scale(1.2); }
 
-.start-btn { 
-    margin-top: auto; 
-    width: 100%; 
-    padding: 15px;
-    background: linear-gradient(to bottom, #555, #333);
-    border: 2px solid #777;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: 0.2s;
-}
-.start-btn:hover { border-color: #ffaa00; color: #ffaa00; }
-
-/* =========================================
-   ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Вкладки и Список)
-========================================= */
-.tabs { 
-    display: flex; 
-    gap: 5px; 
-    margin-bottom: 10px; 
-}
-
-.tab-btn { 
-    flex: 1; 
-    padding: 10px; 
-    background: #333; 
-    border: none; 
-    color: #ccc; 
-    cursor: pointer; 
-    font-weight: bold;
-    border-radius: 5px;
-    transition: 0.2s;
-}
-.tab-btn:hover { background: #444; }
-.tab-btn.active { background: #ffaa00; color: #000; }
-
-.parts-list { 
-    overflow-y: auto; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 8px; 
-    padding-right: 5px;
-}
-
-/* Кастомный скроллбар для списка */
-.parts-list::-webkit-scrollbar { width: 8px; }
-.parts-list::-webkit-scrollbar-track { background: #222; border-radius: 4px; }
-.parts-list::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-.parts-list::-webkit-scrollbar-thumb:hover { background: #777; }
-
-.part-item {
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between;
-    padding: 12px; 
-    background: #222; 
-    border: 2px solid #444;
-    border-radius: 5px;
-    cursor: pointer; 
-    transition: 0.2s; 
-    position: relative;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-.part-item:hover { background: #333; }
-.part-item.selected { border-color: #ffaa00; background: rgba(255, 170, 0, 0.15); }
-.part-item.locked { opacity: 0.5; }
-
-.part-item.equipped::after {
-    content: "✓ УСТАНОВЛЕНО"; 
-    position: absolute; 
-    right: 5px; 
-    top: -8px; 
-    font-size: 10px; 
-    color: #fff;
-    background-color: #28a745;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-.part-price { color: #ffcc00; font-size: 14px; }
-
-/* =========================================
-   ПРАВАЯ ПАНЕЛЬ (Характеристики)
-========================================= */
-.details-stats h3 { 
-    margin-top: 0; 
-    border-bottom: 1px solid #555; 
-    padding-bottom: 10px; 
-    color: #ccc;
-}
-
-.details-stats p { margin: 12px 0; font-size: 15px; color: #ddd; }
-.highlight { color: #ffaa00; font-size: 18px; font-weight: bold; }
-
-.action-area { 
-    margin-top: auto; 
-    display: flex; 
-    justify-content: center; 
-}
-
-.buy-btn { 
-    background: #ffcc00; 
-    color: #000; 
-    padding: 12px; 
-    width: 100%;
-    border: none; 
-    border-radius: 5px;
-    font-weight: bold; 
-    font-size: 16px;
-    cursor: pointer; 
-    transition: 0.2s;
-}
-.buy-btn:hover { background: #e6b800; transform: scale(1.05); }
-
-.equip-btn { 
-    background: #007bff; 
-    color: #fff; 
-    padding: 12px; 
-    width: 100%;
-    border: none; 
-    border-radius: 5px;
-    font-weight: bold; 
-    font-size: 16px;
-    cursor: pointer; 
-    transition: 0.2s;
-}
-.equip-btn:hover { background: #0056b3; transform: scale(1.05); }
-
-/* =========================================
-   ЭКРАН УРОВНЕЙ
-========================================= */
-.levels-info { margin-bottom: 15px; font-size: 16px; color: #ccc; }
-
-#levels-grid {
-    display: grid; 
-    grid-template-columns: repeat(10, 1fr); 
-    gap: 10px; 
-    padding: 20px;
-    background: rgba(0,0,0,0.6); 
-    border-radius: 10px; 
-    max-height: 400px; 
-    overflow-y: auto; 
-    margin-bottom: 20px;
-}
-
-.level-btn {
-    width: 50px; height: 50px; 
-    font-size: 20px; font-weight: bold; 
-    cursor: pointer; border: none; border-radius: 5px; 
-    display: flex; align-items: center; justify-content: center;
-}
-.level-btn.locked { background: #444; color: #777; cursor: not-allowed; }
-.level-btn.unlocked { background: #ffcc00; color: #000; box-shadow: 0 0 10px rgba(255,200,0,0.5); }
-.level-btn.passed { background: #28a745; color: white; box-shadow: 0 0 10px rgba(40,167,69,0.5); }
-
-.menu-btn {
-    padding: 12px 30px; 
-    font-size: 16px; 
-    font-weight: bold; 
-    cursor: pointer;
-    background: #555; 
-    color: white; 
-    border: none; 
-    border-radius: 5px; 
-    transition: 0.2s;
-}
-.menu-btn:hover { background: #777; }
-
-/* =========================================
-   ИГРОВОЙ ЭКРАН (Canvas)
-========================================= */
-canvas { 
-    background-color: #4a5c39; /* Зеленый цвет травы/арены */
-    display: block; 
-}
-/* =========================================
-   АПГРЕЙДЫ И ИНВЕНТАРЬ
-========================================= */
-/* =========================================
-   ПАНЕЛЬ РЕСУРСОВ (ВВЕРХУ АНГАРА)
-========================================= */
-.resources-bar {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 8px 20px;
-    border-radius: 8px;
-    border: 1px solid #444;
-    margin: 5px auto 15px auto;
-    width: fit-content;
-}
-
-.res-item {
-    font-size: 24px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #fff;
-    text-shadow: 1px 1px 2px #000;
-}
-
-.res-icon { font-size: 26px; }
-.hull-star { color: #00ccff; text-shadow: 0 0 10px #00ccff; }
-.turret-star { color: #ff3333; text-shadow: 0 0 10px #ff3333; }
-.inv-hull { color: #00ccff; text-shadow: 0 0 5px #00ccff; }
-.inv-turret { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
-
-.upgrade-row {
-    display: flex; justify-content: space-between; align-items: center;
-    background: #222; padding: 5px 10px; margin-bottom: 5px; border-radius: 5px;
-}
-.upgrade-row span { font-size: 14px; }
-.upgrade-val { color: #00ffcc; font-weight: bold; }
-.upgrade-btn {
-    background: #28a745; color: white; border: none; width: 25px; height: 25px;
-    border-radius: 50%; font-weight: bold; cursor: pointer; transition: 0.2s;
-}
-.upgrade-btn:hover { background: #218838; transform: scale(1.1); }
-.upgrade-btn:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; }
-
-.capacity-box {
-    text-align: center; margin-bottom: 10px; padding: 5px; border: 1px solid #444; border-radius: 5px;
-}
-.expand-btn {
-    background: #ffcc00; color: #000; border: none; padding: 5px 10px; margin-top: 5px;
-    font-weight: bold; border-radius: 3px; cursor: pointer; font-size: 12px;
-}
-.expand-btn:hover { background: #e6b800; }
-
-/* Звездочки на экране уровней */
-.level-stars { display: flex; gap: 2px; justify-content: center; margin-top: 2px; }
-.star { font-size: 12px; color: #555; }
+/* Уровни */
+#levels-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; padding: 20px; overflow-y: auto; max-height: 500px; }
+.level-btn { height: 60px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
+.level-btn.passed { background: #234028; color: #a0baa0; border: 1px solid #00cc88; }
+.level-btn.unlocked { background: #ffaa00; color: #111; box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); animation: pulseBtn 2s infinite; }
+.level-btn.locked { background: #122416; color: #444; border: 1px dashed #2a4d2d; cursor: not-allowed; }
+.level-btn:hover:not(.locked) { transform: scale(1.05); }
+.level-stars { margin-top: 5px; font-size: 12px; }
+.star { color: #333; margin: 0 2px; }
 .star.gold { color: #ffcc00; text-shadow: 0 0 5px #ffcc00; }
 
-/* =========================================
-   СЛУЧАЙНЫЙ АПГРЕЙД И АНИМАЦИИ
-========================================= */
-.random-upgrade-btn {
-    width: 100%; padding: 12px; margin-top: 10px;
-    background: linear-gradient(to right, #28a745, #218838);
-    color: white; border: none; border-radius: 5px;
-    font-size: 16px; font-weight: bold; cursor: pointer;
-    transition: 0.2s; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
-}
-.random-upgrade-btn:hover { background: #218838; transform: scale(1.02); }
-.random-upgrade-btn:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-
-@keyframes flashStat {
-    0% { transform: scale(1.5); color: #fff; text-shadow: 0 0 20px #fff; }
-    50% { transform: scale(1.2); color: #00ffcc; text-shadow: 0 0 15px #00ffcc; }
-    100% { transform: scale(1); color: #00ffcc; text-shadow: none; }
-}
-
-.stat-flash {
-    display: inline-block;
-    animation: flashStat 0.8s ease-out forwards;
-}
-/* =========================================
-   КАРТИНКА ДЕТАЛИ В АНГАРЕ И ЭФФЕКТЫ
-========================================= */
-.details-image-box {
-    text-align: center;
-    margin-bottom: 10px;
-}
-.details-image-box img {
-    max-width: 120px;
-    max-height: 80px;
-    filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.8));
-    margin-bottom: 5px;
-}
-.details-level-text {
-    font-size: 18px;
-    font-weight: bold;
-    color: #ffcc00;
-    text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
-}
-.reset-upgrade-btn {
-    width: 100%; padding: 12px; margin-top: 10px;
-    background: linear-gradient(to right, #dc3545, #c82333);
-    color: white; border: none; border-radius: 5px;
-    font-size: 16px; font-weight: bold; cursor: pointer;
-    transition: 0.2s; box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
-}
-.reset-upgrade-btn:hover { background: #c82333; transform: scale(1.02); }
-.reset-upgrade-btn:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-
-
+@keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
