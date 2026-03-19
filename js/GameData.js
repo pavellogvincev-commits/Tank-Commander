@@ -37,9 +37,9 @@ export const LevelsConfig = {
     5: { pool: ["demon", "demon", "demon", "scout", "scout", "scout"], obstacles: 2, barrels: 4, maxUpgrades: 2 },
     6: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 7, maxUpgrades: 2 },
     7: { pool: ["demon", "scout", "basic", "demon", "scout", "basic"], obstacles: 4, barrels: 5, maxUpgrades: 2 },
-    8: { pool: ["mars", "mars", "basic", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
-    9: { pool: ["scout", "scout", "scout", "demon", "mars", "mars"], obstacles: 3, barrels: 6, maxUpgrades: 2 },
-    10: { pool: ["mars", "mars", "mars", "demon", "demon"], obstacles: 5, barrels: 8, maxUpgrades: 3 }
+    8: { pool: ["mars", "mars", "basic", "basic", "scout", "scout", "scout" ], obstacles: 6, barrels: 3, maxUpgrades: 2 },
+    9: { pool: ["scout", "scout", "scout", "scout", "demon", "demon", "mars", "mars"], obstacles: 3, barrels: 6, maxUpgrades: 2 },
+    10: { pool: ["mars", "mars", "mars", "demon", "demon","demon", "basic", "basic", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 }
 };
 
 export let PlayerProgress = {
