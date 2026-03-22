@@ -9,7 +9,6 @@ import { initHangarUI, showScreen, updateHangarUI, screens, generateLevelsGrid }
 window.PlayerProgress = PlayerProgress;
 
 const noCache = '?v=' + new Date().getTime(); 
-// ИСПРАВЛЕНИЕ: Оставили только Гатлинг и Плеть
 const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image(), "gatling": new Image() } };
 playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hulls["leopard"].src = 'assets/leopard.png' + noCache; playerImages.hulls["titan"].src = 'assets/titan.png' + noCache; 
 playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache; playerImages.turrets["gatling"].src = 'assets/gatling.png' + noCache;
@@ -142,7 +141,16 @@ function gameLoop(timestamp) {
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
         if (enemies.length === 0) enemySpawnTimer = 0; else enemySpawnTimer -= dt;
-        if (enemySpawnTimer <= 0) { spawnEnemyOnArena(); enemiesToSpawn--; enemySpawnTimer = enemies.length * 2.5; }
+        
+        if (enemySpawnTimer <= 0) { 
+            spawnEnemyOnArena(); 
+            enemiesToSpawn--; 
+            
+            // ИСПРАВЛЕНИЕ: Формула ускоренного спавна, если установлен флаг fastSpawn
+            let currentConfig = LevelsConfig[currentLevelNum] || {};
+            let multiplier = currentConfig.fastSpawn ? 1.5 : 2.5;
+            enemySpawnTimer = Math.max(1, enemies.length) * multiplier; 
+        }
     }
     
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
@@ -168,10 +176,8 @@ function gameLoop(timestamp) {
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { 
-            // ИСПРАВЛЕНИЕ: Разброс (Spread) для Гатлинга
             let finalAngle = playerTank.turretAngle;
             if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
-            
             bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
         }
