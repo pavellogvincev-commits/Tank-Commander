@@ -38,7 +38,6 @@ export function updateHangarUI() {
     let hId = assembly.hullId; let tId = assembly.turretId;
     hullImg.src = `assets/${hId === 'hunter' ? 'hull' : hId}.png`;
 
-    // ИСПРАВЛЕНО: Башня больше не растягивается скриптом, размер контролирует CSS
     let turretImg = document.getElementById('hangar-turret-layer');
     if (!turretImg && hullImg) {
         turretImg = document.createElement('img'); turretImg.id = 'hangar-turret-layer';
@@ -169,8 +168,21 @@ export function generateLevelsGrid() {
     for (let i = 1; i <= 10; i++) { 
         let btn = document.createElement('button'); let classes = 'level-btn';
         if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (i <= PlayerProgress.unlockedLevel) classes += ' unlocked'; else classes += ' locked'; 
-        let starsHtml = ''; if (LevelsConfig[i]) { let max = LevelsConfig[i].maxUpgrades; let collected = PlayerProgress.collectedStars[i] || 0; starsHtml = `<div class="level-stars">`; for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } starsHtml += `</div>`; }
-        btn.className = classes; btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><div>${i}</div>${starsHtml}</div>`; 
+        
+        let starsHtml = ''; 
+        // ИСПРАВЛЕНИЕ: Добавлены молнии ⚡, если есть флаг fastSpawn
+        let levelTitle = i;
+        if (LevelsConfig[i]) { 
+            if (LevelsConfig[i].fastSpawn) levelTitle = `⚡ ${i} ⚡`;
+            let max = LevelsConfig[i].maxUpgrades; 
+            let collected = PlayerProgress.collectedStars[i] || 0; 
+            starsHtml = `<div class="level-stars">`; 
+            for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } 
+            starsHtml += `</div>`; 
+        }
+        
+        btn.className = classes; 
+        btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><div style="color:${LevelsConfig[i] && LevelsConfig[i].fastSpawn ? '#ffcc00' : 'inherit'};">${levelTitle}</div>${starsHtml}</div>`; 
         if (i <= PlayerProgress.unlockedLevel) { btn.onclick = () => { if (onStartLevelCallback) onStartLevelCallback(i); }; }
         grid.appendChild(btn); 
     } 
