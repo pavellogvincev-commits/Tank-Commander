@@ -17,6 +17,10 @@ const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png'
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
 const marsHullImage = new Image(); marsHullImage.src = 'assets/mars-hull.png' + noCache; const marsTurretImage = new Image(); marsTurretImage.src = 'assets/mars-turret.png' + noCache;
+// НОВЫЕ КАРТИНКИ: ГОЛИАФ
+const goliaphHullImage = new Image(); goliaphHullImage.src = 'assets/goliaph-hull.png' + noCache; 
+const goliaphTurretImage = new Image(); goliaphTurretImage.src = 'assets/goliaph-turret.png' + noCache;
+
 const barrelImage = new Image(); barrelImage.src = 'assets/barrel.png' + noCache;
 
 const shootSound = new Audio('assets/sounds/shoot.mp3'); const hitSound = new Audio('assets/sounds/hit.mp3'); const bounceSound = new Audio('assets/sounds/bounce.mp3'); const explodeSound = new Audio('assets/sounds/explode.mp3'); const mgShootSound = new Audio('assets/sounds/mg-shoot.mp3'); 
@@ -112,9 +116,12 @@ function spawnEnemyOnArena() {
     
     let enemyType = currentEnemyPool.pop(); let hStats = GameData.enemyHulls[enemyType]; let tStats = GameData.enemyTurrets[enemyType];
     let useHullImg, useTurretImg;
+    
+    // ИСПРАВЛЕНИЕ: Выбор картинок для Голиафа
     if (enemyType === "scout") { useHullImg = scoutHullImage; useTurretImg = scoutTurretImage; }
     else if (enemyType === "demon") { useHullImg = demonHullImage; useTurretImg = demonTurretImage; }
     else if (enemyType === "mars") { useHullImg = marsHullImage; useTurretImg = marsTurretImage; }
+    else if (enemyType === "goliaph") { useHullImg = goliaphHullImage; useTurretImg = goliaphTurretImage; }
     else { useHullImg = enemyHullImage; useTurretImg = enemyTurretImage; }
     
     enemies.push(new Enemy(spawnX, spawnY, useHullImg, useTurretImg, hStats, tStats));
@@ -146,7 +153,6 @@ function gameLoop(timestamp) {
             spawnEnemyOnArena(); 
             enemiesToSpawn--; 
             
-            // ИСПРАВЛЕНИЕ: Формула ускоренного спавна, если установлен флаг fastSpawn
             let currentConfig = LevelsConfig[currentLevelNum] || {};
             let multiplier = currentConfig.fastSpawn ? 1.5 : 2.5;
             enemySpawnTimer = Math.max(1, enemies.length) * multiplier; 
