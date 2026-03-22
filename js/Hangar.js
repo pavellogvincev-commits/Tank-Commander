@@ -165,12 +165,12 @@ window.expandCapacity = function(id, cost) { if (PlayerProgress.points >= cost) 
 
 export function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
-    for (let i = 1; i <= 10; i++) { 
+    // ИСПРАВЛЕНИЕ: Цикл теперь крутит 15 уровней
+    for (let i = 1; i <= 15; i++) { 
         let btn = document.createElement('button'); let classes = 'level-btn';
         if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (i <= PlayerProgress.unlockedLevel) classes += ' unlocked'; else classes += ' locked'; 
         
         let starsHtml = ''; 
-        // ИСПРАВЛЕНИЕ: Добавлены молнии ⚡, если есть флаг fastSpawn
         let levelTitle = i;
         if (LevelsConfig[i]) { 
             if (LevelsConfig[i].fastSpawn) levelTitle = `⚡ ${i} ⚡`;
