@@ -14,11 +14,10 @@ export class Tank {
         this.hullRotationSpeed = 1.5; this.hullAngle = 0; this.turretRotationSpeed = 2; this.turretAngle = 0;
         
         this.pushVx = 0; this.pushVy = 0; this.isExploded = false;
-
         this.particles = []; this.particleTimer = 0;
         
-        this.turretName = turretStats.name; // НОВОЕ: Запоминаем имя башни для визуальных эффектов
-        this.gatlingSpinTimer = 0; // Таймер эффекта вращения пулемета
+        this.turretName = turretStats.name; 
+        this.gatlingSpinTimer = 0; 
 
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
@@ -78,11 +77,11 @@ export class Tank {
     tryShoot() {
         if (this.isMagazineWeapon) {
             if (!this.isReloading && this.fireCooldown <= 0 && this.ammo > 0) {
-                this.gatlingSpinTimer = 0.1; // Активируем эффект пулемета (тряска + пламя)
+                this.gatlingSpinTimer = 0.1; 
                 this.shotsToFireThisFrame = 1;
                 this.ammo--;
                 this.fireCooldown = this.fireRate; 
-                this.recoil = 2; // Небольшая, но постоянная отдача
+                this.recoil = 2; 
                 if (this.ammo <= 0) {
                     this.isReloading = true;
                     this.fireCooldown = this.reloadTime; 
@@ -167,17 +166,38 @@ export class Tank {
         let vy = Math.sin(this.hullAngle) * actualSpeed + this.pushVy;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
         
-        let hitTanks = (checkX, checkY) => {
-            if (!enemies) return false;
-            for (let e of enemies) { if (e === this || e.hp <= 0) continue; let dist = Math.sqrt(Math.pow(checkX - e.x, 2) + Math.pow(checkY - e.y, 2)); if (dist < this.radius + e.radius) return true; }
-            return false;
-        };
-        
-        let colX = arena.checkCollision(nextX, this.y, this.radius) || hitTanks(nextX, this.y);
-        let colY = arena.checkCollision(this.x, nextY, this.radius) || hitTanks(this.x, nextY);
+        // 1. Проверяем бетонные препятствия Арены
+        let colX = arena.checkCollision(nextX, this.y, this.radius);
+        let colY = arena.checkCollision(this.x, nextY, this.radius);
 
         if (!colX) this.x = nextX; else this.pushVx *= -0.4; 
         if (!colY) this.y = nextY; else this.pushVy *= -0.4;
+
+        // 2. ИСПРАВЛЕНИЕ ЗАСТРЕВАНИЙ: Эластичное выталкивание танков друг из друга
+        if (enemies) {
+            for (let e of enemies) {
+                if (e === this || e.hp <= 0) continue;
+                let dx = this.x - e.x; 
+                let dy = this.y - e.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let minDist = this.radius + e.radius;
+                
+                if (dist < minDist && dist > 0) {
+                    let overlap = minDist - dist;
+                    let nx = dx / dist; 
+                    let ny = dy / dist;
+                    
+                    // Плавно сдвигаем танк наружу от центра столкновения
+                    let pushForce = overlap * 0.5; // Сдвиг на половину перекрытия
+                    let nextPushX = this.x + nx * pushForce;
+                    let nextPushY = this.y + ny * pushForce;
+                    
+                    // Сдвигаем, только если там нет бетонной стены
+                    if (!arena.checkCollision(nextPushX, this.y, this.radius)) this.x = nextPushX;
+                    if (!arena.checkCollision(this.x, nextPushY, this.radius)) this.y = nextPushY;
+                }
+            }
+        }
 
         let targetAngle = Math.atan2(input.getMouseY() - this.y, input.getMouseX() - this.x);
         let angleDiff = targetAngle - this.turretAngle;
@@ -273,7 +293,6 @@ export class Tank {
         ctx.save(); ctx.translate(this.x + 5, this.y + 5); ctx.rotate(this.hullAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
         
-        // НОВОЕ: Эффект вибрации Гатлинга
         let isGatlingSpinning = this.turretName === "Гатлинг" && this.gatlingSpinTimer > 0;
         let vibX = isGatlingSpinning ? (Math.random() - 0.5) * 2 : 0;
         let vibY = isGatlingSpinning ? (Math.random() - 0.5) * 4 : 0;
@@ -281,7 +300,6 @@ export class Tank {
         ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight);
         
-        // НОВОЕ: Вспышка пламени у Гатлинга при стрельбе
         if (isGatlingSpinning) {
             ctx.fillStyle = Math.random() > 0.5 ? '#ffaa00' : '#ffea00';
             ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000';
