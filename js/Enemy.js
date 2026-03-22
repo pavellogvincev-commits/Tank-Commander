@@ -6,7 +6,7 @@ export class Enemy extends Tank {
         this.aiType = hullStats.name; 
         this.evadeDir = Math.random() > 0.5 ? 1 : -1; 
         this.behaviorTimer = 0;
-        this.repositionTimer = 0; // Таймер смены позиции
+        this.repositionTimer = 0; 
     }
 
     updateAI(dt, arena, playerTank, enemies) {
@@ -21,7 +21,6 @@ export class Enemy extends Tank {
             isShooting: () => false 
         };
 
-        // Если игрок мертв или бот оглушен
         if (!playerTank || playerTank.hp <= 0 || this.stunTimer > 0) {
             if (this.stunTimer > 0) this.stunTimer -= dt;
             super.update(dt, idleInput, arena, allTanks); 
@@ -35,12 +34,8 @@ export class Enemy extends Tank {
         let shouldMove = true; 
         let desiredAngle = angleToPlayer; 
 
-        // ==========================================
-        // 1. СТРАТЕГИИ ПОВЕДЕНИЯ ВРАГОВ
-        // ==========================================
-
-        if (this.aiType === "Враг-Базовый") {
-            // Тот самый крутой алгоритм смены позиции базового танка
+        // ИСПРАВЛЕНО: Голиаф использует логику базового танка
+        if (this.aiType === "Враг-Базовый" || this.aiType === "Голиаф") {
             if (this.repositionTimer > 0) {
                 this.repositionTimer -= dt;
                 shouldMove = true;
@@ -73,19 +68,15 @@ export class Enemy extends Tank {
             }
         } 
         else if (this.aiType === "Марс") {
-            // Новый алгоритм артиллерии Марса
             if (distToPlayer < 350) {
-                desiredAngle = angleToPlayer + Math.PI; // Убегает, если игрок слишком близко
+                desiredAngle = angleToPlayer + Math.PI; 
             } else if (distToPlayer > 600) {
-                desiredAngle = angleToPlayer; // Подъезжает, если слишком далеко
+                desiredAngle = angleToPlayer; 
             } else {
-                shouldMove = false; // Стоит на месте (ему не нужен прямой LoS)
+                shouldMove = false; 
             }
         }
 
-        // ==========================================
-        // 2. ИЗБЕГАНИЕ ПРЕПЯТСТВИЙ И СОЮЗНИКОВ
-        // ==========================================
         if (shouldMove) {
             let lookAhead = 70; 
             let avoidForce = 0; 
@@ -113,7 +104,6 @@ export class Enemy extends Tank {
             
             if (avoidForce !== 0) desiredAngle = this.hullAngle + avoidForce;
             
-            // Раздвижка танков
             for (let e of allTanks) { 
                 if (e !== this && e.hp > 0) {
                     let d = Math.sqrt(Math.pow(this.x - e.x, 2) + Math.pow(this.y - e.y, 2));
@@ -140,14 +130,10 @@ export class Enemy extends Tank {
 
         super.update(dt, fakeInput, arena, allTanks);
 
-        // ==========================================
-        // 3. ПРИЦЕЛИВАНИЕ И СТРЕЛЬБА
-        // ==========================================
         let aimDiff = angleToPlayer - this.turretAngle;
         while (aimDiff > Math.PI) aimDiff -= Math.PI * 2; 
         while (aimDiff < -Math.PI) aimDiff += Math.PI * 2;
         
-        // Марс стреляет даже без визуального контакта (сквозь стены)
         if ((hasLoS || this.aiType === "Марс") && Math.abs(aimDiff) < 0.15) {
             this.tryShoot();
         }
