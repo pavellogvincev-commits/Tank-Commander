@@ -17,9 +17,7 @@ const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png'
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
 const marsHullImage = new Image(); marsHullImage.src = 'assets/mars-hull.png' + noCache; const marsTurretImage = new Image(); marsTurretImage.src = 'assets/mars-turret.png' + noCache;
-// НОВЫЕ КАРТИНКИ: ГОЛИАФ
-const goliaphHullImage = new Image(); goliaphHullImage.src = 'assets/goliaph-hull.png' + noCache; 
-const goliaphTurretImage = new Image(); goliaphTurretImage.src = 'assets/goliaph-turret.png' + noCache;
+const goliaphHullImage = new Image(); goliaphHullImage.src = 'assets/goliaph-hull.png' + noCache; const goliaphTurretImage = new Image(); goliaphTurretImage.src = 'assets/goliaph-turret.png' + noCache;
 
 const barrelImage = new Image(); barrelImage.src = 'assets/barrel.png' + noCache;
 
@@ -35,6 +33,13 @@ let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], dro
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
+
+// ЧИТЫ РАЗРАБОТЧИКА (1, 2, 3)
+window.addEventListener('keydown', (e) => {
+    if (e.key === '1') { PlayerProgress.points++; if(screens.hangar.style.display === 'flex') updateHangarUI(); }
+    if (e.key === '2') { PlayerProgress.inventory.hullUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); }
+    if (e.key === '3') { PlayerProgress.inventory.turretUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); }
+});
 
 function spawnText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -30 }); }
 function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 6); let base = Math.atan2(ny, nx); for (let i = 0; i < count; i++) { let spread = (Math.random() - 0.5) * Math.PI; let speed = 100 + Math.random() * 200; sparks.push({ x, y, vx: Math.cos(base+spread)*speed, vy: Math.sin(base+spread)*speed, life: 0.2+Math.random()*0.2, maxLife: 0.4, size: 2+Math.random()*3, color: '255, 200, 0' }); } }
@@ -87,15 +92,17 @@ function startLevel(levelNum) {
     const hullId = PlayerProgress.currentAssembly.hullId; const turretId = PlayerProgress.currentAssembly.turretId;
     let bHull = GameData.hulls[hullId]; let sHull = PlayerProgress.partStats[hullId];
     let calcHull = JSON.parse(JSON.stringify(bHull)); 
-    calcHull.hp += sHull.hp * bHull.upgrades.hp; calcHull.speed += sHull.speed * bHull.upgrades.speed;
-    calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front; calcHull.armor.side += sHull.armor * bHull.upgrades.armor.side; calcHull.armor.rear += sHull.armor * bHull.upgrades.armor.rear;
+    if (bHull.upgrades.hp) calcHull.hp += sHull.hp * bHull.upgrades.hp; 
+    if (bHull.upgrades.speed) calcHull.speed += sHull.speed * bHull.upgrades.speed;
+    if (bHull.upgrades.armor) { calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front; calcHull.armor.side += sHull.armor * bHull.upgrades.armor.side; calcHull.armor.rear += sHull.armor * bHull.upgrades.armor.rear; }
     
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     calcTurr.penetration += sTurr.penetration * (bTurr.upgrades.penetration || 0); 
     if (bTurr.upgrades.fireRate) calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
     if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += sTurr.magazineSize * bTurr.upgrades.magazineSize;
     
-    playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId);
+    // Передаем sHull в Танк, чтобы он знал уровни прокачки уникальных скиллов (Мины, Дрон)
+    playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull);
     playerTank.shieldTimer = 3.0;
 
     enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = []; artilleryShells = [];
@@ -117,7 +124,6 @@ function spawnEnemyOnArena() {
     let enemyType = currentEnemyPool.pop(); let hStats = GameData.enemyHulls[enemyType]; let tStats = GameData.enemyTurrets[enemyType];
     let useHullImg, useTurretImg;
     
-    // ИСПРАВЛЕНИЕ: Выбор картинок для Голиафа
     if (enemyType === "scout") { useHullImg = scoutHullImage; useTurretImg = scoutTurretImage; }
     else if (enemyType === "demon") { useHullImg = demonHullImage; useTurretImg = demonTurretImage; }
     else if (enemyType === "mars") { useHullImg = marsHullImage; useTurretImg = marsTurretImage; }
@@ -153,8 +159,9 @@ function gameLoop(timestamp) {
             spawnEnemyOnArena(); 
             enemiesToSpawn--; 
             
+            // ИЗМЕНЕНИЕ МНОЖИТЕЛЯ СПАВНА
             let currentConfig = LevelsConfig[currentLevelNum] || {};
-            let multiplier = currentConfig.fastSpawn ? 1.5 : 2.5;
+            let multiplier = currentConfig.fastSpawn ? 1.0 : 2.0;
             enemySpawnTimer = Math.max(1, enemies.length) * multiplier; 
         }
     }
@@ -187,7 +194,17 @@ function gameLoop(timestamp) {
             bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
         }
-        if (playerTank.mineRequest) { playerTank.mineRequest = false; let mineDamage = Math.floor(20 + Math.random() * 30 + (playerTank.hullUpgrades * 15)); mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 13 }); }
+        
+        // НОВЫЕ МИНЫ ТИТАНА
+        if (playerTank.mineRequest) { 
+            playerTank.mineRequest = false; 
+            // Базовый урон: 30-60. Бонус: +5 мин., +10 макс. за каждый уровень апгрейда.
+            let minDmg = 30 + (playerTank.mineBonusDamage * 5);
+            let maxDmg = 60 + (playerTank.mineBonusDamage * 10);
+            let mineDamage = Math.floor(minDmg + Math.random() * (maxDmg - minDmg));
+            // Скорость мины теперь 24
+            mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 24 }); 
+        }
     }
 
     for (let b of arena.barrels) {
