@@ -10,16 +10,16 @@ export const GameData = {
             upgrades: { hp: 18, armor: { front: 6, side: 4, rear: 3 }, mineDamage: 1 } }
     },
     turrets: { 
-        "scourge": { name: "Плеть", fireRate: 1.2, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
-            upgrades: { penetration: 8, fireRate: -0.07 } },
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 40, penetration: 25, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 40 выстр.",
-            upgrades: { penetration: 5, magazineSize: 10 } }
+        "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
+            upgrades: { penetration: 6, fireRate: -0.06 } },
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 50, penetration: 15, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 40 выстр.",
+            upgrades: { penetration: 3, magazineSize: 10 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
         "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 80, h: 60}, hitbox: {w: 65, h: 48} },
         "demon": { name: "Демон", hp: 120, armor: { front: 40, side: 30, rear: 10 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 45} },
-        "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 10 }, speed: 20, size: {w: 85, h: 65}, hitbox: {w: 77, h: 54} },
+        "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 25 }, speed: 20, size: {w: 85, h: 65}, hitbox: {w: 77, h: 54} },
         "goliaph": { name: "Голиаф", hp: 250, armor: { front: 120, side: 80, rear: 66 }, speed: 15, size: {w: 90, h: 68}, hitbox: {w: 90, h: 50} }
     },
     enemyTurrets: { 
