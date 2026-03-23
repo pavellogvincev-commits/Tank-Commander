@@ -1,5 +1,4 @@
 export class Tank {
-    // В конструктор добавлен параметр hullStatLevels (для чтения уровней прокачки)
     constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null, hullId = null, hullStatLevels = null) {
         this.x = x; this.y = y; this.hullImg = hullImg; this.turretImg = turretImg;
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
@@ -31,12 +30,10 @@ export class Tank {
 
         this.shieldTimer = 0; this.hullName = hullStats.name;
         
-        // НОВАЯ ЛОГИКА ЛЕОПАРДА
         this.droneState = (this.hullName === "Леопард") ? 'ready' : 'none';
         this.droneAngle = 0; this.droneCooldown = 0; this.droneTarget = null; this.droneX = 0; this.droneY = 0; this.droneExplodeRequest = false;
         this.droneStunTime = 7 + (hullStatLevels ? (hullStatLevels.stunDuration || 0) : 0);
 
-        // НОВАЯ ЛОГИКА ТИТАНА
         this.mineTimer = 0; this.mineRequest = false;
         this.maxMines = 5 + (hullStatLevels ? hullStatLevels.usedCapacity : 0);
         this.minesPlaced = 0;
@@ -90,7 +87,6 @@ export class Tank {
         if (this.shieldTimer > 0) this.shieldTimer -= dt;
         this.updateWeapons(dt); this.updateSmoke(dt); 
 
-        // ЛЕОПАРД: Кулдаун увеличен до 12 секунд, оглушение берется из this.droneStunTime
         if (this.hullName === "Леопард") {
             if (this.droneState === 'cooldown') {
                 this.droneCooldown -= dt; if (this.droneCooldown <= 0) this.droneState = 'ready';
@@ -114,7 +110,6 @@ export class Tank {
             }
         }
         
-        // ТИТАН: Ставит мины только пока не исчерпан лимит
         if (this.hullName === "Титан" && this.minesPlaced < this.maxMines) { 
             this.mineTimer += dt; 
             if (this.mineTimer >= 8.0) { this.mineTimer = 0; this.mineRequest = true; this.minesPlaced++; } 
@@ -265,7 +260,16 @@ export class Tank {
     draw(ctx) {
         if (this.hp <= 0) return;
         if (this.shieldTimer > 0) {
-            ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff'; ctx.strokeStyle = `rgba(0, 136 : 0;
+            ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff'; ctx.strokeStyle = `rgba(0, 136, 255, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
+            ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+
+        for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
+        ctx.save(); ctx.translate(this.x + 5, this.y + 5); ctx.rotate(this.hullAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
+        
+        let isGatlingSpinning = this.turretName === "Гатлинг" && this.gatlingSpinTimer > 0;
+        let vibX = isGatlingSpinning ? (Math.random() - 0.5) * 2 : 0; let vibY = isGatlingSpinning ? (Math.random() - 0.5) * 4 : 0;
 
         ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight);
@@ -290,10 +294,13 @@ export class Tank {
         ctx.fillStyle = '#444'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth, 3);
         ctx.fillStyle = (this.isMagazineWeapon && !this.isReloading) ? '#00ccff' : '#ffaa00'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
 
-        // Отрисовка счетчика мин для Титана
+        // ИСПРАВЛЕНИЕ: Отрисовка счетчика мин без использования обратных кавычек
         if (this.hullName === "Титан") {
-            ctx.fillStyle = '#00ffcc'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
-            ctx.fillText(`Мины: ${this.maxMines - this.minesPlaced}`, this.x, this.y + this.hullHeight / 2 + 20);
+            ctx.fillStyle = '#00ffcc'; 
+            ctx.font = 'bold 12px Arial'; 
+            ctx.textAlign = 'center';
+            let remainingMines = this.maxMines - this.minesPlaced;
+            ctx.fillText("Мины: " + remainingMines, this.x, this.y + this.hullHeight / 2 + 20);
         }
     }
 }
