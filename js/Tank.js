@@ -1,5 +1,6 @@
 export class Tank {
-    constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null, hullId = null) {
+    // В конструктор добавлен параметр hullStatLevels (для чтения уровней прокачки)
+    constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null, hullId = null, hullStatLevels = null) {
         this.x = x; this.y = y; this.hullImg = hullImg; this.turretImg = turretImg;
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
         this.turretWidth = hullStats.size.w; this.turretHeight = hullStats.size.h;
@@ -16,9 +17,7 @@ export class Tank {
         this.pushVx = 0; this.pushVy = 0; this.isExploded = false;
         this.particles = []; this.particleTimer = 0;
         
-        this.turretName = turretStats.name; 
-        this.gatlingSpinTimer = 0; 
-
+        this.turretName = turretStats.name; this.gatlingSpinTimer = 0; 
         this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
@@ -26,21 +25,22 @@ export class Tank {
         
         this.isMagazineWeapon = turretStats.magazineSize !== undefined;
         this.maxAmmo = this.isMagazineWeapon ? turretStats.magazineSize : 0;
-        this.ammo = this.maxAmmo;
-        this.reloadTime = turretStats.reloadTime || 0;
-        this.isReloading = false;
-
+        this.ammo = this.maxAmmo; this.reloadTime = turretStats.reloadTime || 0; this.isReloading = false;
         this.burstCount = turretStats.burstCount || 1; this.burstDelay = turretStats.burstDelay || 0;    
-        this.fireCooldown = this.fireRate; 
-        this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
+        this.fireCooldown = this.fireRate; this.burstsRemaining = 0; this.burstTimer = 0; this.shotsToFireThisFrame = 0; this.recoil = 0;         
 
-        this.shieldTimer = 0;
-        this.hullName = hullStats.name;
+        this.shieldTimer = 0; this.hullName = hullStats.name;
+        
+        // НОВАЯ ЛОГИКА ЛЕОПАРДА
         this.droneState = (this.hullName === "Леопард") ? 'ready' : 'none';
         this.droneAngle = 0; this.droneCooldown = 0; this.droneTarget = null; this.droneX = 0; this.droneY = 0; this.droneExplodeRequest = false;
+        this.droneStunTime = 7 + (hullStatLevels ? (hullStatLevels.stunDuration || 0) : 0);
 
-        this.mineTimer = 0; this.mineRequest = false; this.hullUpgrades = 0;
-        if (hullId && window.PlayerProgress) this.hullUpgrades = window.PlayerProgress.partStats[hullId].usedCapacity;
+        // НОВАЯ ЛОГИКА ТИТАНА
+        this.mineTimer = 0; this.mineRequest = false;
+        this.maxMines = 5 + (hullStatLevels ? hullStatLevels.usedCapacity : 0);
+        this.minesPlaced = 0;
+        this.mineBonusDamage = hullStatLevels ? (hullStatLevels.mineDamage || 0) : 0;
     }
 
     updateSmoke(dt) {
@@ -62,10 +62,7 @@ export class Tank {
         this.shotsToFireThisFrame = 0;
 
         if (this.isMagazineWeapon) {
-            if (this.isReloading && this.fireCooldown <= 0) {
-                this.isReloading = false;
-                this.ammo = this.maxAmmo;
-            }
+            if (this.isReloading && this.fireCooldown <= 0) { this.isReloading = false; this.ammo = this.maxAmmo; }
         } else {
             if (this.burstsRemaining > 0) {
                 this.burstTimer -= dt;
@@ -77,21 +74,12 @@ export class Tank {
     tryShoot() {
         if (this.isMagazineWeapon) {
             if (!this.isReloading && this.fireCooldown <= 0 && this.ammo > 0) {
-                this.gatlingSpinTimer = 0.1; 
-                this.shotsToFireThisFrame = 1;
-                this.ammo--;
-                this.fireCooldown = this.fireRate; 
-                this.recoil = 2; 
-                if (this.ammo <= 0) {
-                    this.isReloading = true;
-                    this.fireCooldown = this.reloadTime; 
-                }
+                this.gatlingSpinTimer = 0.1; this.shotsToFireThisFrame = 1; this.ammo--; this.fireCooldown = this.fireRate; this.recoil = 2; 
+                if (this.ammo <= 0) { this.isReloading = true; this.fireCooldown = this.reloadTime; }
                 return true;
             }
         } else {
-            if (this.fireCooldown <= 0 && this.burstsRemaining === 0) { 
-                this.fireCooldown = this.fireRate; this.burstsRemaining = this.burstCount; this.burstTimer = 0; return true; 
-            }
+            if (this.fireCooldown <= 0 && this.burstsRemaining === 0) { this.fireCooldown = this.fireRate; this.burstsRemaining = this.burstCount; this.burstTimer = 0; return true; }
         }
         return false;
     }
@@ -102,6 +90,7 @@ export class Tank {
         if (this.shieldTimer > 0) this.shieldTimer -= dt;
         this.updateWeapons(dt); this.updateSmoke(dt); 
 
+        // ЛЕОПАРД: Кулдаун увеличен до 12 секунд, оглушение берется из this.droneStunTime
         if (this.hullName === "Леопард") {
             if (this.droneState === 'cooldown') {
                 this.droneCooldown -= dt; if (this.droneCooldown <= 0) this.droneState = 'ready';
@@ -116,15 +105,20 @@ export class Tank {
                     }
                 }
             } else if (this.droneState === 'attacking') {
-                if (!this.droneTarget || this.droneTarget.hp <= 0) { this.droneState = 'cooldown'; this.droneCooldown = 10.0; } 
+                if (!this.droneTarget || this.droneTarget.hp <= 0) { this.droneState = 'cooldown'; this.droneCooldown = 12.0; } 
                 else {
                     let dx = this.droneTarget.x - this.droneX; let dy = this.droneTarget.y - this.droneY; let dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 15) { this.droneTarget.stunTimer = 15.0; this.droneTarget.isJustStunned = true; this.droneState = 'cooldown'; this.droneCooldown = 10.0; this.droneExplodeRequest = true; } 
+                    if (dist < 15) { this.droneTarget.stunTimer = this.droneStunTime; this.droneTarget.isJustStunned = true; this.droneState = 'cooldown'; this.droneCooldown = 12.0; this.droneExplodeRequest = true; } 
                     else { let flightSpeed = 500 * dt; this.droneX += (dx / dist) * flightSpeed; this.droneY += (dy / dist) * flightSpeed; }
                 }
             }
         }
-        if (this.hullName === "Титан") { this.mineTimer += dt; if (this.mineTimer >= 8.0) { this.mineTimer = 0; this.mineRequest = true; } }
+        
+        // ТИТАН: Ставит мины только пока не исчерпан лимит
+        if (this.hullName === "Титан" && this.minesPlaced < this.maxMines) { 
+            this.mineTimer += dt; 
+            if (this.mineTimer >= 8.0) { this.mineTimer = 0; this.mineRequest = true; this.minesPlaced++; } 
+        }
 
         let isMoving = false;
         if (input.isUp()) { this.speed += this.acceleration * dt; isMoving = true; }
@@ -166,33 +160,19 @@ export class Tank {
         let vy = Math.sin(this.hullAngle) * actualSpeed + this.pushVy;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
         
-        // 1. Проверяем бетонные препятствия Арены
         let colX = arena.checkCollision(nextX, this.y, this.radius);
         let colY = arena.checkCollision(this.x, nextY, this.radius);
 
         if (!colX) this.x = nextX; else this.pushVx *= -0.4; 
         if (!colY) this.y = nextY; else this.pushVy *= -0.4;
 
-        // 2. ИСПРАВЛЕНИЕ ЗАСТРЕВАНИЙ: Эластичное выталкивание танков друг из друга
         if (enemies) {
             for (let e of enemies) {
                 if (e === this || e.hp <= 0) continue;
-                let dx = this.x - e.x; 
-                let dy = this.y - e.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                let minDist = this.radius + e.radius;
-                
+                let dx = this.x - e.x; let dy = this.y - e.y; let dist = Math.sqrt(dx*dx + dy*dy); let minDist = this.radius + e.radius;
                 if (dist < minDist && dist > 0) {
-                    let overlap = minDist - dist;
-                    let nx = dx / dist; 
-                    let ny = dy / dist;
-                    
-                    // Плавно сдвигаем танк наружу от центра столкновения
-                    let pushForce = overlap * 0.5; // Сдвиг на половину перекрытия
-                    let nextPushX = this.x + nx * pushForce;
-                    let nextPushY = this.y + ny * pushForce;
-                    
-                    // Сдвигаем, только если там нет бетонной стены
+                    let overlap = minDist - dist; let nx = dx / dist; let ny = dy / dist;
+                    let pushForce = overlap * 0.5; let nextPushX = this.x + nx * pushForce; let nextPushY = this.y + ny * pushForce;
                     if (!arena.checkCollision(nextPushX, this.y, this.radius)) this.x = nextPushX;
                     if (!arena.checkCollision(this.x, nextPushY, this.radius)) this.y = nextPushY;
                 }
@@ -285,54 +265,35 @@ export class Tank {
     draw(ctx) {
         if (this.hp <= 0) return;
         if (this.shieldTimer > 0) {
-            ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff'; ctx.strokeStyle = `rgba(0, 136, 255, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
-            ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-        }
-
-        for (let p of this.particles) { ctx.fillStyle = `rgba(100, 100, 100, ${p.life / p.maxLife * 0.5})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
-        ctx.save(); ctx.translate(this.x + 5, this.y + 5); ctx.rotate(this.hullAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.hullAngle); ctx.drawImage(this.hullImg, -this.hullWidth / 2, -this.hullHeight / 2, this.hullWidth, this.hullHeight); ctx.restore();
-        
-        let isGatlingSpinning = this.turretName === "Гатлинг" && this.gatlingSpinTimer > 0;
-        let vibX = isGatlingSpinning ? (Math.random() - 0.5) * 2 : 0;
-        let vibY = isGatlingSpinning ? (Math.random() - 0.5) * 4 : 0;
+            ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#0088ff'; ctx.strokeStyle = `rgba(0, 136 : 0;
 
         ctx.save(); ctx.translate(this.x + 8, this.y + 8); ctx.rotate(this.turretAngle); ctx.filter = 'brightness(0) opacity(0.4)'; ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight); ctx.restore();
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.turretAngle); ctx.drawImage(this.turretImg, -this.turretWidth / 2 - this.recoil + vibX, -this.turretHeight / 2 + vibY, this.turretWidth, this.turretHeight);
         
         if (isGatlingSpinning) {
-            ctx.fillStyle = Math.random() > 0.5 ? '#ffaa00' : '#ffea00';
-            ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000';
-            ctx.beginPath();
-            ctx.arc(this.turretWidth / 2 + 5 + Math.random()*10, vibY, 3 + Math.random()*3, 0, Math.PI*2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            ctx.fillStyle = Math.random() > 0.5 ? '#ffaa00' : '#ffea00'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000';
+            ctx.beginPath(); ctx.arc(this.turretWidth / 2 + 5 + Math.random()*10, vibY, 3 + Math.random()*3, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
         }
         ctx.restore();
 
-        let barWidth = 40; 
-        let hpPercent = this.hp / this.maxHp;
-        let yOffset = this.y - this.hullHeight / 2 - 20;
+        let barWidth = 40; let hpPercent = this.hp / this.maxHp; let yOffset = this.y - this.hullHeight / 2 - 20;
         
         ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth, 4);
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth * hpPercent, 4);
 
         let reloadPercent = 0;
-        if (this.isMagazineWeapon) {
-            if (this.isReloading) {
-                reloadPercent = 1 - (this.fireCooldown / this.reloadTime);
-            } else {
-                reloadPercent = this.ammo / this.maxAmmo;
-            }
-        } else {
-            reloadPercent = 1 - (this.fireCooldown / this.fireRate);
-        }
+        if (this.isMagazineWeapon) { if (this.isReloading) { reloadPercent = 1 - (this.fireCooldown / this.reloadTime); } else { reloadPercent = this.ammo / this.maxAmmo; } } 
+        else { reloadPercent = 1 - (this.fireCooldown / this.fireRate); }
         
-        if (reloadPercent < 0) reloadPercent = 0;
-        if (reloadPercent > 1) reloadPercent = 1;
+        if (reloadPercent < 0) reloadPercent = 0; if (reloadPercent > 1) reloadPercent = 1;
         
         ctx.fillStyle = '#444'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth, 3);
-        ctx.fillStyle = (this.isMagazineWeapon && !this.isReloading) ? '#00ccff' : '#ffaa00'; 
-        ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
+        ctx.fillStyle = (this.isMagazineWeapon && !this.isReloading) ? '#00ccff' : '#ffaa00'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
+
+        // Отрисовка счетчика мин для Титана
+        if (this.hullName === "Титан") {
+            ctx.fillStyle = '#00ffcc'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+            ctx.fillText(`Мины: ${this.maxMines - this.minesPlaced}`, this.x, this.y + this.hullHeight / 2 + 20);
+        }
     }
 }
