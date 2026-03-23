@@ -65,36 +65,25 @@ function renderPartsList() {
         innerHTML += `</div>`;
         div.innerHTML = innerHTML;
 
-        const actionDiv = document.createElement('div');
-        actionDiv.className = 'part-item-actions';
+        const actionDiv = document.createElement('div'); actionDiv.className = 'part-item-actions';
 
         if (!isUnlocked) {
             const buyBtn = document.createElement('button'); buyBtn.className = 'list-buy-btn'; buyBtn.innerText = `КУПИТЬ (${item.cost} ⚙️)`;
             buyBtn.onclick = (e) => { 
                 e.stopPropagation(); 
-                if (PlayerProgress.points >= item.cost) { 
-                    PlayerProgress.points -= item.cost; 
-                    if (selectedTab === 'hulls') PlayerProgress.unlockedHulls.push(id); else PlayerProgress.unlockedTurrets.push(id); 
-                    selectedPartId = id; updateHangarUI(); 
-                } 
+                if (PlayerProgress.points >= item.cost) { PlayerProgress.points -= item.cost; if (selectedTab === 'hulls') PlayerProgress.unlockedHulls.push(id); else PlayerProgress.unlockedTurrets.push(id); selectedPartId = id; updateHangarUI(); } 
             };
             actionDiv.appendChild(buyBtn);
         } else if (!isEquipped) {
             const equipBtn = document.createElement('button'); equipBtn.className = 'list-equip-btn'; equipBtn.innerText = 'УСТАНОВИТЬ';
-            equipBtn.onclick = (e) => { 
-                e.stopPropagation(); 
-                if (selectedTab === 'hulls') PlayerProgress.currentAssembly.hullId = id; else PlayerProgress.currentAssembly.turretId = id; 
-                selectedPartId = id; updateHangarUI(); 
-            };
+            equipBtn.onclick = (e) => { e.stopPropagation(); if (selectedTab === 'hulls') PlayerProgress.currentAssembly.hullId = id; else PlayerProgress.currentAssembly.turretId = id; selectedPartId = id; updateHangarUI(); };
             actionDiv.appendChild(equipBtn);
         } else {
             const equippedText = document.createElement('span'); equippedText.className = 'list-equipped-text'; equippedText.innerText = '✓ УСТАНОВЛЕНО';
             actionDiv.appendChild(equippedText);
         }
         
-        div.appendChild(actionDiv);
-        div.onclick = () => { selectedPartId = id; updateHangarUI(); }; 
-        list.appendChild(div);
+        div.appendChild(actionDiv); div.onclick = () => { selectedPartId = id; updateHangarUI(); }; list.appendChild(div);
     }
 }
 
@@ -108,15 +97,16 @@ function showPartDetails(id) {
         html += `<div class="details-image-box unlocked-box"><img src="${imgSrc}" alt="${item.name}"></div>`;
         html += `<div class="details-title">${item.name}</div>`;
 
-        if (selectedTab === 'hulls') {
-            html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${item.hp + (stats.hp * item.upgrades.hp)}</span></span></div>`;
-            html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + (stats.armor * item.upgrades.armor.front)}/${item.armor.side + (stats.armor * item.upgrades.armor.side)}/${item.armor.rear + (stats.armor * item.upgrades.armor.rear)}</span></span></div>`;
-            html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + (stats.speed * item.upgrades.speed)}</span></span></div>`;
-        } else {
-            html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + (stats.penetration * item.upgrades.penetration)}</span></span></div>`;
-            if (item.upgrades.fireRate) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
-            if (item.upgrades.magazineSize) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + (stats.magazineSize * item.upgrades.magazineSize)}</span></span></div>`;
-        }
+        // УМНЫЙ РЕНДЕР СТАТОВ (Показывает только те, что есть в upgrades)
+        if (item.upgrades.hp) html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${item.hp + (stats.hp * item.upgrades.hp)}</span></span></div>`;
+        if (item.upgrades.armor) html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + (stats.armor * item.upgrades.armor.front)}/${item.armor.side + (stats.armor * item.upgrades.armor.side)}/${item.armor.rear + (stats.armor * item.upgrades.armor.rear)}</span></span></div>`;
+        if (item.upgrades.speed) html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + (stats.speed * item.upgrades.speed)}</span></span></div>`;
+        if (item.upgrades.stunDuration) html += `<div class="upgrade-row"><span>Оглушение: <span id="val-stunDuration" class="upgrade-val">${7 + (stats.stunDuration * item.upgrades.stunDuration)}с</span></span></div>`;
+        if (item.upgrades.mineDamage) html += `<div class="upgrade-row"><span>Урон мин: <span id="val-mineDamage" class="upgrade-val">${30 + (stats.mineDamage * 5)} - ${60 + (stats.mineDamage * 10)}</span></span></div>`;
+        
+        if (item.upgrades.penetration) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + (stats.penetration * item.upgrades.penetration)}</span></span></div>`;
+        if (item.upgrades.fireRate) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
+        if (item.upgrades.magazineSize) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + (stats.magazineSize * item.upgrades.magazineSize)}</span></span></div>`;
 
         html += `<p class="ability-text">Особенность: <span>${item.ability || 'Нет'}</span></p>`;
 
@@ -126,8 +116,14 @@ function showPartDetails(id) {
         else if (!hasPoints && canUpgrade) html += `<button class="random-upgrade-btn main-action-btn" disabled>НЕТ ЗВЕЗД ДЛЯ АПГРЕЙДА</button>`;
         else if (!canUpgrade) html += `<button class="random-upgrade-btn main-action-btn" disabled>ПОТЕНЦИАЛ ИСЧЕРПАН</button>`;
 
-        let expandCost = stats.maxCapacity + 1;
-        html += `<button class="expand-btn main-action-btn" onclick="expandCapacity('${id}', ${expandCost})">РАСШИРИТЬ ПОТЕНЦИАЛ (${expandCost} ⚙️)</button>`;
+        // ОГРАНИЧЕНИЕ ПОТЕНЦИАЛА (10 для башен, 15 для корпусов)
+        let maxLimit = selectedTab === 'hulls' ? 15 : 10;
+        if (stats.maxCapacity < maxLimit) {
+            let expandCost = stats.maxCapacity + 1;
+            html += `<button class="expand-btn main-action-btn" onclick="expandCapacity('${id}', ${expandCost})">РАСШИРИТЬ ПОТЕНЦИАЛ (${expandCost} ⚙️)</button>`;
+        } else {
+            html += `<button class="expand-btn main-action-btn" disabled style="background:#333; color:#666; box-shadow:none;">МАКСИМАЛЬНЫЙ УРОВЕНЬ</button>`;
+        }
 
         if (stats.usedCapacity > 0) {
             let resetCost = stats.usedCapacity * 3; let canReset = PlayerProgress.points >= resetCost;
@@ -154,7 +150,10 @@ window.resetUpgrades = function(id, cost) {
 window.buyRandomUpgrade = function(id) {
     let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
     if (PlayerProgress.inventory[type] > 0 && PlayerProgress.partStats[id].usedCapacity < PlayerProgress.partStats[id].maxCapacity) {
-        let statsOptions = GameData.hulls[id] ? ['hp', 'armor', 'speed'] : Object.keys(GameData.turrets[id].upgrades);
+        // Умный выбор: качаются только те параметры, которые есть в upgrades детали
+        let itemData = GameData.hulls[id] || GameData.turrets[id];
+        let statsOptions = Object.keys(itemData.upgrades);
+        
         let randomStat = statsOptions[Math.floor(Math.random() * statsOptions.length)];
         PlayerProgress.inventory[type]--; PlayerProgress.partStats[id][randomStat]++; PlayerProgress.partStats[id].usedCapacity++;
         lastUpgradedStatId = `val-${randomStat}`; updateHangarUI();
@@ -165,20 +164,15 @@ window.expandCapacity = function(id, cost) { if (PlayerProgress.points >= cost) 
 
 export function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
-    // ИСПРАВЛЕНИЕ: Цикл теперь крутит 15 уровней
     for (let i = 1; i <= 15; i++) { 
         let btn = document.createElement('button'); let classes = 'level-btn';
         if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (i <= PlayerProgress.unlockedLevel) classes += ' unlocked'; else classes += ' locked'; 
         
-        let starsHtml = ''; 
-        let levelTitle = i;
+        let starsHtml = ''; let levelTitle = i;
         if (LevelsConfig[i]) { 
             if (LevelsConfig[i].fastSpawn) levelTitle = `⚡ ${i} ⚡`;
-            let max = LevelsConfig[i].maxUpgrades; 
-            let collected = PlayerProgress.collectedStars[i] || 0; 
-            starsHtml = `<div class="level-stars">`; 
-            for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } 
-            starsHtml += `</div>`; 
+            let max = LevelsConfig[i].maxUpgrades; let collected = PlayerProgress.collectedStars[i] || 0; 
+            starsHtml = `<div class="level-stars">`; for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } starsHtml += `</div>`; 
         }
         
         btn.className = classes; 
