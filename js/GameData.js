@@ -4,8 +4,9 @@ export const GameData = {
             upgrades: { hp: 15, armor: { front: 5, side: 3, rear: 2 }, speed: 5 } },
         "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 80, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "ЭМИ-Дрон (12 сек)", cost: 15,
             upgrades: { hp: 10, stunDuration: 1, speed: 7 } },
-        "titan": { name: "Титан", hp: 200, armor: { front: 60, side: 40, rear: 30 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (Лимит)", cost: 15,
-            upgrades: { hp: 25, armor: { front: 6, side: 5, rear: 4 }, mineDamage: 1 } }
+        // ТИТАН: НОВЫЕ БАФФНУТЫЕ СТАТЫ И АПГРЕЙДЫ
+        "titan": { name: "Титан", hp: 200, armor: { front: 65, side: 40, rear: 35 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (Лимит)", cost: 15,
+            upgrades: { hp: 25, armor: { front: 7, side: 6, rear: 5 }, mineDamage: 1 } }
     },
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
@@ -24,13 +25,15 @@ export const GameData = {
         "basic": { name: "Враг-Пушка", fireRate: 3.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon', bulletSpeed: 400 },
         "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 400 },
         "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
-        "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 250 },
+        // МАРС: СКОРОСТЬ СНАРЯДА СНИЖЕНА ДО 200
+        "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 }
     }
 };
 
 export const LevelsConfig = { 
-    1: { pool: ["basic", "basic"], obstacles: 3, barrels: 0, maxUpgrades: 2 }, 
+    // УРОВЕНЬ 1: ТЕПЕРЬ 3 ТАНКА
+    1: { pool: ["basic", "basic", "basic"], obstacles: 3, barrels: 0, maxUpgrades: 2 }, 
     2: { pool: ["basic", "basic", "basic", "scout"], obstacles: 4, barrels: 1, maxUpgrades: 2 }, 
     3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 5, barrels: 2, maxUpgrades: 2 },
     4: { pool: ["demon", "basic", "basic", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
@@ -47,11 +50,11 @@ export const LevelsConfig = {
     15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, maxUpgrades: 4, fastSpawn: true }
 };
 
-// БАЗОВЫЙ ОБЪЕКТ ПРОГРЕССА
+// БАЗОВЫЙ ОБЪЕКТ ПРОГРЕССА (У Титана стартовые ХП 200)
 const defaultProgress = {
     points: 0, unlockedLevel: 1, passedLevels: [], collectedStars: {},
     inventory: { hullUpgrades: 0, turretUpgrades: 0 }, unlockedHulls: ["hunter"], unlockedTurrets: ["scourge"],
-    currentAssembly: { hullId: "hunter", turretId: "scourge" }, hullsHp: { "hunter": 150, "leopard": 120, "titan": 180 },
+    currentAssembly: { hullId: "hunter", turretId: "scourge" }, hullsHp: { "hunter": 150, "leopard": 120, "titan": 200 },
     partStats: {
         "hunter": { maxCapacity: 5, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
         "leopard": { maxCapacity: 5, usedCapacity: 0, hp: 0, stunDuration: 0, speed: 0 },
@@ -63,7 +66,6 @@ const defaultProgress = {
 
 export let PlayerProgress = JSON.parse(JSON.stringify(defaultProgress));
 
-// ФУНКЦИЯ ЗАГРУЗКИ (Вызывается при старте игры)
 export function loadProgress() {
     const saved = localStorage.getItem('tankCommanderSave_v2');
     if (saved) {
@@ -74,10 +76,17 @@ export function loadProgress() {
     }
 }
 
-// ФУНКЦИЯ СОХРАНЕНИЯ
 export function saveProgress() {
     localStorage.setItem('tankCommanderSave_v2', JSON.stringify(PlayerProgress));
 }
 
-// Загружаем данные сразу при инициализации файла
+// НОВАЯ ФУНКЦИЯ ПОЛНОГО СБРОСА
+export function resetProgress() {
+    localStorage.removeItem('tankCommanderSave_v2');
+    let freshProgress = JSON.parse(JSON.stringify(defaultProgress));
+    for (let key in freshProgress) {
+        PlayerProgress[key] = freshProgress[key];
+    }
+}
+
 loadProgress();
