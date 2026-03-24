@@ -34,7 +34,6 @@ let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, 
 let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
 
-// ЧИТЫ РАЗРАБОТЧИКА (1, 2, 3) - С СОХРАНЕНИЕМ
 window.addEventListener('keydown', (e) => {
     if (e.key === '1') { PlayerProgress.points++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
     if (e.key === '2') { PlayerProgress.inventory.hullUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
@@ -164,11 +163,10 @@ function gameLoop(timestamp) {
         }
     }
     
-    // КОНЕЦ УРОВНЯ (ПОБЕДА ИЛИ СМЕРТЬ) - СОХРАНЯЕМ ПРОГРЕСС
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
         levelFinished = true; const hullId = PlayerProgress.currentAssembly.hullId; PlayerProgress.hullsHp[hullId] = playerTank.hp; 
         if (!PlayerProgress.passedLevels.includes(currentLevelNum)) { PlayerProgress.points += 5; PlayerProgress.passedLevels.push(currentLevelNum); if (PlayerProgress.unlockedLevel === currentLevelNum) PlayerProgress.unlockedLevel++; firstClearBonus = true; }
-        saveProgress(); // СОХРАНЕНИЕ ПОСЛЕ ПОБЕДЫ
+        saveProgress(); 
         setTimeout(() => { gameRunning = false; updateHangarUI(); generateLevelsGrid(); showScreen('levels'); }, 3000);
     }
 
@@ -176,7 +174,7 @@ function gameLoop(timestamp) {
         levelFinished = true; const hullId = PlayerProgress.currentAssembly.hullId;
         const calcMaxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * GameData.hulls[hullId].upgrades.hp);
         PlayerProgress.hullsHp[hullId] = Math.floor(calcMaxHp * 0.2); 
-        saveProgress(); // СОХРАНЕНИЕ ПОСЛЕ СМЕРТИ
+        saveProgress(); 
         setTimeout(() => { gameRunning = false; updateHangarUI(); showScreen('hangar'); }, 3000); 
     }
 
@@ -239,11 +237,12 @@ function gameLoop(timestamp) {
                 let startY = enemy.y + Math.sin(enemy.turretAngle)*45;
                 
                 if (enemy.aiType === "Марс") {
-                    let spread = 40; 
+                    // ИСПРАВЛЕНИЕ: Разброс арты увеличен до 80x80, урон снижен до 100
+                    let spread = 80; 
                     let tx = playerTank.x + (Math.random() - 0.5) * spread;
                     let ty = playerTank.y + (Math.random() - 0.5) * spread;
                     let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
-                    artilleryShells.push({ startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / enemy.bulletSpeed, totalDist: dist, damage: 120, radius: 100 });
+                    artilleryShells.push({ startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / enemy.bulletSpeed, totalDist: dist, damage: 100, radius: 100 });
                     playSound(shootSound);
                 } else {
                     bullets.push(new Bullet(startX, startY, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor, enemy.bulletSpeed)); 
