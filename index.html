@@ -11,7 +11,10 @@
     <!-- ЭКРАН АНГАРА -->
     <div id="hangar-screen" class="screen" style="display: flex;">
         <div class="hangar-container">
-            <div class="hangar-header">
+            <div class="hangar-header" style="position: relative;">
+                <!-- КНОПКА СБРОСА ПРОГРЕССА -->
+                <button id="reset-progress-btn" style="position: absolute; top: 10px; right: 10px; background: #882222; color: #fff; border: 1px solid #ff5555; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 4px; font-weight: bold;">СБРОС ИГРЫ</button>
+                
                 <div class="resources">
                     <span class="res-item">⚙️ <span id="player-points">0</span></span>
                     <span class="res-item" style="color: #00ccff;">★ <span id="inv-hull-val">0</span></span>
@@ -20,33 +23,25 @@
             </div>
             
             <div class="hangar-body">
-                <!-- ЛЕВАЯ ПАНЕЛЬ: Текущая сборка -->
                 <div class="panel left-panel">
                     <h2 style="margin-top:0; color:#ffcc00; text-align:center; font-size:16px;">ТЕКУЩАЯ СБОРКА</h2>
                     <div class="assembly-box">
                         <img id="hangar-hull-layer" src="" alt="Корпус">
-                        <!-- Башня добавится скриптом -->
                     </div>
                     <div class="hp-info">Прочность: <span id="current-hp-val">0</span> / <span id="max-hp-val">0</span></div>
                     <button id="heal-btn">РЕМОНТ 20% (1 ⚙️)</button>
                     <button id="to-levels-btn">В БОЙ</button>
                 </div>
 
-                <!-- СРЕДНЯЯ ПАНЕЛЬ: Выбор детали -->
                 <div class="panel mid-panel">
                     <div class="tabs">
                         <button class="tab-btn active" data-tab="hulls">КОРПУСА</button>
                         <button class="tab-btn" data-tab="turrets">БАШНИ</button>
                     </div>
-                    <div id="parts-list">
-                        <!-- Список деталей генерируется скриптом -->
-                    </div>
+                    <div id="parts-list"></div>
                 </div>
 
-                <!-- ПРАВАЯ ПАНЕЛЬ: Характеристики и Прокачка -->
-                <div class="panel right-panel" id="details-info">
-                    <!-- Характеристики генерируются скриптом -->
-                </div>
+                <div class="panel right-panel" id="details-info"></div>
             </div>
         </div>
     </div>
