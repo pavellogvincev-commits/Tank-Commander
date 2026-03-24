@@ -3,7 +3,7 @@ import { Arena } from './Arena.js';
 import { Tank } from './Tank.js';
 import { Bullet } from './Bullet.js';
 import { Enemy } from './Enemy.js';
-import { GameData, PlayerProgress, LevelsConfig } from './GameData.js';
+import { GameData, PlayerProgress, LevelsConfig, saveProgress } from './GameData.js';
 import { initHangarUI, showScreen, updateHangarUI, screens, generateLevelsGrid } from './Hangar.js';
 
 window.PlayerProgress = PlayerProgress;
@@ -34,11 +34,11 @@ let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, 
 let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
 
-// ЧИТЫ РАЗРАБОТЧИКА (1, 2, 3)
+// ЧИТЫ РАЗРАБОТЧИКА (1, 2, 3) - С СОХРАНЕНИЕМ
 window.addEventListener('keydown', (e) => {
-    if (e.key === '1') { PlayerProgress.points++; if(screens.hangar.style.display === 'flex') updateHangarUI(); }
-    if (e.key === '2') { PlayerProgress.inventory.hullUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); }
-    if (e.key === '3') { PlayerProgress.inventory.turretUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); }
+    if (e.key === '1') { PlayerProgress.points++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
+    if (e.key === '2') { PlayerProgress.inventory.hullUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
+    if (e.key === '3') { PlayerProgress.inventory.turretUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
 });
 
 function spawnText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -30 }); }
@@ -101,7 +101,6 @@ function startLevel(levelNum) {
     if (bTurr.upgrades.fireRate) calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
     if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += sTurr.magazineSize * bTurr.upgrades.magazineSize;
     
-    // Передаем sHull в Танк, чтобы он знал уровни прокачки уникальных скиллов (Мины, Дрон)
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull);
     playerTank.shieldTimer = 3.0;
 
@@ -159,16 +158,17 @@ function gameLoop(timestamp) {
             spawnEnemyOnArena(); 
             enemiesToSpawn--; 
             
-            // ИЗМЕНЕНИЕ МНОЖИТЕЛЯ СПАВНА
             let currentConfig = LevelsConfig[currentLevelNum] || {};
             let multiplier = currentConfig.fastSpawn ? 1.0 : 2.0;
             enemySpawnTimer = Math.max(1, enemies.length) * multiplier; 
         }
     }
     
+    // КОНЕЦ УРОВНЯ (ПОБЕДА ИЛИ СМЕРТЬ) - СОХРАНЯЕМ ПРОГРЕСС
     if (enemiesToSpawn === 0 && enemies.length === 0 && playerTank.hp > 0 && !levelFinished) {
         levelFinished = true; const hullId = PlayerProgress.currentAssembly.hullId; PlayerProgress.hullsHp[hullId] = playerTank.hp; 
         if (!PlayerProgress.passedLevels.includes(currentLevelNum)) { PlayerProgress.points += 5; PlayerProgress.passedLevels.push(currentLevelNum); if (PlayerProgress.unlockedLevel === currentLevelNum) PlayerProgress.unlockedLevel++; firstClearBonus = true; }
+        saveProgress(); // СОХРАНЕНИЕ ПОСЛЕ ПОБЕДЫ
         setTimeout(() => { gameRunning = false; updateHangarUI(); generateLevelsGrid(); showScreen('levels'); }, 3000);
     }
 
@@ -176,6 +176,7 @@ function gameLoop(timestamp) {
         levelFinished = true; const hullId = PlayerProgress.currentAssembly.hullId;
         const calcMaxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * GameData.hulls[hullId].upgrades.hp);
         PlayerProgress.hullsHp[hullId] = Math.floor(calcMaxHp * 0.2); 
+        saveProgress(); // СОХРАНЕНИЕ ПОСЛЕ СМЕРТИ
         setTimeout(() => { gameRunning = false; updateHangarUI(); showScreen('hangar'); }, 3000); 
     }
 
@@ -195,14 +196,11 @@ function gameLoop(timestamp) {
             playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
         }
         
-        // НОВЫЕ МИНЫ ТИТАНА
         if (playerTank.mineRequest) { 
             playerTank.mineRequest = false; 
-            // Базовый урон: 30-60. Бонус: +5 мин., +10 макс. за каждый уровень апгрейда.
             let minDmg = 30 + (playerTank.mineBonusDamage * 5);
             let maxDmg = 60 + (playerTank.mineBonusDamage * 10);
             let mineDamage = Math.floor(minDmg + Math.random() * (maxDmg - minDmg));
-            // Скорость мины теперь 24
             mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 24 }); 
         }
     }
