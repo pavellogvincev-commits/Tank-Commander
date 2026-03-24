@@ -2,17 +2,15 @@ export const GameData = {
     hulls: { 
         "hunter": { name: "Охотник", hp: 150, armor: { front: 50, side: 30, rear: 20 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52}, ability: "Нет", cost: 0, 
             upgrades: { hp: 15, armor: { front: 5, side: 3, rear: 2 }, speed: 5 } },
-        // ЛЕОПАРД: Убрана броня, добавлено stunDuration
         "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 80, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "ЭМИ-Дрон (12 сек)", cost: 15,
             upgrades: { hp: 10, stunDuration: 1, speed: 7 } },
-        // ТИТАН: Убрана скорость, добавлено mineDamage
         "titan": { name: "Титан", hp: 180, armor: { front: 60, side: 40, rear: 30 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (Лимит)", cost: 15,
             upgrades: { hp: 18, armor: { front: 6, side: 4, rear: 3 }, mineDamage: 1 } }
     },
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 50, penetration: 15, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 40 выстр.",
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 50, penetration: 15, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 50 выстр.",
             upgrades: { penetration: 3, magazineSize: 10 } }
     },
     enemyHulls: { 
@@ -32,25 +30,25 @@ export const GameData = {
 };
 
 export const LevelsConfig = { 
-    1: { pool: ["basic", "basic", "basic", "basic"], obstacles: 3, barrels: 0, maxUpgrades: 2 }, 
-    2: { pool: ["basic", "basic", "basic", "scout", "scout"], obstacles: 4, barrels: 1, maxUpgrades: 2 }, 
+    1: { pool: ["basic", "basic"], obstacles: 3, barrels: 0, maxUpgrades: 2 }, 
+    2: { pool: ["basic", "basic", "basic", "scout"], obstacles: 4, barrels: 1, maxUpgrades: 2 }, 
     3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 5, barrels: 2, maxUpgrades: 2 },
-    4: { pool: ["demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
-    5: { pool: ["demon", "demon", "demon", "scout", "scout", "scout"], obstacles: 2, barrels: 4, maxUpgrades: 2 },
-    6: { pool: ["scout", "scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 7, maxUpgrades: 2, fastSpawn: true },
+    4: { pool: ["demon", "basic", "basic", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
+    5: { pool: ["demon", "demon", "scout", "scout", "scout"], obstacles: 2, barrels: 4, maxUpgrades: 2 },
+    6: { pool: ["scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 2, maxUpgrades: 2, fastSpawn: true },
     7: { pool: ["demon", "scout", "basic", "demon", "scout", "basic"], obstacles: 4, barrels: 5, maxUpgrades: 2 },
-    8: { pool: ["mars", "mars", "basic", "basic", "scout", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
+    8: { pool: ["mars", "basic", "basic", "scout", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
     9: { pool: ["scout", "scout", "scout", "scout", "demon", "demon", "mars", "mars"], obstacles: 3, barrels: 6, maxUpgrades: 2, fastSpawn: true },
     10: { pool: ["mars", "mars", "mars", "demon", "demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 },
-    11: { pool: ["goliaph", "basic", "scout", "demon"], obstacles: 5, barrels: 4, maxUpgrades: 3 },
+    11: { pool: ["goliaph", "basic", "scout", "scout", "demon"], obstacles: 5, barrels: 4, maxUpgrades: 3 },
     12: { pool: ["goliaph", "mars", "scout", "scout", "demon", "basic"], obstacles: 6, barrels: 3, maxUpgrades: 3, fastSpawn: true },
     13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
     15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, maxUpgrades: 4, fastSpawn: true }
 };
 
-// ОБНУЛЕНЫ СТАРТОВЫЕ РЕСУРСЫ. Стартовые потенциалы увеличены (5 для корпусов, 3 для башен)
-export let PlayerProgress = {
+// БАЗОВЫЙ ОБЪЕКТ ПРОГРЕССА
+const defaultProgress = {
     points: 0, unlockedLevel: 1, passedLevels: [], collectedStars: {},
     inventory: { hullUpgrades: 0, turretUpgrades: 0 }, unlockedHulls: ["hunter"], unlockedTurrets: ["scourge"],
     currentAssembly: { hullId: "hunter", turretId: "scourge" }, hullsHp: { "hunter": 150, "leopard": 120, "titan": 180 },
@@ -62,3 +60,24 @@ export let PlayerProgress = {
         "gatling": { maxCapacity: 3, usedCapacity: 0, penetration: 0, magazineSize: 0 }
     }
 };
+
+export let PlayerProgress = JSON.parse(JSON.stringify(defaultProgress));
+
+// ФУНКЦИЯ ЗАГРУЗКИ (Вызывается при старте игры)
+export function loadProgress() {
+    const saved = localStorage.getItem('tankCommanderSave_v2');
+    if (saved) {
+        try {
+            let parsed = JSON.parse(saved);
+            for (let key in parsed) { PlayerProgress[key] = parsed[key]; }
+        } catch (e) { console.error("Ошибка загрузки сохранения", e); }
+    }
+}
+
+// ФУНКЦИЯ СОХРАНЕНИЯ
+export function saveProgress() {
+    localStorage.setItem('tankCommanderSave_v2', JSON.stringify(PlayerProgress));
+}
+
+// Загружаем данные сразу при инициализации файла
+loadProgress();
