@@ -110,9 +110,10 @@ export class Tank {
             }
         }
         
+        // МИНЫ ТИТАНА СПАВНЯТСЯ В 2 РАЗА ЧАЩЕ (КАЖДЫЕ 4 СЕК)
         if (this.hullName === "Титан" && this.minesPlaced < this.maxMines) { 
             this.mineTimer += dt; 
-            if (this.mineTimer >= 8.0) { this.mineTimer = 0; this.mineRequest = true; this.minesPlaced++; } 
+            if (this.mineTimer >= 4.0) { this.mineTimer = 0; this.mineRequest = true; this.minesPlaced++; } 
         }
 
         let isMoving = false;
@@ -196,7 +197,8 @@ export class Tank {
         if (Math.abs(relAngle) < Math.PI / 4) hitZone = 'front';
         else if (Math.abs(relAngle) > 3 * Math.PI / 4) hitZone = 'rear';
 
-        let effectiveArmor = this.armor[hitZone].current * 0.5;
+        // ИСПРАВЛЕНИЕ: Броня теперь гасит урон 1 к 1 (без множителя 0.5)
+        let effectiveArmor = this.armor[hitZone].current;
         this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1); 
 
         let finalDamage = Math.floor(baseDamage - effectiveArmor);
@@ -294,7 +296,6 @@ export class Tank {
         ctx.fillStyle = '#444'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth, 3);
         ctx.fillStyle = (this.isMagazineWeapon && !this.isReloading) ? '#00ccff' : '#ffaa00'; ctx.fillRect(this.x - barWidth / 2, yOffset + 5, barWidth * reloadPercent, 3);
 
-        // ИСПРАВЛЕНИЕ: Отрисовка счетчика мин без использования обратных кавычек
         if (this.hullName === "Титан") {
             ctx.fillStyle = '#00ffcc'; 
             ctx.font = 'bold 12px Arial'; 
