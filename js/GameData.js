@@ -4,8 +4,8 @@ export const GameData = {
             upgrades: { hp: 15, armor: { front: 5, side: 3, rear: 2 }, speed: 5 } },
         "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 80, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "ЭМИ-Дрон (12 сек)", cost: 15,
             upgrades: { hp: 10, stunDuration: 1, speed: 7 } },
-        "titan": { name: "Титан", hp: 180, armor: { front: 60, side: 40, rear: 30 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (Лимит)", cost: 15,
-            upgrades: { hp: 18, armor: { front: 6, side: 4, rear: 3 }, mineDamage: 1 } }
+        "titan": { name: "Титан", hp: 200, armor: { front: 60, side: 40, rear: 30 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (Лимит)", cost: 15,
+            upgrades: { hp: 25, armor: { front: 6, side: 5, rear: 4 }, mineDamage: 1 } }
     },
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
