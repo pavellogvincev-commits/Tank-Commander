@@ -1,4 +1,4 @@
-import { GameData, PlayerProgress, LevelsConfig } from './GameData.js';
+import { GameData, PlayerProgress, LevelsConfig, saveProgress } from './GameData.js';
 
 export const screens = { hangar: document.getElementById('hangar-screen'), levels: document.getElementById('levels-screen'), game: document.getElementById('gameCanvas') };
 export function showScreen(screenName) { screens.hangar.style.display = screenName === 'hangar' ? 'flex' : 'none'; screens.levels.style.display = screenName === 'levels' ? 'flex' : 'none'; screens.game.style.display = screenName === 'game' ? 'block' : 'none'; }
@@ -25,6 +25,8 @@ export function initHangarUI(startLevelFn) {
 }
 
 export function updateHangarUI() {
+    saveProgress(); // СОХРАНЯЕМ ПРИ КАЖДОМ ОБНОВЛЕНИИ ИНТЕРФЕЙСА
+    
     document.getElementById('player-points').innerText = PlayerProgress.points;
     document.getElementById('inv-hull-val').innerText = PlayerProgress.inventory.hullUpgrades;
     document.getElementById('inv-turret-val').innerText = PlayerProgress.inventory.turretUpgrades;
@@ -97,7 +99,6 @@ function showPartDetails(id) {
         html += `<div class="details-image-box unlocked-box"><img src="${imgSrc}" alt="${item.name}"></div>`;
         html += `<div class="details-title">${item.name}</div>`;
 
-        // УМНЫЙ РЕНДЕР СТАТОВ (Показывает только те, что есть в upgrades)
         if (item.upgrades.hp) html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${item.hp + (stats.hp * item.upgrades.hp)}</span></span></div>`;
         if (item.upgrades.armor) html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + (stats.armor * item.upgrades.armor.front)}/${item.armor.side + (stats.armor * item.upgrades.armor.side)}/${item.armor.rear + (stats.armor * item.upgrades.armor.rear)}</span></span></div>`;
         if (item.upgrades.speed) html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + (stats.speed * item.upgrades.speed)}</span></span></div>`;
@@ -116,7 +117,6 @@ function showPartDetails(id) {
         else if (!hasPoints && canUpgrade) html += `<button class="random-upgrade-btn main-action-btn" disabled>НЕТ ЗВЕЗД ДЛЯ АПГРЕЙДА</button>`;
         else if (!canUpgrade) html += `<button class="random-upgrade-btn main-action-btn" disabled>ПОТЕНЦИАЛ ИСЧЕРПАН</button>`;
 
-        // ОГРАНИЧЕНИЕ ПОТЕНЦИАЛА (10 для башен, 15 для корпусов)
         let maxLimit = selectedTab === 'hulls' ? 15 : 10;
         if (stats.maxCapacity < maxLimit) {
             let expandCost = stats.maxCapacity + 1;
@@ -150,7 +150,6 @@ window.resetUpgrades = function(id, cost) {
 window.buyRandomUpgrade = function(id) {
     let type = GameData.hulls[id] ? 'hullUpgrades' : 'turretUpgrades';
     if (PlayerProgress.inventory[type] > 0 && PlayerProgress.partStats[id].usedCapacity < PlayerProgress.partStats[id].maxCapacity) {
-        // Умный выбор: качаются только те параметры, которые есть в upgrades детали
         let itemData = GameData.hulls[id] || GameData.turrets[id];
         let statsOptions = Object.keys(itemData.upgrades);
         
