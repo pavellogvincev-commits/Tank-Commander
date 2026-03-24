@@ -1,4 +1,4 @@
-import { GameData, PlayerProgress, LevelsConfig, saveProgress } from './GameData.js';
+import { GameData, PlayerProgress, LevelsConfig, saveProgress, resetProgress } from './GameData.js';
 
 export const screens = { hangar: document.getElementById('hangar-screen'), levels: document.getElementById('levels-screen'), game: document.getElementById('gameCanvas') };
 export function showScreen(screenName) { screens.hangar.style.display = screenName === 'hangar' ? 'flex' : 'none'; screens.levels.style.display = screenName === 'levels' ? 'flex' : 'none'; screens.game.style.display = screenName === 'game' ? 'block' : 'none'; }
@@ -14,6 +14,16 @@ export function initHangarUI(startLevelFn) {
             updateHangarUI();
         };
     });
+    
+    // ОБРАБОТКА КНОПКИ СБРОСА ПРОГРЕССА
+    document.getElementById('reset-progress-btn').onclick = () => {
+        if (confirm("ВНИМАНИЕ! Это действие удалит все детали, звезды и прохождение. Вы начнете с нуля. Продолжить?")) {
+            resetProgress();
+            selectedPartId = 'hunter';
+            updateHangarUI();
+        }
+    };
+
     document.getElementById('heal-btn').onclick = () => {
         const hullId = PlayerProgress.currentAssembly.hullId; const maxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * GameData.hulls[hullId].upgrades.hp);
         if (PlayerProgress.points >= 1 && PlayerProgress.hullsHp[hullId] < maxHp) { PlayerProgress.points -= 1; PlayerProgress.hullsHp[hullId] = Math.min(maxHp, PlayerProgress.hullsHp[hullId] + Math.floor(maxHp * 0.2)); updateHangarUI(); }
@@ -25,7 +35,7 @@ export function initHangarUI(startLevelFn) {
 }
 
 export function updateHangarUI() {
-    saveProgress(); // СОХРАНЯЕМ ПРИ КАЖДОМ ОБНОВЛЕНИИ ИНТЕРФЕЙСА
+    saveProgress(); 
     
     document.getElementById('player-points').innerText = PlayerProgress.points;
     document.getElementById('inv-hull-val').innerText = PlayerProgress.inventory.hullUpgrades;
