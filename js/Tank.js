@@ -213,6 +213,7 @@ export class Tank {
         let startX = bullet.prevX !== undefined ? bullet.prevX : bullet.x; let startY = bullet.prevY !== undefined ? bullet.prevY : bullet.y;
         let dxPath = bullet.x - startX; let dyPath = bullet.y - startY; let dist = Math.sqrt(dxPath*dxPath + dyPath*dyPath);
         let steps = Math.max(1, Math.ceil(dist / 2));
+        
         for (let i = 1; i <= steps; i++) {
             let t = i / steps; let px = startX + dxPath * t; let py = startY + dyPath * t;
             let dx = px - this.x; let dy = py - this.y;
@@ -224,9 +225,11 @@ export class Tank {
                 let distFront = Math.abs(halfW - localX); let distRear = Math.abs(-halfW - localX); let distSide1 = Math.abs(halfH - localY); let distSide2 = Math.abs(-halfH - localY); 
                 let minDist = Math.min(distFront, distRear, distSide1, distSide2);
                 let hitZone = ''; let normalX = 0, normalY = 0;
+                
                 if (minDist === distFront) { hitZone = 'front'; normalX = 1; normalY = 0; }
                 else if (minDist === distRear) { hitZone = 'rear'; normalX = -1; normalY = 0; }
                 else { hitZone = 'side'; normalX = 0; normalY = minDist === distSide1 ? 1 : -1; }
+                
                 let localVx = bullet.vx * cos - bullet.vy * sin; let localVy = bullet.vx * sin + bullet.vy * cos;
                 let speedSq = Math.sqrt(localVx*localVx + localVy*localVy);
                 let dirX = localVx / speedSq; let dirY = localVy / speedSq;
@@ -240,20 +243,26 @@ export class Tank {
 
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
+                
+                // ИСПРАВЛЕНИЕ: Откат бронебоя до x2 (для Гатлинга)
                 let currentArmor = this.armor[hitZone].current;
+                let potentialTear = (bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг") ? 2 : 1;
+                let actualTear = Math.min(currentArmor, potentialTear);
                 
-                // ИСПРАВЛЕНИЕ: Гатлинг стачивает по 2 единицы брони каждым попаданием
-                let armorTear = (bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг") ? 2 : 1;
-                this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - armorTear);
+                this.armor[hitZone].current -= actualTear;
+                let newArmor = this.armor[hitZone].current; // Используем обновленную броню для расчета пробития
+                hitResult.armorTorn = actualTear; 
                 
-                if (effectivePenetration > currentArmor) {
-                    let baseDamage = effectivePenetration - currentArmor;
+                if (effectivePenetration > newArmor) {
+                    let baseDamage = effectivePenetration - newArmor;
                     let finalDamage = Math.floor(baseDamage + (Math.random() * (baseDamage * 0.1) * 2 - (baseDamage * 0.1)));
                     if (finalDamage < 1) finalDamage = 1; 
                     let isDestroyed = false; if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
                     this.hp -= finalDamage; if (this.hp < 0) this.hp = 0;
                     hitResult.type = 'penetration'; hitResult.damage = finalDamage; hitResult.destroyed = isDestroyed;
-                } else { hitResult.type = 'ricochet'; hitResult.damage = 0; }
+                } else { 
+                    hitResult.type = 'ricochet'; hitResult.damage = 0; 
+                }
                 return hitResult; 
             }
         }
