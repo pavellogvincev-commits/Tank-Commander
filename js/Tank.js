@@ -35,7 +35,8 @@ export class Tank {
         this.droneStunTime = 7 + (hullStatLevels ? (hullStatLevels.stunDuration || 0) : 0);
 
         this.mineTimer = 0; this.mineRequest = false;
-        this.maxMines = 5 + (hullStatLevels ? hullStatLevels.usedCapacity : 0);
+        // ТИТАН: Лимит мин жестко равен 6
+        this.maxMines = 6;
         this.minesPlaced = 0;
         this.mineBonusDamage = hullStatLevels ? (hullStatLevels.mineDamage || 0) : 0;
     }
@@ -110,7 +111,6 @@ export class Tank {
             }
         }
         
-        // МИНЫ ТИТАНА СПАВНЯТСЯ В 2 РАЗА ЧАЩЕ (КАЖДЫЕ 4 СЕК)
         if (this.hullName === "Титан" && this.minesPlaced < this.maxMines) { 
             this.mineTimer += dt; 
             if (this.mineTimer >= 4.0) { this.mineTimer = 0; this.mineRequest = true; this.minesPlaced++; } 
@@ -197,7 +197,6 @@ export class Tank {
         if (Math.abs(relAngle) < Math.PI / 4) hitZone = 'front';
         else if (Math.abs(relAngle) > 3 * Math.PI / 4) hitZone = 'rear';
 
-        // ИСПРАВЛЕНИЕ: Броня теперь гасит урон 1 к 1 (без множителя 0.5)
         let effectiveArmor = this.armor[hitZone].current;
         this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1); 
 
