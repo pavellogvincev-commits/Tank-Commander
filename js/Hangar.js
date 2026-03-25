@@ -15,12 +15,9 @@ export function initHangarUI(startLevelFn) {
         };
     });
     
-    // ОБРАБОТКА КНОПКИ СБРОСА ПРОГРЕССА
     document.getElementById('reset-progress-btn').onclick = () => {
         if (confirm("ВНИМАНИЕ! Это действие удалит все детали, звезды и прохождение. Вы начнете с нуля. Продолжить?")) {
-            resetProgress();
-            selectedPartId = 'hunter';
-            updateHangarUI();
+            resetProgress(); selectedPartId = 'hunter'; updateHangarUI();
         }
     };
 
@@ -42,9 +39,6 @@ export function updateHangarUI() {
     document.getElementById('inv-turret-val').innerText = PlayerProgress.inventory.turretUpgrades;
     
     const assembly = PlayerProgress.currentAssembly;
-    const baseHp = GameData.hulls[assembly.hullId].hp; const bonusHp = PlayerProgress.partStats[assembly.hullId].hp * GameData.hulls[assembly.hullId].upgrades.hp;
-    document.getElementById('current-hp-val').innerText = PlayerProgress.hullsHp[assembly.hullId]; 
-    document.getElementById('max-hp-val').innerText = baseHp + bonusHp;
     
     let hullImg = document.getElementById('hangar-hull-layer');
     let hId = assembly.hullId; let tId = assembly.turretId;
@@ -56,6 +50,42 @@ export function updateHangarUI() {
         hullImg.parentElement.appendChild(turretImg);
     }
     if (turretImg) turretImg.src = `assets/${tId === 'scourge' ? 'turret' : tId}.png`;
+
+    // ГЕНЕРАЦИЯ ПОДРОБНОЙ СТАТИСТИКИ (Левый столбец)
+    const hData = GameData.hulls[hId]; const tData = GameData.turrets[tId];
+    const sHull = PlayerProgress.partStats[hId]; const sTurr = PlayerProgress.partStats[tId];
+
+    let maxHp = hData.hp + (sHull.hp * (hData.upgrades.hp || 0));
+    let curHp = PlayerProgress.hullsHp[hId];
+    let armorF = hData.armor.front + (sHull.armor * (hData.upgrades.armor?.front || 0));
+    let armorS = hData.armor.side + (sHull.armor * (hData.upgrades.armor?.side || 0));
+    let armorR = hData.armor.rear + (sHull.armor * (hData.upgrades.armor?.rear || 0));
+    let speed = hData.speed + (sHull.speed * (hData.upgrades.speed || 0));
+
+    let pen = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
+    let fr = tData.fireRate + ((sTurr.fireRate || 0) * (tData.upgrades.fireRate || 0));
+
+    let statsHtml = `
+        <div class="assembly-stat-row"><span>Прочность:</span> <span>${curHp} / ${maxHp}</span></div>
+        <div class="assembly-stat-row"><span>Броня:</span> <span>${armorF}/${armorS}/${armorR}</span></div>
+        <div class="assembly-stat-row"><span>Скорость:</span> <span>${speed}</span></div>
+        <div class="assembly-stat-row"><span>Скорострел.:</span> <span>${fr.toFixed(2)}с</span></div>
+        <div class="assembly-stat-row"><span>Пробитие:</span> <span>${pen}</span></div>
+    `;
+
+    if (hId === "titan") {
+        let minD = 30 + (sHull.mineDamage * 8); let maxD = 60 + (sHull.mineDamage * 15);
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffcc00;"><span>Урон мин:</span> <span style="color:#ffcc00;">${minD} - ${maxD}</span></div>`;
+    } else if (hId === "leopard") {
+        statsHtml += `<div class="assembly-stat-row" style="color:#00ffcc;"><span>Оглушение:</span> <span style="color:#00ffcc;">${7 + (sHull.stunDuration * 1)}с</span></div>`;
+    }
+    if (tId === "gatling") {
+        let reload = tData.reloadTime + ((sTurr.reloadTime || 0) * (tData.upgrades.reloadTime || 0));
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Барабан:</span> <span style="color:#ffffdd;">${tData.magazineSize}</span></div>`;
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Перезарядка:</span> <span style="color:#ffffdd;">${reload.toFixed(2)}с</span></div>`;
+    }
+
+    document.getElementById('assembly-stats').innerHTML = statsHtml;
 
     renderPartsList(); showPartDetails(selectedPartId);
 }
@@ -113,11 +143,11 @@ function showPartDetails(id) {
         if (item.upgrades.armor) html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + (stats.armor * item.upgrades.armor.front)}/${item.armor.side + (stats.armor * item.upgrades.armor.side)}/${item.armor.rear + (stats.armor * item.upgrades.armor.rear)}</span></span></div>`;
         if (item.upgrades.speed) html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + (stats.speed * item.upgrades.speed)}</span></span></div>`;
         if (item.upgrades.stunDuration) html += `<div class="upgrade-row"><span>Оглушение: <span id="val-stunDuration" class="upgrade-val">${7 + (stats.stunDuration * item.upgrades.stunDuration)}с</span></span></div>`;
-        if (item.upgrades.mineDamage) html += `<div class="upgrade-row"><span>Урон мин: <span id="val-mineDamage" class="upgrade-val">${30 + (stats.mineDamage * 5)} - ${60 + (stats.mineDamage * 10)}</span></span></div>`;
+        if (item.upgrades.mineDamage) html += `<div class="upgrade-row"><span>Урон мин: <span id="val-mineDamage" class="upgrade-val">${30 + (stats.mineDamage * 8)} - ${60 + (stats.mineDamage * 15)}</span></span></div>`;
         
         if (item.upgrades.penetration) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + (stats.penetration * item.upgrades.penetration)}</span></span></div>`;
         if (item.upgrades.fireRate) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
-        if (item.upgrades.magazineSize) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + (stats.magazineSize * item.upgrades.magazineSize)}</span></span></div>`;
+        if (item.upgrades.reloadTime) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + (stats.reloadTime * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
 
         html += `<p class="ability-text">Особенность: <span>${item.ability || 'Нет'}</span></p>`;
 
