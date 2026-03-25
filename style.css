@@ -10,7 +10,6 @@ div.screen { display: none; width: 100vw; height: 100vh; flex-direction: column;
     position: absolute; 
     top: 0; bottom: 0; left: 0; right: 0; 
     margin: auto; 
-    /* НОВЫЙ ФОН АРЕНЫ: Травянисто-военный зеленый */
     background: #2a3d24; 
     box-shadow: 0 0 40px rgba(0, 0, 0, 1); 
     cursor: crosshair; 
@@ -24,7 +23,7 @@ div.screen { display: none; width: 100vw; height: 100vh; flex-direction: column;
 
 .hangar-body { display: flex; flex: 1; padding: 15px; gap: 15px; background: radial-gradient(circle at center, #102013 0%, #08100a 100%); }
 .panel { background: rgba(14, 28, 17, 0.8); border: 1px solid #234028; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; }
-.left-panel { flex: 1; align-items: center; justify-content: space-between; }
+.left-panel { flex: 1; align-items: center; justify-content: flex-start; }
 .mid-panel { flex: 1.2; }
 .right-panel { flex: 1; }
 
@@ -67,7 +66,7 @@ div.screen { display: none; width: 100vw; height: 100vh; flex-direction: column;
 .ability-text { margin-top: 10px; font-size: 13px; text-align: center; color: #a0baa0; }
 .ability-text span { color: #00ffaa; font-weight: bold; }
 
-/* Большие кнопки действий справа */
+/* Больгие кнопки действий справа */
 .main-action-btn { width: 100%; padding: 8px; margin-top: 6px; border: none; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
 .random-upgrade-btn { background: linear-gradient(to right, #ffaa00, #ff8800); color: #111; box-shadow: 0 0 10px rgba(255, 170, 0, 0.3); }
 .random-upgrade-btn:hover:not(:disabled) { background: #ffcc00; transform: translateY(-1px); }
@@ -80,24 +79,26 @@ div.screen { display: none; width: 100vw; height: 100vh; flex-direction: column;
 .small-action-btn:hover:not(:disabled) { background: rgba(255, 85, 85, 0.1); }
 .small-action-btn:disabled { color: #555; border-color: #333; cursor: not-allowed; }
 
-/* Сборка и ХП слева */
-.assembly-box { width: 140px; height: 140px; border-radius: 50%; border: 3px solid #ffcc00; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #234028 0%, #0d1a10 70%); box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); position: relative; }
-/* Центрирование и масштабирование изображений в сборке */
+/* СБОРКА И ХП СЛЕВА */
+.assembly-box { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #ffcc00; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #234028 0%, #0d1a10 70%); box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); position: relative; margin-bottom: 10px; }
 .assembly-box img { position: absolute; max-width: 60%; max-height: 60%; left: 50%; top: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.8)); }
 
-.hp-info { text-align: center; margin: 10px 0; font-size: 15px; font-weight: bold; color: #a0baa0; }
-#heal-btn { width: 100%; padding: 8px; background: #00cc88; color: #111; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: auto; }
+/* НОВЫЙ БЛОК ПОДРОБНОЙ СТАТИСТИКИ СБОРКИ СЛЕВА */
+.assembly-stats-box { width: 100%; display: flex; flex-direction: column; gap: 4px; margin-bottom: auto; }
+.assembly-stat-row { display: flex; justify-content: space-between; font-size: 12px; color: #d0e0d0; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; }
+.assembly-stat-row span:last-child { font-weight: bold; color: #00ffaa; }
+
+#heal-btn { width: 100%; padding: 8px; background: #00cc88; color: #111; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 5px; }
 #heal-btn:hover { background: #00ffaa; transform: scale(1.02); }
-#to-levels-btn, #back-to-hangar-btn { width: 100%; padding: 10px; font-size: 16px; font-weight: bold; background: #ffaa00; color: #111; border: none; border-radius: 4px; cursor: pointer; transition: 0.2s; margin-top: auto; }
+#to-levels-btn, #back-to-hangar-btn { width: 100%; padding: 10px; font-size: 16px; font-weight: bold; background: #ffaa00; color: #111; border: none; border-radius: 4px; cursor: pointer; transition: 0.2s; }
 #to-levels-btn:hover, #back-to-hangar-btn:hover { background: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.4); }
 
-/* Характеристики */
+/* Характеристики справа */
 .upgrade-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; color: #d0e0d0; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; }
 .upgrade-val { font-weight: bold; color: #00ffaa; transition: 0.3s; }
 .stat-flash { color: #fff !important; text-shadow: 0 0 10px #fff, 0 0 20px #00ffaa; transform: scale(1.2); }
 
-/* Уровни */
-/* ИСПРАВЛЕНИЕ: Сетка 5 колонок (получится 3 ряда для 15 уровней) */
+/* Уровни (Сетка 5 колонок х 3 ряда) */
 #levels-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; overflow-y: auto; max-height: 500px; width: 600px; margin: 0 auto; }
 .level-btn { height: 70px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
 .level-btn.passed { background: #234028; color: #a0baa0; border: 1px solid #00cc88; }
