@@ -10,9 +10,9 @@ export const GameData = {
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        // ГАТЛИНГ: Пробитие 5, барабан 55, прокачивается только перезарядка (-0.25)
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 55 выстр.",
-            upgrades: { reloadTime: -0.25 } }
+        // ГАТЛИНГ: 2 апгрейда (Перезарядка и Барабан). Особенность отражает его способность рвать броню.
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Рвет броню (х2)",
+            upgrades: { reloadTime: -0.25, magazineSize: 10 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
@@ -57,7 +57,7 @@ const defaultProgress = {
         "leopard": { maxCapacity: 5, usedCapacity: 0, hp: 0, stunDuration: 0, speed: 0 },
         "titan": { maxCapacity: 5, usedCapacity: 0, hp: 0, armor: 0, mineDamage: 0 },
         "scourge": { maxCapacity: 3, usedCapacity: 0, penetration: 0, fireRate: 0 },
-        "gatling": { maxCapacity: 3, usedCapacity: 0, reloadTime: 0 } // Гатлинг теперь имеет только reloadTime
+        "gatling": { maxCapacity: 3, usedCapacity: 0, reloadTime: 0, magazineSize: 0 } 
     }
 };
 
@@ -69,12 +69,12 @@ export function loadProgress() {
         try {
             let parsed = JSON.parse(saved);
             for (let key in parsed) { PlayerProgress[key] = parsed[key]; }
-            // МИГРАТОР: Если это старое сохранение, где Гатлинг имел penetration и magazineSize
-            if (PlayerProgress.partStats.gatling.reloadTime === undefined) {
-                let refund = PlayerProgress.partStats.gatling.usedCapacity || 0;
-                PlayerProgress.inventory.turretUpgrades += refund; // Возвращаем потраченные звезды
-                PlayerProgress.partStats.gatling = { maxCapacity: 3, usedCapacity: 0, reloadTime: 0 };
-            }
+            
+            // МИГРАТОР: Добавляем недостающие параметры, если сейв старый
+            if (PlayerProgress.partStats.gatling.magazineSize === undefined) PlayerProgress.partStats.gatling.magazineSize = 0;
+            if (PlayerProgress.partStats.gatling.reloadTime === undefined) PlayerProgress.partStats.gatling.reloadTime = 0;
+            if (PlayerProgress.partStats.titan.mineDamage === undefined) PlayerProgress.partStats.titan.mineDamage = PlayerProgress.partStats.titan.speed || 0;
+            
         } catch (e) { console.error("Ошибка загрузки сохранения", e); }
     }
 }
