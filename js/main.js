@@ -98,7 +98,8 @@ function startLevel(levelNum) {
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     calcTurr.penetration += sTurr.penetration * (bTurr.upgrades.penetration || 0); 
     if (bTurr.upgrades.fireRate) calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
-    if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += sTurr.magazineSize * bTurr.upgrades.magazineSize;
+    // ГАТЛИНГ: Расчет времени перезарядки
+    if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += sTurr.reloadTime * bTurr.upgrades.reloadTime;
     
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull);
     playerTank.shieldTimer = 3.0;
@@ -196,8 +197,9 @@ function gameLoop(timestamp) {
         
         if (playerTank.mineRequest) { 
             playerTank.mineRequest = false; 
-            let minDmg = 30 + (playerTank.mineBonusDamage * 5);
-            let maxDmg = 60 + (playerTank.mineBonusDamage * 10);
+            // ТИТАН: Урон мин 30-60 базовый, плюс 8-15 за каждую звезду!
+            let minDmg = 30 + (playerTank.mineBonusDamage * 8);
+            let maxDmg = 60 + (playerTank.mineBonusDamage * 15);
             let mineDamage = Math.floor(minDmg + Math.random() * (maxDmg - minDmg));
             mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 24 }); 
         }
@@ -237,7 +239,6 @@ function gameLoop(timestamp) {
                 let startY = enemy.y + Math.sin(enemy.turretAngle)*45;
                 
                 if (enemy.aiType === "Марс") {
-                    // ИСПРАВЛЕНИЕ: Разброс арты увеличен до 80x80, урон снижен до 100
                     let spread = 80; 
                     let tx = playerTank.x + (Math.random() - 0.5) * spread;
                     let ty = playerTank.y + (Math.random() - 0.5) * spread;
