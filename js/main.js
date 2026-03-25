@@ -40,7 +40,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === '3') { PlayerProgress.inventory.turretUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
 });
 
-function spawnText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -30 }); }
+function spawnText(x, y, text, color, size = 20) { floatingTexts.push({ x, y, text, color, size, life: 1.5, maxLife: 1.5, vy: -30 }); }
 function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 6); let base = Math.atan2(ny, nx); for (let i = 0; i < count; i++) { let spread = (Math.random() - 0.5) * Math.PI; let speed = 100 + Math.random() * 200; sparks.push({ x, y, vx: Math.cos(base+spread)*speed, vy: Math.sin(base+spread)*speed, life: 0.2+Math.random()*0.2, maxLife: 0.4, size: 2+Math.random()*3, color: '255, 200, 0' }); } }
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
@@ -91,15 +91,24 @@ function startLevel(levelNum) {
     const hullId = PlayerProgress.currentAssembly.hullId; const turretId = PlayerProgress.currentAssembly.turretId;
     let bHull = GameData.hulls[hullId]; let sHull = PlayerProgress.partStats[hullId];
     let calcHull = JSON.parse(JSON.stringify(bHull)); 
-    if (bHull.upgrades.hp) calcHull.hp += sHull.hp * bHull.upgrades.hp; 
-    if (bHull.upgrades.speed) calcHull.speed += sHull.speed * bHull.upgrades.speed;
-    if (bHull.upgrades.armor) { calcHull.armor.front += sHull.armor * bHull.upgrades.armor.front; calcHull.armor.side += sHull.armor * bHull.upgrades.armor.side; calcHull.armor.rear += sHull.armor * bHull.upgrades.armor.rear; }
+    
+    // ЖЕСТКАЯ ЗАЩИТА ОТ NaN
+    if (bHull.upgrades.hp) calcHull.hp += (sHull.hp || 0) * bHull.upgrades.hp; 
+    if (bHull.upgrades.speed) calcHull.speed += (sHull.speed || 0) * bHull.upgrades.speed;
+    if (bHull.upgrades.armor) { 
+        calcHull.armor.front += (sHull.armor || 0) * bHull.upgrades.armor.front; 
+        calcHull.armor.side += (sHull.armor || 0) * bHull.upgrades.armor.side; 
+        calcHull.armor.rear += (sHull.armor || 0) * bHull.upgrades.armor.rear; 
+    }
     
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
-    calcTurr.penetration += sTurr.penetration * (bTurr.upgrades.penetration || 0); 
-    if (bTurr.upgrades.fireRate) calcTurr.fireRate += sTurr.fireRate * bTurr.upgrades.fireRate;
-    // ГАТЛИНГ: Расчет времени перезарядки
-    if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += sTurr.reloadTime * bTurr.upgrades.reloadTime;
+    
+    // ЖЕСТКАЯ ЗАЩИТА ОТ NaN (Именно здесь ломался Гатлинг)
+    calcTurr.penetration += (sTurr.penetration || 0) * (bTurr.upgrades.penetration || 0); 
+    
+    if (bTurr.upgrades.fireRate) calcTurr.fireRate += (sTurr.fireRate || 0) * bTurr.upgrades.fireRate;
+    if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += (sTurr.reloadTime || 0) * bTurr.upgrades.reloadTime;
+    if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += (sTurr.magazineSize || 0) * bTurr.upgrades.magazineSize;
     
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull);
     playerTank.shieldTimer = 3.0;
@@ -157,7 +166,6 @@ function gameLoop(timestamp) {
         if (enemySpawnTimer <= 0) { 
             spawnEnemyOnArena(); 
             enemiesToSpawn--; 
-            
             let currentConfig = LevelsConfig[currentLevelNum] || {};
             let multiplier = currentConfig.fastSpawn ? 1.0 : 2.0;
             enemySpawnTimer = Math.max(1, enemies.length) * multiplier; 
@@ -197,7 +205,6 @@ function gameLoop(timestamp) {
         
         if (playerTank.mineRequest) { 
             playerTank.mineRequest = false; 
-            // ТИТАН: Урон мин 30-60 базовый, плюс 8-15 за каждую звезду!
             let minDmg = 30 + (playerTank.mineBonusDamage * 8);
             let maxDmg = 60 + (playerTank.mineBonusDamage * 15);
             let mineDamage = Math.floor(minDmg + Math.random() * (maxDmg - minDmg));
@@ -303,8 +310,17 @@ function gameLoop(timestamp) {
             let hit = playerTank.checkHit(b);
             if (hit.hit) {
                 hasHit = true;
-                if (hit.type === 'penetration') { b.toDestroy = true; spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound); } 
-                else { b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = playerTank; spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); }
+                if (hit.type === 'penetration') { 
+                    b.toDestroy = true; 
+                    spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
+                    if (hit.armorTorn > 0) spawnText(hit.x + 10, hit.y - 10, `-${hit.armorTorn}`, '#aaaaaa', 12);
+                    playSound(hitSound); 
+                } else { 
+                    b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = playerTank; 
+                    spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
+                    playSound(bounceSound); 
+                    if (hit.armorTorn > 0) spawnText(hit.x, hit.y - 10, `-${hit.armorTorn} бр`, '#88ccff', 12);
+                }
             }
         }
         if (!hasHit) {
@@ -312,8 +328,17 @@ function gameLoop(timestamp) {
                 if (b.ownerTank === enemy || b.lastHitTarget === enemy) continue; 
                 let hit = enemy.checkHit(b);
                 if (hit.hit) {
-                    if (hit.type === 'penetration') { b.toDestroy = true; spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333'); playSound(hitSound); } 
-                    else { b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = enemy; spawnSparks(hit.x, hit.y, hit.nx, hit.ny); playSound(bounceSound); }
+                    if (hit.type === 'penetration') { 
+                        b.toDestroy = true; 
+                        spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
+                        if (hit.armorTorn > 0) spawnText(hit.x + 10, hit.y - 10, `-${hit.armorTorn}`, '#aaaaaa', 12);
+                        playSound(hitSound); 
+                    } else { 
+                        b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = enemy; 
+                        spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
+                        playSound(bounceSound); 
+                        if (hit.armorTorn > 0) spawnText(hit.x, hit.y - 10, `-${hit.armorTorn} бр`, '#88ccff', 12);
+                    }
                     break; 
                 }
             }
@@ -381,9 +406,20 @@ function gameLoop(timestamp) {
     }
 
     if (playerTank && playerTank.hp > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); }
-    ctx.font = '900 20px Arial, sans-serif'; ctx.textAlign = 'center';
-    for (let ft of floatingTexts) { let alpha = Math.max(0, ft.life / ft.maxLife); ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); }
+    
+    ctx.textAlign = 'center';
+    for (let ft of floatingTexts) { 
+        let alpha = Math.max(0, ft.life / ft.maxLife); 
+        ctx.globalAlpha = alpha; 
+        ctx.font = `900 ${ft.size}px Arial, sans-serif`;
+        ctx.lineWidth = 3; 
+        ctx.strokeStyle = '#ffffff'; 
+        ctx.strokeText(ft.text, ft.x, ft.y); 
+        ctx.fillStyle = ft.color; 
+        ctx.fillText(ft.text, ft.x, ft.y); 
+    }
     ctx.globalAlpha = 1.0;
+    
     if (playerTank.hp <= 0) { ctx.font = '900 60px Arial'; ctx.fillStyle = '#ff0000'; ctx.textAlign = 'center'; ctx.fillText('ТАНК УНИЧТОЖЕН', canvas.width / 2, canvas.height / 2); } 
     else if (levelFinished) { ctx.font = '900 60px Arial'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; ctx.fillText('СЕКТОР ЗАЧИЩЕН!', canvas.width / 2, canvas.height / 2 - 20); 
         if (firstClearBonus) { ctx.font = '900 35px Arial'; ctx.fillStyle = '#ffcc00'; ctx.fillText('Первое прохождение: +5 ⚙️', canvas.width / 2, canvas.height / 2 + 40); }
