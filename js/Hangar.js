@@ -44,9 +44,9 @@ export function updateHangarUI() {
     const sHull = PlayerProgress.partStats[hId]; const sTurr = PlayerProgress.partStats[tId];
 
     const maxHp = hData.hp + (sHull.hp * (hData.upgrades.hp || 0));
-    document.getElementById('current-hp-val').innerText = PlayerProgress.hullsHp[hId]; 
-    document.getElementById('max-hp-val').innerText = maxHp;
     
+    // Ошибка была здесь: скрипт искал старые спаны. Я их удалил. Здоровье теперь выводится в statsHtml ниже.
+
     let hullImg = document.getElementById('hangar-hull-layer');
     hullImg.src = `assets/${hId === 'hunter' ? 'hull' : hId}.png`;
 
@@ -57,7 +57,6 @@ export function updateHangarUI() {
     }
     if (turretImg) turretImg.src = `assets/${tId === 'scourge' ? 'turret' : tId}.png`;
 
-    // ЗАЩИТА ОТ NaN В ЛЕВОЙ ПАНЕЛИ
     let armorF = hData.armor.front + ((sHull.armor || 0) * (hData.upgrades.armor?.front || 0));
     let armorS = hData.armor.side + ((sHull.armor || 0) * (hData.upgrades.armor?.side || 0));
     let armorR = hData.armor.rear + ((sHull.armor || 0) * (hData.upgrades.armor?.rear || 0));
@@ -71,7 +70,6 @@ export function updateHangarUI() {
         <div class="assembly-stat-row"><span>Скорость:</span> <span>${speedVal}</span></div>
     `;
 
-    // Гатлингу не показываем скорострельность
     if (tId !== "gatling") {
         statsHtml += `<div class="assembly-stat-row"><span>Скорострел.:</span> <span>${frVal.toFixed(2)}с</span></div>`;
     }
@@ -144,7 +142,6 @@ function showPartDetails(id) {
         html += `<div class="details-image-box unlocked-box"><img src="${imgSrc}" alt="${item.name}"></div>`;
         html += `<div class="details-title">${item.name}</div>`;
 
-        // ЗАЩИТА ОТ NaN В ПРАВОЙ ПАНЕЛИ
         if (item.upgrades.hp !== undefined) html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${item.hp + ((stats.hp || 0) * item.upgrades.hp)}</span></span></div>`;
         if (item.upgrades.armor !== undefined) html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + ((stats.armor || 0) * item.upgrades.armor.front)}/${item.armor.side + ((stats.armor || 0) * item.upgrades.armor.side)}/${item.armor.rear + ((stats.armor || 0) * item.upgrades.armor.rear)}</span></span></div>`;
         if (item.upgrades.speed !== undefined) html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + ((stats.speed || 0) * item.upgrades.speed)}</span></span></div>`;
@@ -153,7 +150,6 @@ function showPartDetails(id) {
         
         if (item.upgrades.penetration !== undefined) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + ((stats.penetration || 0) * item.upgrades.penetration)}</span></span></div>`;
         
-        // Гатлингу не показываем скорострельность
         if (item.upgrades.fireRate !== undefined && id !== "gatling") html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
         
         if (item.upgrades.reloadTime !== undefined) html += `<div class="upgrade-row"><span>Время перезарядки: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + ((stats.reloadTime || 0) * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
