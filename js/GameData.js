@@ -4,15 +4,15 @@ export const GameData = {
             upgrades: { hp: 15, armor: { front: 5, side: 3, rear: 2 }, speed: 5 } },
         "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 80, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "ЭМИ-Дрон (12 сек)", cost: 15,
             upgrades: { hp: 10, stunDuration: 1, speed: 7 } },
-        // ТИТАН: НОВЫЕ БАФФНУТЫЕ СТАТЫ И АПГРЕЙДЫ
-        "titan": { name: "Титан", hp: 200, armor: { front: 65, side: 40, rear: 35 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (Лимит)", cost: 15,
+        "titan": { name: "Титан", hp: 200, armor: { front: 65, side: 40, rear: 35 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (6 шт)", cost: 15,
             upgrades: { hp: 25, armor: { front: 7, side: 6, rear: 5 }, mineDamage: 1 } }
     },
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 50, penetration: 15, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 50 выстр.",
-            upgrades: { penetration: 3, magazineSize: 10 } }
+        // ГАТЛИНГ: Пробитие 5, барабан 55, прокачивается только перезарядка (-0.25)
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Барабан на 55 выстр.",
+            upgrades: { reloadTime: -0.25 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
@@ -25,14 +25,12 @@ export const GameData = {
         "basic": { name: "Враг-Пушка", fireRate: 3.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon', bulletSpeed: 400 },
         "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 400 },
         "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
-        // МАРС: СКОРОСТЬ СНАРЯДА СНИЖЕНА ДО 200
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 }
     }
 };
 
 export const LevelsConfig = { 
-    // УРОВЕНЬ 1: ТЕПЕРЬ 3 ТАНКА
     1: { pool: ["basic", "basic", "basic"], obstacles: 3, barrels: 0, maxUpgrades: 2 }, 
     2: { pool: ["basic", "basic", "basic", "scout"], obstacles: 4, barrels: 1, maxUpgrades: 2 }, 
     3: { pool: ["basic", "basic", "basic", "scout", "scout", "scout"], obstacles: 5, barrels: 2, maxUpgrades: 2 },
@@ -50,7 +48,6 @@ export const LevelsConfig = {
     15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, maxUpgrades: 4, fastSpawn: true }
 };
 
-// БАЗОВЫЙ ОБЪЕКТ ПРОГРЕССА (У Титана стартовые ХП 200)
 const defaultProgress = {
     points: 0, unlockedLevel: 1, passedLevels: [], collectedStars: {},
     inventory: { hullUpgrades: 0, turretUpgrades: 0 }, unlockedHulls: ["hunter"], unlockedTurrets: ["scourge"],
@@ -60,7 +57,7 @@ const defaultProgress = {
         "leopard": { maxCapacity: 5, usedCapacity: 0, hp: 0, stunDuration: 0, speed: 0 },
         "titan": { maxCapacity: 5, usedCapacity: 0, hp: 0, armor: 0, mineDamage: 0 },
         "scourge": { maxCapacity: 3, usedCapacity: 0, penetration: 0, fireRate: 0 },
-        "gatling": { maxCapacity: 3, usedCapacity: 0, penetration: 0, magazineSize: 0 }
+        "gatling": { maxCapacity: 3, usedCapacity: 0, reloadTime: 0 } // Гатлинг теперь имеет только reloadTime
     }
 };
 
@@ -72,21 +69,21 @@ export function loadProgress() {
         try {
             let parsed = JSON.parse(saved);
             for (let key in parsed) { PlayerProgress[key] = parsed[key]; }
+            // МИГРАТОР: Если это старое сохранение, где Гатлинг имел penetration и magazineSize
+            if (PlayerProgress.partStats.gatling.reloadTime === undefined) {
+                let refund = PlayerProgress.partStats.gatling.usedCapacity || 0;
+                PlayerProgress.inventory.turretUpgrades += refund; // Возвращаем потраченные звезды
+                PlayerProgress.partStats.gatling = { maxCapacity: 3, usedCapacity: 0, reloadTime: 0 };
+            }
         } catch (e) { console.error("Ошибка загрузки сохранения", e); }
     }
 }
 
-export function saveProgress() {
-    localStorage.setItem('tankCommanderSave_v2', JSON.stringify(PlayerProgress));
-}
-
-// НОВАЯ ФУНКЦИЯ ПОЛНОГО СБРОСА
+export function saveProgress() { localStorage.setItem('tankCommanderSave_v2', JSON.stringify(PlayerProgress)); }
 export function resetProgress() {
     localStorage.removeItem('tankCommanderSave_v2');
     let freshProgress = JSON.parse(JSON.stringify(defaultProgress));
-    for (let key in freshProgress) {
-        PlayerProgress[key] = freshProgress[key];
-    }
+    for (let key in freshProgress) { PlayerProgress[key] = freshProgress[key]; }
 }
 
 loadProgress();
