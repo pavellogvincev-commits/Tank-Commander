@@ -35,7 +35,6 @@ export class Tank {
         this.droneStunTime = 7 + (hullStatLevels ? (hullStatLevels.stunDuration || 0) : 0);
 
         this.mineTimer = 0; this.mineRequest = false;
-        // ТИТАН: Лимит мин жестко равен 6
         this.maxMines = 6;
         this.minesPlaced = 0;
         this.mineBonusDamage = hullStatLevels ? (hullStatLevels.mineDamage || 0) : 0;
@@ -242,7 +241,10 @@ export class Tank {
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 let currentArmor = this.armor[hitZone].current;
-                this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1);
+                
+                // ИСПРАВЛЕНИЕ: Гатлинг стачивает по 2 единицы брони каждым попаданием
+                let armorTear = (bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг") ? 2 : 1;
+                this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - armorTear);
                 
                 if (effectivePenetration > currentArmor) {
                     let baseDamage = effectivePenetration - currentArmor;
