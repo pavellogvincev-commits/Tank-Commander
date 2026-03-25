@@ -22,7 +22,7 @@ export function initHangarUI(startLevelFn) {
     };
 
     document.getElementById('heal-btn').onclick = () => {
-        const hullId = PlayerProgress.currentAssembly.hullId; const maxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * GameData.hulls[hullId].upgrades.hp);
+        const hullId = PlayerProgress.currentAssembly.hullId; const maxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * (GameData.hulls[hullId].upgrades.hp || 0));
         if (PlayerProgress.points >= 1 && PlayerProgress.hullsHp[hullId] < maxHp) { PlayerProgress.points -= 1; PlayerProgress.hullsHp[hullId] = Math.min(maxHp, PlayerProgress.hullsHp[hullId] + Math.floor(maxHp * 0.2)); updateHangarUI(); }
     };
     document.getElementById('to-levels-btn').onclick = () => { generateLevelsGrid(); showScreen('levels'); };
@@ -39,9 +39,15 @@ export function updateHangarUI() {
     document.getElementById('inv-turret-val').innerText = PlayerProgress.inventory.turretUpgrades;
     
     const assembly = PlayerProgress.currentAssembly;
+    let hId = assembly.hullId; let tId = assembly.turretId;
+    const hData = GameData.hulls[hId]; const tData = GameData.turrets[tId];
+    const sHull = PlayerProgress.partStats[hId]; const sTurr = PlayerProgress.partStats[tId];
+
+    const maxHp = hData.hp + (sHull.hp * (hData.upgrades.hp || 0));
+    document.getElementById('current-hp-val').innerText = PlayerProgress.hullsHp[hId]; 
+    document.getElementById('max-hp-val').innerText = maxHp;
     
     let hullImg = document.getElementById('hangar-hull-layer');
-    let hId = assembly.hullId; let tId = assembly.turretId;
     hullImg.src = `assets/${hId === 'hunter' ? 'hull' : hId}.png`;
 
     let turretImg = document.getElementById('hangar-turret-layer');
@@ -51,42 +57,41 @@ export function updateHangarUI() {
     }
     if (turretImg) turretImg.src = `assets/${tId === 'scourge' ? 'turret' : tId}.png`;
 
-    // ГЕНЕРАЦИЯ ПОДРОБНОЙ СТАТИСТИКИ (Левый столбец)
-    const hData = GameData.hulls[hId]; const tData = GameData.turrets[tId];
-    const sHull = PlayerProgress.partStats[hId]; const sTurr = PlayerProgress.partStats[tId];
-
-    let maxHp = hData.hp + (sHull.hp * (hData.upgrades.hp || 0));
-    let curHp = PlayerProgress.hullsHp[hId];
-    let armorF = hData.armor.front + (sHull.armor * (hData.upgrades.armor?.front || 0));
-    let armorS = hData.armor.side + (sHull.armor * (hData.upgrades.armor?.side || 0));
-    let armorR = hData.armor.rear + (sHull.armor * (hData.upgrades.armor?.rear || 0));
-    let speed = hData.speed + (sHull.speed * (hData.upgrades.speed || 0));
-
-    let pen = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
-    let fr = tData.fireRate + ((sTurr.fireRate || 0) * (tData.upgrades.fireRate || 0));
+    // ЗАЩИТА ОТ NaN В ЛЕВОЙ ПАНЕЛИ
+    let armorF = hData.armor.front + ((sHull.armor || 0) * (hData.upgrades.armor?.front || 0));
+    let armorS = hData.armor.side + ((sHull.armor || 0) * (hData.upgrades.armor?.side || 0));
+    let armorR = hData.armor.rear + ((sHull.armor || 0) * (hData.upgrades.armor?.rear || 0));
+    let speedVal = hData.speed + ((sHull.speed || 0) * (hData.upgrades.speed || 0));
+    let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
+    let frVal = tData.fireRate + ((sTurr.fireRate || 0) * (tData.upgrades.fireRate || 0));
 
     let statsHtml = `
-        <div class="assembly-stat-row"><span>Прочность:</span> <span>${curHp} / ${maxHp}</span></div>
+        <div class="assembly-stat-row"><span>Прочность:</span> <span>${PlayerProgress.hullsHp[hId]} / ${maxHp}</span></div>
         <div class="assembly-stat-row"><span>Броня:</span> <span>${armorF}/${armorS}/${armorR}</span></div>
-        <div class="assembly-stat-row"><span>Скорость:</span> <span>${speed}</span></div>
-        <div class="assembly-stat-row"><span>Скорострел.:</span> <span>${fr.toFixed(2)}с</span></div>
-        <div class="assembly-stat-row"><span>Пробитие:</span> <span>${pen}</span></div>
+        <div class="assembly-stat-row"><span>Скорость:</span> <span>${speedVal}</span></div>
     `;
 
+    // Гатлингу не показываем скорострельность
+    if (tId !== "gatling") {
+        statsHtml += `<div class="assembly-stat-row"><span>Скорострел.:</span> <span>${frVal.toFixed(2)}с</span></div>`;
+    }
+    statsHtml += `<div class="assembly-stat-row"><span>Пробитие:</span> <span>${penVal}</span></div>`;
+
     if (hId === "titan") {
-        let minD = 30 + (sHull.mineDamage * 8); let maxD = 60 + (sHull.mineDamage * 15);
+        let minD = 30 + ((sHull.mineDamage || 0) * 8); let maxD = 60 + ((sHull.mineDamage || 0) * 15);
         statsHtml += `<div class="assembly-stat-row" style="color:#ffcc00;"><span>Урон мин:</span> <span style="color:#ffcc00;">${minD} - ${maxD}</span></div>`;
     } else if (hId === "leopard") {
-        statsHtml += `<div class="assembly-stat-row" style="color:#00ffcc;"><span>Оглушение:</span> <span style="color:#00ffcc;">${7 + (sHull.stunDuration * 1)}с</span></div>`;
+        statsHtml += `<div class="assembly-stat-row" style="color:#00ffcc;"><span>Оглушение:</span> <span style="color:#00ffcc;">${7 + ((sHull.stunDuration || 0) * 1)}с</span></div>`;
     }
+    
     if (tId === "gatling") {
-        let reload = tData.reloadTime + ((sTurr.reloadTime || 0) * (tData.upgrades.reloadTime || 0));
-        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Барабан:</span> <span style="color:#ffffdd;">${tData.magazineSize}</span></div>`;
-        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Перезарядка:</span> <span style="color:#ffffdd;">${reload.toFixed(2)}с</span></div>`;
+        let magVal = tData.magazineSize + ((sTurr.magazineSize || 0) * (tData.upgrades.magazineSize || 0));
+        let relVal = tData.reloadTime + ((sTurr.reloadTime || 0) * (tData.upgrades.reloadTime || 0));
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Барабан:</span> <span style="color:#ffffdd;">${magVal}</span></div>`;
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Перезарядка:</span> <span style="color:#ffffdd;">${relVal.toFixed(2)}с</span></div>`;
     }
 
     document.getElementById('assembly-stats').innerHTML = statsHtml;
-
     renderPartsList(); showPartDetails(selectedPartId);
 }
 
@@ -139,15 +144,20 @@ function showPartDetails(id) {
         html += `<div class="details-image-box unlocked-box"><img src="${imgSrc}" alt="${item.name}"></div>`;
         html += `<div class="details-title">${item.name}</div>`;
 
-        if (item.upgrades.hp) html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${item.hp + (stats.hp * item.upgrades.hp)}</span></span></div>`;
-        if (item.upgrades.armor) html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + (stats.armor * item.upgrades.armor.front)}/${item.armor.side + (stats.armor * item.upgrades.armor.side)}/${item.armor.rear + (stats.armor * item.upgrades.armor.rear)}</span></span></div>`;
-        if (item.upgrades.speed) html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + (stats.speed * item.upgrades.speed)}</span></span></div>`;
-        if (item.upgrades.stunDuration) html += `<div class="upgrade-row"><span>Оглушение: <span id="val-stunDuration" class="upgrade-val">${7 + (stats.stunDuration * item.upgrades.stunDuration)}с</span></span></div>`;
-        if (item.upgrades.mineDamage) html += `<div class="upgrade-row"><span>Урон мин: <span id="val-mineDamage" class="upgrade-val">${30 + (stats.mineDamage * 8)} - ${60 + (stats.mineDamage * 15)}</span></span></div>`;
+        // ЗАЩИТА ОТ NaN В ПРАВОЙ ПАНЕЛИ
+        if (item.upgrades.hp !== undefined) html += `<div class="upgrade-row"><span>Здоровье: <span id="val-hp" class="upgrade-val">${item.hp + ((stats.hp || 0) * item.upgrades.hp)}</span></span></div>`;
+        if (item.upgrades.armor !== undefined) html += `<div class="upgrade-row"><span>Броня: <span id="val-armor" class="upgrade-val">${item.armor.front + ((stats.armor || 0) * item.upgrades.armor.front)}/${item.armor.side + ((stats.armor || 0) * item.upgrades.armor.side)}/${item.armor.rear + ((stats.armor || 0) * item.upgrades.armor.rear)}</span></span></div>`;
+        if (item.upgrades.speed !== undefined) html += `<div class="upgrade-row"><span>Скорость: <span id="val-speed" class="upgrade-val">${item.speed + ((stats.speed || 0) * item.upgrades.speed)}</span></span></div>`;
+        if (item.upgrades.stunDuration !== undefined) html += `<div class="upgrade-row"><span>Оглушение: <span id="val-stunDuration" class="upgrade-val">${7 + ((stats.stunDuration || 0) * item.upgrades.stunDuration)}с</span></span></div>`;
+        if (item.upgrades.mineDamage !== undefined) html += `<div class="upgrade-row"><span>Урон мин: <span id="val-mineDamage" class="upgrade-val">${30 + ((stats.mineDamage || 0) * 8)} - ${60 + ((stats.mineDamage || 0) * 15)}</span></span></div>`;
         
-        if (item.upgrades.penetration) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + (stats.penetration * item.upgrades.penetration)}</span></span></div>`;
-        if (item.upgrades.fireRate) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + (stats.fireRate * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
-        if (item.upgrades.reloadTime) html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + (stats.reloadTime * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
+        if (item.upgrades.penetration !== undefined) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + ((stats.penetration || 0) * item.upgrades.penetration)}</span></span></div>`;
+        
+        // Гатлингу не показываем скорострельность
+        if (item.upgrades.fireRate !== undefined && id !== "gatling") html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
+        
+        if (item.upgrades.reloadTime !== undefined) html += `<div class="upgrade-row"><span>Время перезарядки: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + ((stats.reloadTime || 0) * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
+        if (item.upgrades.magazineSize !== undefined) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + ((stats.magazineSize || 0) * item.upgrades.magazineSize)}</span></span></div>`;
 
         html += `<p class="ability-text">Особенность: <span>${item.ability || 'Нет'}</span></p>`;
 
@@ -194,7 +204,10 @@ window.buyRandomUpgrade = function(id) {
         let statsOptions = Object.keys(itemData.upgrades);
         
         let randomStat = statsOptions[Math.floor(Math.random() * statsOptions.length)];
-        PlayerProgress.inventory[type]--; PlayerProgress.partStats[id][randomStat]++; PlayerProgress.partStats[id].usedCapacity++;
+        PlayerProgress.inventory[type]--; 
+        if(PlayerProgress.partStats[id][randomStat] === undefined) PlayerProgress.partStats[id][randomStat] = 0;
+        PlayerProgress.partStats[id][randomStat]++; 
+        PlayerProgress.partStats[id].usedCapacity++;
         lastUpgradedStatId = `val-${randomStat}`; updateHangarUI();
     }
 }
