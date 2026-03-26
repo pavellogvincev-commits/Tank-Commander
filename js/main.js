@@ -9,9 +9,9 @@ import { initHangarUI, showScreen, updateHangarUI, screens, generateLevelsGrid }
 window.PlayerProgress = PlayerProgress;
 
 const noCache = '?v=' + new Date().getTime(); 
-const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image(), "gatling": new Image() } };
+const playerImages = { hulls: { "hunter": new Image(), "leopard": new Image(), "titan": new Image() }, turrets: { "scourge": new Image(), "gatling": new Image(), "howitzer": new Image() } };
 playerImages.hulls["hunter"].src = 'assets/hull.png' + noCache; playerImages.hulls["leopard"].src = 'assets/leopard.png' + noCache; playerImages.hulls["titan"].src = 'assets/titan.png' + noCache; 
-playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache; playerImages.turrets["gatling"].src = 'assets/gatling.png' + noCache;
+playerImages.turrets["scourge"].src = 'assets/turret.png' + noCache; playerImages.turrets["gatling"].src = 'assets/gatling.png' + noCache; playerImages.turrets["howitzer"].src = 'assets/howitzer.png' + noCache;
 
 const enemyHullImage = new Image(); enemyHullImage.src = 'assets/enemy-hull.png' + noCache; const enemyTurretImage = new Image(); enemyTurretImage.src = 'assets/enemy-turret.png' + noCache;
 const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png' + noCache; const scoutTurretImage = new Image(); scoutTurretImage.src = 'assets/scout-turret.png' + noCache;
@@ -29,7 +29,8 @@ const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getCont
 canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
-let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [], artilleryShells = [];
+// НОВЫЙ МАССИВ ДЛЯ ВЗРЫВНЫХ ВОЛН
+let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [], artilleryShells = [], shockwaves = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
@@ -46,7 +47,11 @@ function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50,
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
 function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
-    spawnExplosion(x, y); playSound(explodeSound);
+    spawnExplosion(x, y); 
+    playSound(explodeSound);
+    // ДОБАВЛЕНА ВЗРЫВНАЯ ВОЛНА
+    shockwaves.push({ x: x, y: y, currentRadius: 0, maxRadius: radius, alpha: 1.0 });
+
     let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
     
     for (let t of allTanks) {
@@ -74,7 +79,7 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
             b.vx += ((b.x - x) / dist) * force; b.vy += ((b.y - y) / dist) * force;
             setTimeout(() => { 
                 let idx = arena.barrels.indexOf(b);
-                if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 200, 150, 1200); spawnExplosion(b.x + (Math.random()-0.5)*30, b.y + (Math.random()-0.5)*30); }
+                if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 200, 150, 1200); }
             }, 250); 
         }
     }
@@ -102,7 +107,10 @@ function startLevel(levelNum) {
     
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     
-    calcTurr.penetration += (sTurr.penetration || 0) * (bTurr.upgrades.penetration || 0); 
+    // ГАУБИЦА не имеет penetration, поэтому проверяем аккуратно
+    if (bTurr.upgrades.penetration) calcTurr.penetration += (sTurr.penetration || 0) * bTurr.upgrades.penetration; 
+    if (bTurr.upgrades.damage) calcTurr.damage += (sTurr.damage || 0) * bTurr.upgrades.damage; 
+    if (bTurr.upgrades.explosionRadius) calcTurr.explosionRadius += (sTurr.explosionRadius || 0) * bTurr.upgrades.explosionRadius; 
     
     if (bTurr.upgrades.fireRate) calcTurr.fireRate += (sTurr.fireRate || 0) * bTurr.upgrades.fireRate;
     if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += (sTurr.reloadTime || 0) * bTurr.upgrades.reloadTime;
@@ -111,7 +119,7 @@ function startLevel(levelNum) {
     playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull);
     playerTank.shieldTimer = 3.0;
 
-    enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = []; artilleryShells = [];
+    enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = []; artilleryShells = []; shockwaves = [];
     showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
 }
 
@@ -195,10 +203,24 @@ function gameLoop(timestamp) {
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { 
-            let finalAngle = playerTank.turretAngle;
-            if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
-            bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
-            playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
+            // ЛОГИКА ГАУБИЦЫ (СТРЕЛЬБА ПО МЫШИ С РАЗБРОСОМ)
+            if (playerTank.turretName === "Гаубица") {
+                let startX = playerTank.x + Math.cos(playerTank.turretAngle)*45;
+                let startY = playerTank.y + Math.sin(playerTank.turretAngle)*45;
+                let spreadX = (Math.random() - 0.5) * playerTank.spread * 2;
+                let spreadY = (Math.random() - 0.5) * playerTank.spread * 2;
+                let tx = input.getMouseX() + spreadX;
+                let ty = input.getMouseY() + spreadY;
+                
+                let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
+                artilleryShells.push({ startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / playerTank.bulletSpeed, totalDist: dist, damage: playerTank.artilleryDamage, radius: playerTank.artilleryRadius });
+                playSound(shootSound);
+            } else {
+                let finalAngle = playerTank.turretAngle;
+                if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
+                bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
+                playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
+            }
         }
         
         if (playerTank.mineRequest) { 
@@ -311,13 +333,11 @@ function gameLoop(timestamp) {
                 if (hit.type === 'penetration') { 
                     b.toDestroy = true; 
                     spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
-                    // Убрано: if (hit.armorTorn > 0) ...
                     playSound(hitSound); 
                 } else { 
                     b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = playerTank; 
                     spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                     playSound(bounceSound); 
-                    // Убрано: if (hit.armorTorn > 0) ...
                 }
             }
         }
@@ -329,13 +349,11 @@ function gameLoop(timestamp) {
                     if (hit.type === 'penetration') { 
                         b.toDestroy = true; 
                         spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
-                        // Убрано: if (hit.armorTorn > 0) ...
                         playSound(hitSound); 
                     } else { 
                         b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = enemy; 
                         spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                         playSound(bounceSound); 
-                        // Убрано: if (hit.armorTorn > 0) ...
                     }
                     break; 
                 }
@@ -346,8 +364,29 @@ function gameLoop(timestamp) {
     for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93; if (s.life <= 0) sparks.splice(i, 1); }
     for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
+    // АНИМАЦИЯ РАСШИРЯЮЩЕЙСЯ ВЗРЫВНОЙ ВОЛНЫ
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+        let sw = shockwaves[i];
+        sw.currentRadius += (sw.maxRadius - sw.currentRadius) * 8 * dt + 40 * dt;
+        sw.alpha -= dt * 2.0;
+        if (sw.alpha <= 0) shockwaves.splice(i, 1);
+    }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     arena.draw(ctx, barrelImage);
+    
+    // ОТРИСОВКА ВЗРЫВНЫХ ВОЛН
+    for (let sw of shockwaves) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.currentRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 100, 0, ${sw.alpha})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = `rgba(255, 50, 0, ${sw.alpha * 0.2})`;
+        ctx.fill();
+        ctx.restore();
+    }
     
     for (let s of artilleryShells) {
         let progress = s.time / s.maxTime;
