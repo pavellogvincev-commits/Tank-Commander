@@ -22,7 +22,6 @@ export class Tank {
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
         this.spread = turretStats.spread || 0;
         
-        // ДАННЫЕ ДЛЯ ГАУБИЦЫ
         this.artilleryDamage = turretStats.damage || 0;
         this.artilleryRadius = turretStats.explosionRadius || 0;
 
@@ -184,13 +183,37 @@ export class Tank {
         if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
     }
 
+    // НОВАЯ МАТЕМАТИКА ВЗРЫВА (От края танка + Двухступенчатая кривая урона)
     applyExplosionDamage(ex, ey, maxDamage, maxRadius) {
         if (this.hp <= 0) return { hit: false };
-        let dist = Math.sqrt(Math.pow(ex - this.x, 2) + Math.pow(ey - this.y, 2));
-        if (dist > maxRadius) return { hit: false };
+        
+        // 1. Считаем дистанцию до ЦЕНТРА танка
+        let distToCenter = Math.sqrt(Math.pow(ex - this.x, 2) + Math.pow(ey - this.y, 2));
+        
+        // 2. Считаем дистанцию до КРАЯ танка (вычитаем его физический радиус)
+        let distToEdge = distToCenter - this.radius;
+        if (distToEdge < 0) distToEdge = 0; // Снаряд взорвался внутри/под танком
+
+        // 3. Проверка на попадание в радиус взрыва
+        if (distToEdge > maxRadius) return { hit: false };
         if (this.shieldTimer > 0) return { hit: true, damage: 0, destroyed: false }; 
 
-        let baseDamage = maxDamage * (1 - (dist / maxRadius));
+        // 4. Двухступенчатое падение урона
+        let ratio = distToEdge / maxRadius;
+        let damageMultiplier = 0;
+
+        if (ratio <= 0.5) {
+            // Первая половина радиуса: урон падает с 100% до 90%
+            damageMultiplier = 1.0 - (ratio / 0.5) * 0.1;
+        } else {
+            // Вторая половина радиуса: урон падает с 90% до 0%
+            let outerRatio = (ratio - 0.5) / 0.5; // Нормализуем от 0 до 1 для второй половины
+            damageMultiplier = 0.9 * (1.0 - outerRatio);
+        }
+
+        let baseDamage = maxDamage * damageMultiplier;
+
+        // Расчет стороны попадания для брони
         let angleToExplosion = Math.atan2(ey - this.y, ex - this.x);
         let relAngle = angleToExplosion - this.hullAngle;
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
