@@ -29,7 +29,6 @@ const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getCont
 canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
-// НОВЫЙ МАССИВ ДЛЯ ВЗРЫВНЫХ ВОЛН
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [], artilleryShells = [], shockwaves = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
@@ -46,25 +45,37 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
+// ИСПРАВЛЕНИЕ: Отталкивание танков и бочек теперь тоже считается по новой двухступенчатой формуле
 function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     spawnExplosion(x, y); 
     playSound(explodeSound);
-    // ДОБАВЛЕНА ВЗРЫВНАЯ ВОЛНА
     shockwaves.push({ x: x, y: y, currentRadius: 0, maxRadius: radius, alpha: 1.0 });
 
     let allTanks = (playerTank && playerTank.hp > 0) ? [...enemies, playerTank] : enemies;
     
     for (let t of allTanks) {
         if (t.hp > 0) {
-            let dist = Math.sqrt(Math.pow(t.x - x, 2) + Math.pow(t.y - y, 2));
-            if (dist <= radius) {
+            let distToCenter = Math.sqrt(Math.pow(t.x - x, 2) + Math.pow(t.y - y, 2));
+            let distToEdge = distToCenter - t.radius;
+            if (distToEdge < 0) distToEdge = 0;
+
+            if (distToEdge <= radius) {
                 let res = t.applyExplosionDamage(x, y, maxDmg, radius);
                 if (res.hit && res.damage > 0) { spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); }
+                
                 let armorSum = t.armor.front.max + t.armor.side.max + t.armor.rear.max;
                 let massMultiplier = 100 / (100 + armorSum); 
-                if (dist < 20) dist = 20;
-                let force = (1 - dist / radius) * basePushForce * massMultiplier;
-                t.pushVx += ((t.x - x) / dist) * force; t.pushVy += ((t.y - y) / dist) * force;
+                
+                let pushDist = distToCenter; if (pushDist < 20) pushDist = 20; // Чтобы не улететь в космос при делении на 0
+                
+                let ratio = distToEdge / radius;
+                let forceMultiplier = 0;
+                if (ratio <= 0.5) forceMultiplier = 1.0 - (ratio / 0.5) * 0.1;
+                else forceMultiplier = 0.9 * (1.0 - ((ratio - 0.5) / 0.5));
+
+                let force = forceMultiplier * basePushForce * massMultiplier;
+                t.pushVx += ((t.x - x) / pushDist) * force; 
+                t.pushVy += ((t.y - y) / pushDist) * force;
             }
         }
     }
@@ -72,11 +83,24 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     for (let i = arena.barrels.length - 1; i >= 0; i--) {
         let b = arena.barrels[i];
         if (b.isDetonating) continue; 
-        let dist = Math.sqrt(Math.pow(b.x - x, 2) + Math.pow(b.y - y, 2));
-        if (dist <= radius) { 
-            b.isDetonating = true; if (dist < 15) dist = 15;
-            let force = (1 - dist / radius) * basePushForce * 1.5; 
-            b.vx += ((b.x - x) / dist) * force; b.vy += ((b.y - y) / dist) * force;
+        
+        let distToCenter = Math.sqrt(Math.pow(b.x - x, 2) + Math.pow(b.y - y, 2));
+        let distToEdge = distToCenter - b.radius;
+        if (distToEdge < 0) distToEdge = 0;
+
+        if (distToEdge <= radius) { 
+            b.isDetonating = true; 
+            let pushDist = distToCenter; if (pushDist < 15) pushDist = 15;
+            
+            let ratio = distToEdge / radius;
+            let forceMultiplier = 0;
+            if (ratio <= 0.5) forceMultiplier = 1.0 - (ratio / 0.5) * 0.1;
+            else forceMultiplier = 0.9 * (1.0 - ((ratio - 0.5) / 0.5));
+
+            let force = forceMultiplier * basePushForce * 1.5; 
+            b.vx += ((b.x - x) / pushDist) * force; 
+            b.vy += ((b.y - y) / pushDist) * force;
+            
             setTimeout(() => { 
                 let idx = arena.barrels.indexOf(b);
                 if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 200, 150, 1200); }
@@ -107,7 +131,6 @@ function startLevel(levelNum) {
     
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     
-    // ГАУБИЦА не имеет penetration, поэтому проверяем аккуратно
     if (bTurr.upgrades.penetration) calcTurr.penetration += (sTurr.penetration || 0) * bTurr.upgrades.penetration; 
     if (bTurr.upgrades.damage) calcTurr.damage += (sTurr.damage || 0) * bTurr.upgrades.damage; 
     if (bTurr.upgrades.explosionRadius) calcTurr.explosionRadius += (sTurr.explosionRadius || 0) * bTurr.upgrades.explosionRadius; 
@@ -203,7 +226,6 @@ function gameLoop(timestamp) {
         if (input.isShooting()) playerTank.tryShoot(); 
         let pShots = playerTank.getShots();
         for (let i = 0; i < pShots; i++) { 
-            // ЛОГИКА ГАУБИЦЫ (СТРЕЛЬБА ПО МЫШИ С РАЗБРОСОМ)
             if (playerTank.turretName === "Гаубица") {
                 let startX = playerTank.x + Math.cos(playerTank.turretAngle)*45;
                 let startY = playerTank.y + Math.sin(playerTank.turretAngle)*45;
@@ -364,7 +386,6 @@ function gameLoop(timestamp) {
     for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93; if (s.life <= 0) sparks.splice(i, 1); }
     for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
-    // АНИМАЦИЯ РАСШИРЯЮЩЕЙСЯ ВЗРЫВНОЙ ВОЛНЫ
     for (let i = shockwaves.length - 1; i >= 0; i--) {
         let sw = shockwaves[i];
         sw.currentRadius += (sw.maxRadius - sw.currentRadius) * 8 * dt + 40 * dt;
@@ -375,7 +396,6 @@ function gameLoop(timestamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     arena.draw(ctx, barrelImage);
     
-    // ОТРИСОВКА ВЗРЫВНЫХ ВОЛН
     for (let sw of shockwaves) {
         ctx.save();
         ctx.beginPath();
