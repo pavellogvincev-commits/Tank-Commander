@@ -92,7 +92,6 @@ function startLevel(levelNum) {
     let bHull = GameData.hulls[hullId]; let sHull = PlayerProgress.partStats[hullId];
     let calcHull = JSON.parse(JSON.stringify(bHull)); 
     
-    // ЖЕСТКАЯ ЗАЩИТА ОТ NaN
     if (bHull.upgrades.hp) calcHull.hp += (sHull.hp || 0) * bHull.upgrades.hp; 
     if (bHull.upgrades.speed) calcHull.speed += (sHull.speed || 0) * bHull.upgrades.speed;
     if (bHull.upgrades.armor) { 
@@ -103,7 +102,6 @@ function startLevel(levelNum) {
     
     let bTurr = GameData.turrets[turretId]; let sTurr = PlayerProgress.partStats[turretId]; let calcTurr = JSON.parse(JSON.stringify(bTurr));
     
-    // ЖЕСТКАЯ ЗАЩИТА ОТ NaN (Именно здесь ломался Гатлинг)
     calcTurr.penetration += (sTurr.penetration || 0) * (bTurr.upgrades.penetration || 0); 
     
     if (bTurr.upgrades.fireRate) calcTurr.fireRate += (sTurr.fireRate || 0) * bTurr.upgrades.fireRate;
@@ -313,13 +311,13 @@ function gameLoop(timestamp) {
                 if (hit.type === 'penetration') { 
                     b.toDestroy = true; 
                     spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
-                    if (hit.armorTorn > 0) spawnText(hit.x + 10, hit.y - 10, `-${hit.armorTorn}`, '#aaaaaa', 12);
+                    // Убрано: if (hit.armorTorn > 0) ...
                     playSound(hitSound); 
                 } else { 
                     b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = playerTank; 
                     spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                     playSound(bounceSound); 
-                    if (hit.armorTorn > 0) spawnText(hit.x, hit.y - 10, `-${hit.armorTorn} бр`, '#88ccff', 12);
+                    // Убрано: if (hit.armorTorn > 0) ...
                 }
             }
         }
@@ -331,13 +329,13 @@ function gameLoop(timestamp) {
                     if (hit.type === 'penetration') { 
                         b.toDestroy = true; 
                         spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
-                        if (hit.armorTorn > 0) spawnText(hit.x + 10, hit.y - 10, `-${hit.armorTorn}`, '#aaaaaa', 12);
+                        // Убрано: if (hit.armorTorn > 0) ...
                         playSound(hitSound); 
                     } else { 
                         b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = enemy; 
                         spawnSparks(hit.x, hit.y, hit.nx, hit.ny); 
                         playSound(bounceSound); 
-                        if (hit.armorTorn > 0) spawnText(hit.x, hit.y - 10, `-${hit.armorTorn} бр`, '#88ccff', 12);
+                        // Убрано: if (hit.armorTorn > 0) ...
                     }
                     break; 
                 }
