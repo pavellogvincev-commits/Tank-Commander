@@ -17,11 +17,15 @@ export class Tank {
         this.particles = []; this.particleTimer = 0;
         
         this.turretName = turretStats.name; this.gatlingSpinTimer = 0; 
-        this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration; 
+        this.fireRate = turretStats.fireRate; this.penetration = turretStats.penetration || 0; 
         this.bulletRadius = turretStats.bulletRadius || 2.5; this.bulletColor = turretStats.bulletColor || '#ffaa00';
         this.shootSoundType = turretStats.shootSound || 'cannon'; this.bulletSpeed = turretStats.bulletSpeed || 400; 
         this.spread = turretStats.spread || 0;
         
+        // ДАННЫЕ ДЛЯ ГАУБИЦЫ
+        this.artilleryDamage = turretStats.damage || 0;
+        this.artilleryRadius = turretStats.explosionRadius || 0;
+
         this.isMagazineWeapon = turretStats.magazineSize !== undefined;
         this.maxAmmo = this.isMagazineWeapon ? turretStats.magazineSize : 0;
         this.ammo = this.maxAmmo; this.reloadTime = turretStats.reloadTime || 0; this.isReloading = false;
@@ -244,14 +248,12 @@ export class Tank {
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 
-                // ИСПРАВЛЕНИЕ: Откат бронебоя до x2 (для Гатлинга)
                 let currentArmor = this.armor[hitZone].current;
                 let potentialTear = (bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг") ? 2 : 1;
                 let actualTear = Math.min(currentArmor, potentialTear);
                 
                 this.armor[hitZone].current -= actualTear;
-                let newArmor = this.armor[hitZone].current; // Используем обновленную броню для расчета пробития
-                hitResult.armorTorn = actualTear; 
+                let newArmor = this.armor[hitZone].current; 
                 
                 if (effectivePenetration > newArmor) {
                     let baseDamage = effectivePenetration - newArmor;
