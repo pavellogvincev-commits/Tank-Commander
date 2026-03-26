@@ -45,8 +45,6 @@ export function updateHangarUI() {
 
     const maxHp = hData.hp + (sHull.hp * (hData.upgrades.hp || 0));
     
-    // Ошибка была здесь: скрипт искал старые спаны. Я их удалил. Здоровье теперь выводится в statsHtml ниже.
-
     let hullImg = document.getElementById('hangar-hull-layer');
     hullImg.src = `assets/${hId === 'hunter' ? 'hull' : hId}.png`;
 
@@ -55,13 +53,15 @@ export function updateHangarUI() {
         turretImg = document.createElement('img'); turretImg.id = 'hangar-turret-layer';
         hullImg.parentElement.appendChild(turretImg);
     }
-    if (turretImg) turretImg.src = `assets/${tId === 'scourge' ? 'turret' : tId}.png`;
+    // Обработка названия изображения
+    let tImgName = tId;
+    if (tId === 'scourge') tImgName = 'turret';
+    if (turretImg) turretImg.src = `assets/${tImgName}.png`;
 
     let armorF = hData.armor.front + ((sHull.armor || 0) * (hData.upgrades.armor?.front || 0));
     let armorS = hData.armor.side + ((sHull.armor || 0) * (hData.upgrades.armor?.side || 0));
     let armorR = hData.armor.rear + ((sHull.armor || 0) * (hData.upgrades.armor?.rear || 0));
     let speedVal = hData.speed + ((sHull.speed || 0) * (hData.upgrades.speed || 0));
-    let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
     let frVal = tData.fireRate + ((sTurr.fireRate || 0) * (tData.upgrades.fireRate || 0));
 
     let statsHtml = `
@@ -73,7 +73,16 @@ export function updateHangarUI() {
     if (tId !== "gatling") {
         statsHtml += `<div class="assembly-stat-row"><span>Скорострел.:</span> <span>${frVal.toFixed(2)}с</span></div>`;
     }
-    statsHtml += `<div class="assembly-stat-row"><span>Пробитие:</span> <span>${penVal}</span></div>`;
+
+    if (tId === "howitzer") {
+        let dmgVal = tData.damage + ((sTurr.damage || 0) * (tData.upgrades.damage || 0));
+        let radVal = tData.explosionRadius + ((sTurr.explosionRadius || 0) * (tData.upgrades.explosionRadius || 0));
+        statsHtml += `<div class="assembly-stat-row" style="color:#ff5555;"><span>Взрыв (Урон):</span> <span style="color:#ff5555;">${dmgVal}</span></div>`;
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffaa00;"><span>Взрыв (Радиус):</span> <span style="color:#ffaa00;">${radVal}</span></div>`;
+    } else {
+        let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
+        statsHtml += `<div class="assembly-stat-row"><span>Пробитие:</span> <span>${penVal}</span></div>`;
+    }
 
     if (hId === "titan") {
         let minD = 30 + ((sHull.mineDamage || 0) * 8); let maxD = 60 + ((sHull.mineDamage || 0) * 15);
@@ -150,8 +159,10 @@ function showPartDetails(id) {
         
         if (item.upgrades.penetration !== undefined) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + ((stats.penetration || 0) * item.upgrades.penetration)}</span></span></div>`;
         
-        if (item.upgrades.fireRate !== undefined && id !== "gatling") html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
+        if (item.upgrades.damage !== undefined) html += `<div class="upgrade-row"><span>Взрывной урон: <span id="val-damage" class="upgrade-val">${item.damage + ((stats.damage || 0) * item.upgrades.damage)}</span></span></div>`;
+        if (item.upgrades.explosionRadius !== undefined) html += `<div class="upgrade-row"><span>Радиус взрыва: <span id="val-explosionRadius" class="upgrade-val">${item.explosionRadius + ((stats.explosionRadius || 0) * item.upgrades.explosionRadius)}</span></span></div>`;
         
+        if (item.upgrades.fireRate !== undefined && id !== "gatling") html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
         if (item.upgrades.reloadTime !== undefined) html += `<div class="upgrade-row"><span>Время перезарядки: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + ((stats.reloadTime || 0) * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
         if (item.upgrades.magazineSize !== undefined) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + ((stats.magazineSize || 0) * item.upgrades.magazineSize)}</span></span></div>`;
 
