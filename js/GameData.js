@@ -11,7 +11,7 @@ export const GameData = {
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
         // ГАТЛИНГ: 2 апгрейда (Перезарядка и Барабан). Особенность отражает его способность рвать броню.
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 5.0, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Рвет броню (х2)",
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 4.5, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Рвет броню (х2)",
             upgrades: { reloadTime: -0.25, magazineSize: 10 } }
     },
     enemyHulls: { 
