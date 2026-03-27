@@ -258,13 +258,25 @@ export class Tank {
                 
                 if (this.shieldTimer > 0) return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'ricochet', damage: 0 };
 
-                // --- ЛОГИКА ГАТЛИНГА (ЧИСТЫЙ УРОН С ИГНОРОМ БРОНИ) ---
+                // --- ЛОГИКА ГАТЛИНГА С ПАДЕНИЕМ УРОНА ОТ ВРЕМЕНИ ЖИЗНИ ---
                 let isGatling = bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг";
                 
                 if (isGatling) {
-                    let baseDamage = bullet.penetration;
-                    let variance = Math.random() * (baseDamage * 0.2) - (baseDamage * 0.1);
-                    let finalDamage = Math.floor(baseDamage + variance);
+                    let life = bullet.lifeTime || 0;
+                    let maxLife = bullet.maxLifeTime || 0.5;
+                    let ratio = life / maxLife;
+                    if (ratio > 1) ratio = 1;
+                    if (ratio < 0) ratio = 0;
+                    
+                    let maxDmg = bullet.penetration; // Макс. урон в упор (например, 5)
+                    let minDmg = 1;                  // Мин. урон на излете
+                    
+                    // Линейное падение урона от максимума до 1
+                    let currentDmg = maxDmg - (maxDmg - minDmg) * ratio;
+                    
+                    // Добавляем крошечный случайный разброс (+-10-20%), чтобы цифры не были одинаковыми
+                    let variance = Math.random() * (currentDmg * 0.2) - (currentDmg * 0.1);
+                    let finalDamage = Math.round(currentDmg + variance);
                     if (finalDamage < 1) finalDamage = 1;
                     
                     let isDestroyed = false; if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
@@ -273,7 +285,7 @@ export class Tank {
                     return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'penetration', damage: finalDamage, destroyed: isDestroyed };
                 }
 
-                // --- СТАНДАРТНАЯ ЛОГИКА (Для остальных пушек) ---
+                // --- СТАНДАРТНАЯ ЛОГИКА ---
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 
