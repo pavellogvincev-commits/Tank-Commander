@@ -10,9 +10,9 @@ export const GameData = {
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 4.5, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Рвет броню (х2)",
+        // ГАТЛИНГ: Особенность теперь - игнор брони
+        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 4.5, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { reloadTime: -0.25, magazineSize: 10 } },
-        // НОВОЕ ОРУДИЕ: ГАУБИЦА
         "howitzer": { name: "Гаубица", fireRate: 3.5, damage: 100, explosionRadius: 100, spread: 40, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
             upgrades: { damage: 10, explosionRadius: 7 } }
     },
@@ -72,7 +72,6 @@ export function loadProgress() {
         try {
             let parsed = JSON.parse(saved);
             for (let key in parsed) { PlayerProgress[key] = parsed[key]; }
-            // Мигратор
             if (PlayerProgress.partStats.gatling.magazineSize === undefined) PlayerProgress.partStats.gatling.magazineSize = 0;
             if (PlayerProgress.partStats.gatling.reloadTime === undefined) PlayerProgress.partStats.gatling.reloadTime = 0;
             if (PlayerProgress.partStats.titan.mineDamage === undefined) PlayerProgress.partStats.titan.mineDamage = PlayerProgress.partStats.titan.speed || 0;
