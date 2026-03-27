@@ -183,37 +183,28 @@ export class Tank {
         if (Math.abs(angleDiff) > 0.05) this.turretAngle += Math.sign(angleDiff) * this.turretRotationSpeed * dt;
     }
 
-    // НОВАЯ МАТЕМАТИКА ВЗРЫВА (От края танка + Двухступенчатая кривая урона)
     applyExplosionDamage(ex, ey, maxDamage, maxRadius) {
         if (this.hp <= 0) return { hit: false };
         
-        // 1. Считаем дистанцию до ЦЕНТРА танка
         let distToCenter = Math.sqrt(Math.pow(ex - this.x, 2) + Math.pow(ey - this.y, 2));
-        
-        // 2. Считаем дистанцию до КРАЯ танка (вычитаем его физический радиус)
         let distToEdge = distToCenter - this.radius;
-        if (distToEdge < 0) distToEdge = 0; // Снаряд взорвался внутри/под танком
+        if (distToEdge < 0) distToEdge = 0; 
 
-        // 3. Проверка на попадание в радиус взрыва
         if (distToEdge > maxRadius) return { hit: false };
         if (this.shieldTimer > 0) return { hit: true, damage: 0, destroyed: false }; 
 
-        // 4. Двухступенчатое падение урона
         let ratio = distToEdge / maxRadius;
         let damageMultiplier = 0;
 
         if (ratio <= 0.5) {
-            // Первая половина радиуса: урон падает с 100% до 90%
             damageMultiplier = 1.0 - (ratio / 0.5) * 0.1;
         } else {
-            // Вторая половина радиуса: урон падает с 90% до 0%
-            let outerRatio = (ratio - 0.5) / 0.5; // Нормализуем от 0 до 1 для второй половины
+            let outerRatio = (ratio - 0.5) / 0.5; 
             damageMultiplier = 0.9 * (1.0 - outerRatio);
         }
 
         let baseDamage = maxDamage * damageMultiplier;
 
-        // Расчет стороны попадания для брони
         let angleToExplosion = Math.atan2(ey - this.y, ex - this.x);
         let relAngle = angleToExplosion - this.hullAngle;
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
@@ -264,31 +255,41 @@ export class Tank {
                 dot = Math.max(-1, Math.min(1, dot)); let angleDeg = Math.acos(dot) * (180 / Math.PI); 
                 let cosHull = Math.cos(this.hullAngle); let sinHull = Math.sin(this.hullAngle);
                 let worldNx = normalX * cosHull - normalY * sinHull; let worldNy = normalX * sinHull + normalY * cosHull;
-                let hitResult = { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy };
                 
-                if (this.shieldTimer > 0) { hitResult.type = 'ricochet'; hitResult.damage = 0; return hitResult; }
+                if (this.shieldTimer > 0) return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'ricochet', damage: 0 };
 
+                // --- ЛОГИКА ГАТЛИНГА (ЧИСТЫЙ УРОН С ИГНОРОМ БРОНИ) ---
+                let isGatling = bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг";
+                
+                if (isGatling) {
+                    let baseDamage = bullet.penetration;
+                    let variance = Math.random() * (baseDamage * 0.2) - (baseDamage * 0.1);
+                    let finalDamage = Math.floor(baseDamage + variance);
+                    if (finalDamage < 1) finalDamage = 1;
+                    
+                    let isDestroyed = false; if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
+                    this.hp -= finalDamage; if (this.hp < 0) this.hp = 0;
+                    
+                    return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'penetration', damage: finalDamage, destroyed: isDestroyed };
+                }
+
+                // --- СТАНДАРТНАЯ ЛОГИКА (Для остальных пушек) ---
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 
                 let currentArmor = this.armor[hitZone].current;
-                let potentialTear = (bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг") ? 2 : 1;
-                let actualTear = Math.min(currentArmor, potentialTear);
+                this.armor[hitZone].current = Math.max(0, this.armor[hitZone].current - 1);
                 
-                this.armor[hitZone].current -= actualTear;
-                let newArmor = this.armor[hitZone].current; 
-                
-                if (effectivePenetration > newArmor) {
-                    let baseDamage = effectivePenetration - newArmor;
+                if (effectivePenetration > currentArmor) {
+                    let baseDamage = effectivePenetration - currentArmor;
                     let finalDamage = Math.floor(baseDamage + (Math.random() * (baseDamage * 0.1) * 2 - (baseDamage * 0.1)));
                     if (finalDamage < 1) finalDamage = 1; 
                     let isDestroyed = false; if (this.hp > 0 && this.hp - finalDamage <= 0) isDestroyed = true;
                     this.hp -= finalDamage; if (this.hp < 0) this.hp = 0;
-                    hitResult.type = 'penetration'; hitResult.damage = finalDamage; hitResult.destroyed = isDestroyed;
+                    return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'penetration', damage: finalDamage, destroyed: isDestroyed };
                 } else { 
-                    hitResult.type = 'ricochet'; hitResult.damage = 0; 
+                    return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'ricochet', damage: 0 }; 
                 }
-                return hitResult; 
             }
         }
         return { hit: false };
