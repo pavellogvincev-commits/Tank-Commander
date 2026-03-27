@@ -45,7 +45,6 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
-// СРЕЗАНО ОТТАЛКИВАНИЕ В 2 РАЗА У ВСЕХ ВЗРЫВОВ
 function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     spawnExplosion(x, y); 
     playSound(explodeSound);
@@ -103,7 +102,6 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
             
             setTimeout(() => { 
                 let idx = arena.barrels.indexOf(b);
-                // УРОН ОТ БОЧЕК СНИЖЕН ДО 100, СИЛА ДО 600
                 if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 100, 150, 600); }
             }, 250); 
         }
@@ -116,7 +114,24 @@ function startLevel(levelNum) {
     let config = LevelsConfig[levelNum] || { pool: ["basic"], obstacles: 1, barrels: 0, maxUpgrades: 0 };
     currentEnemyPool = shuffleArray([...config.pool]); enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
     dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0; maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
+    
     arena.generateObstacles(config.obstacles, config.barrels || 0);
+    
+    // --- ГЕНЕРАЦИЯ ГРЯЗИ ---
+    let mudCount = config.mud || 0;
+    arena.mudAreas = [];
+    for (let i = 0; i < mudCount; i++) {
+        let blobs = [];
+        for (let j = 0; j < 5; j++) {
+            blobs.push({ ox: (Math.random() - 0.5) * 50, oy: (Math.random() - 0.5) * 50, r: 30 + Math.random() * 25 });
+        }
+        arena.mudAreas.push({
+            x: 100 + Math.random() * (canvas.width - 200),
+            y: 100 + Math.random() * (canvas.height - 200),
+            radius: 65, 
+            blobs: blobs
+        });
+    }
     
     const hullId = PlayerProgress.currentAssembly.hullId; const turretId = PlayerProgress.currentAssembly.turretId;
     let bHull = GameData.hulls[hullId]; let sHull = PlayerProgress.partStats[hullId];
@@ -219,7 +234,6 @@ function gameLoop(timestamp) {
 
     if (playerTank.hp <= 0 && !playerTank.isExploded) {
         playerTank.isExploded = true;
-        // Сила взрыва при гибели танка снижена до 500
         createExplosionDamage(playerTank.x, playerTank.y, playerTank.maxHp * 0.5, 100, 500);
     }
 
@@ -304,7 +318,6 @@ function gameLoop(timestamp) {
         } else { 
             if (!enemy.isExploded) {
                 enemy.isExploded = true;
-                // Сила взрыва снижена до 500
                 createExplosionDamage(enemy.x, enemy.y, enemy.maxHp * 0.5, 100, 500);
             }
             PlayerProgress.points += 1; spawnText(enemy.x, enemy.y, "+1 ⚙️", '#ffcc00'); enemies.splice(i, 1); 
@@ -314,7 +327,6 @@ function gameLoop(timestamp) {
     for (let i = artilleryShells.length - 1; i >= 0; i--) {
         let s = artilleryShells[i]; s.time += dt;
         if (s.time >= s.maxTime) {
-            // Сила отталкивания от гаубицы снижена до 600
             createExplosionDamage(s.tx, s.ty, s.damage, s.radius, 600);
             artilleryShells.splice(i, 1);
         } else {
@@ -336,15 +348,16 @@ function gameLoop(timestamp) {
         let b = bullets[i]; 
         
         if (b.lifeTime === undefined) b.lifeTime = 0;
+        
+        let isGatlingBullet = (b.ownerTank && b.ownerTank.turretName === "Гатлинг");
         if (b.maxLifeTime === undefined) {
-            // ВРЕМЯ ЖИЗНИ ГАТЛИНГА - 0.4 СЕК
-            b.maxLifeTime = (b.ownerTank && b.ownerTank.turretName === "Гатлинг") ? 0.4 : Infinity;
+            // ТОЛЬКО ГАТЛИНГ ИМЕЕТ ЛИМИТ ЖИЗНИ
+            b.maxLifeTime = isGatlingBullet ? 0.4 : Infinity;
         }
         
         b.lifeTime += dt;
         if (b.lifeTime >= b.maxLifeTime) {
             b.toDestroy = true; 
-            // Крошечная искра, чтобы пуля не исчезла бесследно
             sparks.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '255, 200, 0' });
             continue; 
         }
@@ -365,7 +378,6 @@ function gameLoop(timestamp) {
                     bar.isDetonating = true; 
                     let bx = bar.x, by = bar.y; 
                     arena.barrels.splice(j, 1); 
-                    // БОЧКИ ОТ ПУЛЬ: Урон 100, Сила 600
                     createExplosionDamage(bx, by, 100, 150, 600); 
                     break; 
                 }
@@ -419,6 +431,21 @@ function gameLoop(timestamp) {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    
+    // --- ОТРИСОВКА ГРЯЗИ ---
+    if (arena.mudAreas) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(40, 25, 10, 0.6)';
+        for (let m of arena.mudAreas) {
+            for (let b of m.blobs) {
+                ctx.beginPath();
+                ctx.arc(m.x + b.ox, m.y + b.oy, b.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+
     arena.draw(ctx, barrelImage);
     
     for (let sw of shockwaves) {
