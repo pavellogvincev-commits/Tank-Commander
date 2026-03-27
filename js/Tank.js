@@ -258,23 +258,21 @@ export class Tank {
                 
                 if (this.shieldTimer > 0) return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'ricochet', damage: 0 };
 
-                // --- ЛОГИКА ГАТЛИНГА С ПАДЕНИЕМ УРОНА ОТ ВРЕМЕНИ ЖИЗНИ ---
                 let isGatling = bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг";
                 
                 if (isGatling) {
                     let life = bullet.lifeTime || 0;
-                    let maxLife = bullet.maxLifeTime || 0.5;
+                    // Исправлен дефолтный таймер на 0.4
+                    let maxLife = bullet.maxLifeTime || 0.4;
                     let ratio = life / maxLife;
                     if (ratio > 1) ratio = 1;
                     if (ratio < 0) ratio = 0;
                     
-                    let maxDmg = bullet.penetration; // Макс. урон в упор (например, 5)
-                    let minDmg = 1;                  // Мин. урон на излете
+                    let maxDmg = bullet.penetration; 
+                    let minDmg = 1;                  
                     
-                    // Линейное падение урона от максимума до 1
                     let currentDmg = maxDmg - (maxDmg - minDmg) * ratio;
                     
-                    // Добавляем крошечный случайный разброс (+-10-20%), чтобы цифры не были одинаковыми
                     let variance = Math.random() * (currentDmg * 0.2) - (currentDmg * 0.1);
                     let finalDamage = Math.round(currentDmg + variance);
                     if (finalDamage < 1) finalDamage = 1;
@@ -285,7 +283,6 @@ export class Tank {
                     return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'penetration', damage: finalDamage, destroyed: isDestroyed };
                 }
 
-                // --- СТАНДАРТНАЯ ЛОГИКА ---
                 if (angleDeg > 90) angleDeg = 90; 
                 let effectivePenetration = bullet.penetration * (1 - (angleDeg / 90));
                 
