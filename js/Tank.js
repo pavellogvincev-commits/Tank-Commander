@@ -153,7 +153,22 @@ export class Tank {
             }
         }
 
+        // --- ЛОГИКА ГРЯЗИ (Замедление на 40%) ---
+        let inMud = false;
+        if (arena.mudAreas) {
+            for (let m of arena.mudAreas) {
+                let dist = Math.sqrt(Math.pow(m.x - this.x, 2) + Math.pow(m.y - this.y, 2));
+                // Если центр танка наехал на лужу
+                if (dist < m.radius + this.radius / 2) { 
+                    inMud = true; 
+                    break; 
+                }
+            }
+        }
+
         let actualSpeed = isPushingBarrel ? this.speed * 0.9 : this.speed;
+        if (inMud) actualSpeed *= 0.6; // Ездит на 40% медленнее
+
         let vx = Math.cos(this.hullAngle) * actualSpeed + this.pushVx; 
         let vy = Math.sin(this.hullAngle) * actualSpeed + this.pushVy;
         let nextX = this.x + vx * dt; let nextY = this.y + vy * dt;
@@ -262,7 +277,6 @@ export class Tank {
                 
                 if (isGatling) {
                     let life = bullet.lifeTime || 0;
-                    // Исправлен дефолтный таймер на 0.4
                     let maxLife = bullet.maxLifeTime || 0.4;
                     let ratio = life / maxLife;
                     if (ratio > 1) ratio = 1;
