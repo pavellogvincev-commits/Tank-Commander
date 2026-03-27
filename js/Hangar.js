@@ -53,7 +53,6 @@ export function updateHangarUI() {
         turretImg = document.createElement('img'); turretImg.id = 'hangar-turret-layer';
         hullImg.parentElement.appendChild(turretImg);
     }
-    // Обработка названия изображения
     let tImgName = tId;
     if (tId === 'scourge') tImgName = 'turret';
     if (turretImg) turretImg.src = `assets/${tImgName}.png`;
@@ -79,6 +78,9 @@ export function updateHangarUI() {
         let radVal = tData.explosionRadius + ((sTurr.explosionRadius || 0) * (tData.upgrades.explosionRadius || 0));
         statsHtml += `<div class="assembly-stat-row" style="color:#ff5555;"><span>Взрыв (Урон):</span> <span style="color:#ff5555;">${dmgVal}</span></div>`;
         statsHtml += `<div class="assembly-stat-row" style="color:#ffaa00;"><span>Взрыв (Радиус):</span> <span style="color:#ffaa00;">${radVal}</span></div>`;
+    } else if (tId === "gatling") {
+        let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
+        statsHtml += `<div class="assembly-stat-row" style="color:#ff5555;"><span>Урон (сквозь броню):</span> <span style="color:#ff5555;">${penVal}</span></div>`;
     } else {
         let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
         statsHtml += `<div class="assembly-stat-row"><span>Пробитие:</span> <span>${penVal}</span></div>`;
@@ -157,7 +159,11 @@ function showPartDetails(id) {
         if (item.upgrades.stunDuration !== undefined) html += `<div class="upgrade-row"><span>Оглушение: <span id="val-stunDuration" class="upgrade-val">${7 + ((stats.stunDuration || 0) * item.upgrades.stunDuration)}с</span></span></div>`;
         if (item.upgrades.mineDamage !== undefined) html += `<div class="upgrade-row"><span>Урон мин: <span id="val-mineDamage" class="upgrade-val">${30 + ((stats.mineDamage || 0) * 8)} - ${60 + ((stats.mineDamage || 0) * 15)}</span></span></div>`;
         
-        if (item.upgrades.penetration !== undefined) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + ((stats.penetration || 0) * item.upgrades.penetration)}</span></span></div>`;
+        if (id === "gatling") {
+            if (item.upgrades.penetration !== undefined) html += `<div class="upgrade-row"><span>Урон (сквозь броню): <span id="val-penetration" class="upgrade-val">${item.penetration + ((stats.penetration || 0) * item.upgrades.penetration)}</span></span></div>`;
+        } else {
+            if (item.upgrades.penetration !== undefined) html += `<div class="upgrade-row"><span>Пробитие: <span id="val-penetration" class="upgrade-val">${item.penetration + ((stats.penetration || 0) * item.upgrades.penetration)}</span></span></div>`;
+        }
         
         if (item.upgrades.damage !== undefined) html += `<div class="upgrade-row"><span>Взрывной урон: <span id="val-damage" class="upgrade-val">${item.damage + ((stats.damage || 0) * item.upgrades.damage)}</span></span></div>`;
         if (item.upgrades.explosionRadius !== undefined) html += `<div class="upgrade-row"><span>Радиус взрыва: <span id="val-explosionRadius" class="upgrade-val">${item.explosionRadius + ((stats.explosionRadius || 0) * item.upgrades.explosionRadius)}</span></span></div>`;
