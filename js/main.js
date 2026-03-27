@@ -45,6 +45,7 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
+// СРЕЗАНО ОТТАЛКИВАНИЕ В 2 РАЗА У ВСЕХ ВЗРЫВОВ
 function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     spawnExplosion(x, y); 
     playSound(explodeSound);
@@ -102,7 +103,8 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
             
             setTimeout(() => { 
                 let idx = arena.barrels.indexOf(b);
-                if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 200, 150, 1200); }
+                // УРОН ОТ БОЧЕК СНИЖЕН ДО 100, СИЛА ДО 600
+                if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 100, 150, 600); }
             }, 250); 
         }
     }
@@ -217,7 +219,8 @@ function gameLoop(timestamp) {
 
     if (playerTank.hp <= 0 && !playerTank.isExploded) {
         playerTank.isExploded = true;
-        createExplosionDamage(playerTank.x, playerTank.y, playerTank.maxHp * 0.5, 100, 1000);
+        // Сила взрыва при гибели танка снижена до 500
+        createExplosionDamage(playerTank.x, playerTank.y, playerTank.maxHp * 0.5, 100, 500);
     }
 
     if (playerTank.hp > 0) {
@@ -301,7 +304,8 @@ function gameLoop(timestamp) {
         } else { 
             if (!enemy.isExploded) {
                 enemy.isExploded = true;
-                createExplosionDamage(enemy.x, enemy.y, enemy.maxHp * 0.5, 100, 1000);
+                // Сила взрыва снижена до 500
+                createExplosionDamage(enemy.x, enemy.y, enemy.maxHp * 0.5, 100, 500);
             }
             PlayerProgress.points += 1; spawnText(enemy.x, enemy.y, "+1 ⚙️", '#ffcc00'); enemies.splice(i, 1); 
         }
@@ -310,7 +314,8 @@ function gameLoop(timestamp) {
     for (let i = artilleryShells.length - 1; i >= 0; i--) {
         let s = artilleryShells[i]; s.time += dt;
         if (s.time >= s.maxTime) {
-            createExplosionDamage(s.tx, s.ty, s.damage, s.radius, 1200);
+            // Сила отталкивания от гаубицы снижена до 600
+            createExplosionDamage(s.tx, s.ty, s.damage, s.radius, 600);
             artilleryShells.splice(i, 1);
         } else {
             let progress = s.time / s.maxTime; s.x = s.startX + (s.tx - s.startX) * progress; s.y = s.startY + (s.ty - s.startY) * progress;
@@ -330,23 +335,23 @@ function gameLoop(timestamp) {
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; 
         
-        // --- ЛОГИКА ЖИЗНИ ПУЛИ (ГАТЛИНГ ЖИВЕТ 0.5 СЕК) ---
         if (b.lifeTime === undefined) b.lifeTime = 0;
         if (b.maxLifeTime === undefined) {
-            b.maxLifeTime = (b.ownerTank && b.ownerTank.turretName === "Гатлинг") ? 0.5 : Infinity;
+            // ВРЕМЯ ЖИЗНИ ГАТЛИНГА - 0.4 СЕК
+            b.maxLifeTime = (b.ownerTank && b.ownerTank.turretName === "Гатлинг") ? 0.4 : Infinity;
         }
         
-        if (!b.isDecaying) {
-            b.lifeTime += dt;
-            if (b.lifeTime >= b.maxLifeTime) {
-                b.isDecaying = true; // Выдохлась
-            }
+        b.lifeTime += dt;
+        if (b.lifeTime >= b.maxLifeTime) {
+            b.toDestroy = true; 
+            // Крошечная искра, чтобы пуля не исчезла бесследно
+            sparks.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '255, 200, 0' });
+            continue; 
         }
 
         b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
         
-        // Если пуля уже гаснет (или уничтожена), она больше не наносит урон
-        if (b.toDestroy || b.isDecaying) continue; 
+        if (b.toDestroy) continue; 
         
         let hasHit = false;
         
@@ -360,7 +365,8 @@ function gameLoop(timestamp) {
                     bar.isDetonating = true; 
                     let bx = bar.x, by = bar.y; 
                     arena.barrels.splice(j, 1); 
-                    createExplosionDamage(bx, by, 200, 150, 1200); 
+                    // БОЧКИ ОТ ПУЛЬ: Урон 100, Сила 600
+                    createExplosionDamage(bx, by, 100, 150, 600); 
                     break; 
                 }
             }
