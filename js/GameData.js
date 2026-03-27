@@ -11,10 +11,10 @@ export const GameData = {
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
         // ГАТЛИНГ: Особенность теперь - игнор брони
-        "gatling": { name: "Гатлинг", fireRate: 0.06, reloadTime: 4.5, magazineSize: 55, penetration: 5, spread: 0.08, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
+        "gatling": { name: "Гатлинг", fireRate: 0.1, reloadTime: 4.5, magazineSize: 55, penetration: 6, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { reloadTime: -0.25, magazineSize: 10 } },
-        "howitzer": { name: "Гаубица", fireRate: 3.5, damage: 100, explosionRadius: 100, spread: 40, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
-            upgrades: { damage: 10, explosionRadius: 7 } }
+        "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
+            upgrades: { damage: 7, explosionRadius: 10 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
