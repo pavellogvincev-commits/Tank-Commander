@@ -49,7 +49,7 @@ export const LevelsConfig = {
     // ДОБАВЛЕНО БЕЗДОРОЖЬЕ: грязь mud: 3
     13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, mud: 3, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
-    15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 3, maxUpgrades: 4, fastSpawn: true }
+    15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 10, maxUpgrades: 4, fastSpawn: true }
 };
 
 const defaultProgress = {
