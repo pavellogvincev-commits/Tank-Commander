@@ -45,7 +45,6 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
-// ИСПРАВЛЕНИЕ: Отталкивание танков и бочек теперь тоже считается по новой двухступенчатой формуле
 function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     spawnExplosion(x, y); 
     playSound(explodeSound);
@@ -66,7 +65,7 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
                 let armorSum = t.armor.front.max + t.armor.side.max + t.armor.rear.max;
                 let massMultiplier = 100 / (100 + armorSum); 
                 
-                let pushDist = distToCenter; if (pushDist < 20) pushDist = 20; // Чтобы не улететь в космос при делении на 0
+                let pushDist = distToCenter; if (pushDist < 20) pushDist = 20; 
                 
                 let ratio = distToEdge / radius;
                 let forceMultiplier = 0;
@@ -329,8 +328,27 @@ function gameLoop(timestamp) {
     }
 
     for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i]; b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
-        if (b.toDestroy) continue; let hasHit = false;
+        let b = bullets[i]; 
+        
+        // --- ЛОГИКА ЖИЗНИ ПУЛИ (ГАТЛИНГ ЖИВЕТ 0.5 СЕК) ---
+        if (b.lifeTime === undefined) b.lifeTime = 0;
+        if (b.maxLifeTime === undefined) {
+            b.maxLifeTime = (b.ownerTank && b.ownerTank.turretName === "Гатлинг") ? 0.5 : Infinity;
+        }
+        
+        if (!b.isDecaying) {
+            b.lifeTime += dt;
+            if (b.lifeTime >= b.maxLifeTime) {
+                b.isDecaying = true; // Выдохлась
+            }
+        }
+
+        b.update(dt, arena, spawnSparks, () => playSound(bounceSound));
+        
+        // Если пуля уже гаснет (или уничтожена), она больше не наносит урон
+        if (b.toDestroy || b.isDecaying) continue; 
+        
+        let hasHit = false;
         
         if (!hasHit) {
             for (let j = arena.barrels.length - 1; j >= 0; j--) {
@@ -382,6 +400,7 @@ function gameLoop(timestamp) {
             }
         }
     }
+    
     bullets = bullets.filter(b => !b.toDestroy);
     for (let i = sparks.length - 1; i >= 0; i--) { let s = sparks[i]; s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.93; s.vy *= 0.93; if (s.life <= 0) sparks.splice(i, 1); }
     for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life -= dt; ft.y += ft.vy * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
