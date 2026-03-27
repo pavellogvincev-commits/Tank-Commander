@@ -10,9 +10,10 @@ export const GameData = {
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        // ГАТЛИНГ: Особенность теперь - игнор брони
-        "gatling": { name: "Гатлинг", fireRate: 0.1, reloadTime: 4.5, magazineSize: 55, penetration: 6, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
+        // ГАТЛИНГ: Обновлен по твоим параметрам (Урон/Пробитие 7, скорострел 0.1, разброс 0.1)
+        "gatling": { name: "Гатлинг", fireRate: 0.1, reloadTime: 4.5, magazineSize: 55, penetration: 7, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { reloadTime: -0.25, magazineSize: 10 } },
+        // ГАУБИЦА: Обновлен урон 90, перезарядка 4, разброс 55. Апгрейды 7 и 10
         "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
             upgrades: { damage: 7, explosionRadius: 10 } }
     },
@@ -45,9 +46,10 @@ export const LevelsConfig = {
     10: { pool: ["mars", "mars", "mars", "demon", "demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 },
     11: { pool: ["goliaph", "basic", "scout", "scout", "demon"], obstacles: 5, barrels: 4, maxUpgrades: 3 },
     12: { pool: ["goliaph", "mars", "scout", "scout", "demon", "basic"], obstacles: 6, barrels: 3, maxUpgrades: 3, fastSpawn: true },
-    13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, maxUpgrades: 3 },
+    // ДОБАВЛЕНО БЕЗДОРОЖЬЕ: грязь mud: 3
+    13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, mud: 3, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
-    15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, maxUpgrades: 4, fastSpawn: true }
+    15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 3, maxUpgrades: 4, fastSpawn: true }
 };
 
 const defaultProgress = {
