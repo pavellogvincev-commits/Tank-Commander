@@ -229,17 +229,22 @@ window.expandCapacity = function(id, cost) { if (PlayerProgress.points >= cost) 
 
 export function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
-    // ГЕНЕРИРУЕМ 20 УРОВНЕЙ
-    for (let i = 1; i <= 20; i++) { 
+    // ГЕНЕРАЦИЯ КНОПОК ДО 26 УРОВНЯ
+    for (let i = 1; i <= 26; i++) { 
         let btn = document.createElement('button'); let classes = 'level-btn';
         if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (i <= PlayerProgress.unlockedLevel) classes += ' unlocked'; else classes += ' locked'; 
         
-        let starsHtml = ''; let levelTitle = i;
+        let starsHtml = ''; 
+        let prefix = ''; let suffix = '';
         if (LevelsConfig[i]) { 
-            if (LevelsConfig[i].fastSpawn) levelTitle = `⚡ ${i} ⚡`;
+            if (LevelsConfig[i].fastSpawn) prefix = '⚡';
+            if (LevelsConfig[i].airstrike) suffix = '✈️';
+            
             let max = LevelsConfig[i].maxUpgrades; let collected = PlayerProgress.collectedStars[i] || 0; 
             starsHtml = `<div class="level-stars">`; for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } starsHtml += `</div>`; 
         }
+        
+        let levelTitle = `${prefix}${i}${suffix}`;
         
         btn.className = classes; 
         btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><div style="color:${LevelsConfig[i] && LevelsConfig[i].fastSpawn ? '#ffcc00' : 'inherit'};">${levelTitle}</div>${starsHtml}</div>`; 
