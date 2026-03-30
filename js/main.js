@@ -42,7 +42,8 @@ window.addEventListener('keydown', (e) => {
     if (e.key === '3') { PlayerProgress.inventory.turretUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
 });
 
-function spawnText(x, y, text, color, size = 20) { floatingTexts.push({ x, y, text, color, size, life: 1.5, maxLife: 1.5, vy: -30 }); }
+// ДОБАВЛЕН ФЛАГ noOutline ДЛЯ ОТКЛЮЧЕНИЯ ОБВОДКИ
+function spawnText(x, y, text, color, size = 20, noOutline = false) { floatingTexts.push({ x, y, text, color, size, life: 1.5, maxLife: 1.5, vy: -30, noOutline }); }
 function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 6); let base = Math.atan2(ny, nx); for (let i = 0; i < count; i++) { let spread = (Math.random() - 0.5) * Math.PI; let speed = 100 + Math.random() * 200; sparks.push({ x, y, vx: Math.cos(base+spread)*speed, vy: Math.sin(base+spread)*speed, life: 0.2+Math.random()*0.2, maxLife: 0.4, size: 2+Math.random()*3, color: '255, 200, 0' }); } }
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
@@ -110,12 +111,11 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     }
 }
 
-// НОВАЯ ЛОГИКА АВИАНАЛЕТА
 function spawnAirstrike() {
     let pX = playerTank.x;
     let pY = playerTank.y;
     let angle = Math.random() * Math.PI * 2;
-    let speed = 150;
+    let speed = 250; // СКОРОСТЬ САМОЛЕТА УВЕЛИЧЕНА ДО 250
     let spawnDist = 1200; 
     let startX = pX - Math.cos(angle) * spawnDist;
     let startY = pY - Math.sin(angle) * spawnDist;
@@ -127,11 +127,11 @@ function spawnAirstrike() {
         speed: speed,
         timeAlive: 0,
         dropsMade: 0,
-        // Самолет скидывает первую бомбу за 1.4 секунды до того, как пролетит над игроком
         nextDropTime: (spawnDist / speed) - (0.7 * 2) 
     });
     
-    spawnText(canvas.width/2, 100, "ВНИМАНИЕ! АВИАНАЛЕТ!", "#ff3333", 30);
+    // БЕЛЫЙ ЦВЕТ, БЕЗ ОБВОДКИ
+    spawnText(canvas.width/2, 100, "ВНИМАНИЕ! АВИАНАЛЕТ!", "#ffffff", 30, true);
 }
 
 function startLevel(levelNum) {
@@ -142,7 +142,7 @@ function startLevel(levelNum) {
     dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0; maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
     
     airstrikesActive = levelNum >= 16;
-    airstrikeTimer = 30.0;
+    airstrikeTimer = 8.0; // ПЕРВЫЙ АВИАУДАР ЧЕРЕЗ 8 СЕК
     
     arena.generateObstacles(config.obstacles, config.barrels || 0);
     
@@ -238,7 +238,7 @@ function gameLoop(timestamp) {
         airstrikeTimer -= dt;
         if (airstrikeTimer <= 0) {
             spawnAirstrike();
-            airstrikeTimer = 30.0;
+            airstrikeTimer = 16.0; // ПОСЛЕДУЮЩИЕ АВИАУДАРЫ ЧЕРЕЗ 16 СЕК
         }
     }
 
@@ -307,7 +307,6 @@ function gameLoop(timestamp) {
         }
     }
 
-    // ЛОГИКА ПОЛЕТА И СБРОСА БОМБ
     for (let i = airplanes.length - 1; i >= 0; i--) {
         let ap = airplanes[i];
         ap.timeAlive += dt;
@@ -322,21 +321,18 @@ function gameLoop(timestamp) {
             
             airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
             ap.dropsMade++;
-            ap.nextDropTime += 0.7; // Каждые 0.7 сек сброс
+            ap.nextDropTime += 0.7; 
         }
         
-        // Удаляем самолет когда он далеко
         if (ap.x < -2000 || ap.x > canvas.width + 2000 || ap.y < -2000 || ap.y > canvas.height + 2000) {
             airplanes.splice(i, 1);
         }
     }
 
-    // ЛОГИКА ТАЙМЕРОВ МАЯКОВ
     for (let i = airstrikeBeacons.length - 1; i >= 0; i--) {
         let b = airstrikeBeacons[i];
         b.timer -= dt;
         if (b.timer <= 0) {
-            // Огромный взрыв: урон 150, радиус 250, сила 1000
             createExplosionDamage(b.x, b.y, 150, 250, 1000);
             airstrikeBeacons.splice(i, 1);
         }
@@ -516,12 +512,10 @@ function gameLoop(timestamp) {
         ctx.restore();
     }
 
-    // ОТРИСОВКА МАЯКОВ АВИАНАЛЕТА (Меньший крест, большая зона взрыва)
     for (let b of airstrikeBeacons) {
         ctx.save();
         let blink = 0.5 + Math.abs(Math.sin(timestamp / 150)) * 0.5;
         
-        // Внешняя зона (радиус 250) - индикатор опасности
         ctx.strokeStyle = `rgba(255, 50, 0, ${blink * 0.3})`;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -530,7 +524,6 @@ function gameLoop(timestamp) {
         ctx.fillStyle = `rgba(255, 50, 0, ${blink * 0.05})`;
         ctx.fill();
 
-        // Внутренний крест/мишень (радиус 30)
         ctx.strokeStyle = `rgba(255, 0, 0, ${blink})`;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -621,13 +614,13 @@ function gameLoop(timestamp) {
         }
     }
 
-    // ОТРИСОВКА ОГРОМНОЙ ТЕНИ САМОЛЕТА ПОВЕРХ ВСЕГО
     for (let ap of airplanes) {
         ctx.save();
         ctx.translate(ap.x, ap.y);
         ctx.rotate(ap.angle);
-        ctx.scale(2.5, 2.5); // Увеличили самолет в 2.5 раза
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.scale(2.5, 2.5); 
+        // ПРОЗРАЧНОСТЬ САМОЛЕТА ИЗМЕНЕНА С 0.5 НА 0.25 (СВЕТЛЕЕ)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.shadowBlur = 40;
         ctx.shadowColor = '#000';
         
@@ -660,9 +653,14 @@ function gameLoop(timestamp) {
         let alpha = Math.max(0, ft.life / ft.maxLife); 
         ctx.globalAlpha = alpha; 
         ctx.font = `900 ${ft.size}px Arial, sans-serif`;
-        ctx.lineWidth = 3; 
-        ctx.strokeStyle = '#ffffff'; 
-        ctx.strokeText(ft.text, ft.x, ft.y); 
+        
+        // ЕСЛИ НЕТ ФЛАГА noOutline - РИСУЕМ ОБВОДКУ
+        if (!ft.noOutline) {
+            ctx.lineWidth = 3; 
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.strokeText(ft.text, ft.x, ft.y); 
+        }
+        
         ctx.fillStyle = ft.color; 
         ctx.fillText(ft.text, ft.x, ft.y); 
     }
