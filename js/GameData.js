@@ -10,23 +10,14 @@ export const GameData = {
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        // ГАТЛИНГ: Обновлен по твоим параметрам (Урон/Пробитие 7, скорострел 0.1, разброс 0.1)
         "gatling": { name: "Гатлинг", fireRate: 0.1, reloadTime: 4.5, magazineSize: 55, penetration: 7, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { reloadTime: -0.25, magazineSize: 10 } },
-        // ГАУБИЦА: Обновлен урон 90, перезарядка 4, разброс 55. Апгрейды 7 и 10
         "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
             upgrades: { damage: 7, explosionRadius: 10 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
-        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 80, h: 60}, hitbox: {w: 65, h: 48} },
-        "demon": { name: "Демон", hp: 120, armor: { front: 40, side: 30, rear: 10 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 45} },
-        "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 25 }, speed: 20, size: {w: 85, h: 65}, hitbox: {w: 77, h: 54} },
-        "goliaph": { name: "Голиаф", hp: 250, armor: { front: 120, side: 80, rear: 66 }, speed: 15, size: {w: 90, h: 68}, hitbox: {w: 90, h: 50} }
-    },
-    enemyTurrets: { 
-        "basic": { name: "Враг-Пушка", fireRate: 3.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon', bulletSpeed: 400 },
-        "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 400 },
+        "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 80, h: 60}, hitbox: {"scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 400 },
         "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 }
@@ -46,10 +37,15 @@ export const LevelsConfig = {
     10: { pool: ["mars", "mars", "mars", "demon", "demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 },
     11: { pool: ["goliaph", "basic", "scout", "scout", "demon"], obstacles: 5, barrels: 4, maxUpgrades: 3 },
     12: { pool: ["goliaph", "mars", "scout", "scout", "demon", "basic"], obstacles: 6, barrels: 3, maxUpgrades: 3, fastSpawn: true },
-    // ДОБАВЛЕНО БЕЗДОРОЖЬЕ: грязь mud: 3
     13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, mud: 3, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
-    15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 10, maxUpgrades: 4, fastSpawn: true }
+    15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 3, maxUpgrades: 4, fastSpawn: true },
+    // НОВЫЕ УРОВНИ С АВИАНАЛЕТОМ (Начиная с 16-го)
+    16: { pool: ["demon", "demon", "scout", "scout", "scout", "mars"], obstacles: 5, barrels: 4, maxUpgrades: 4 },
+    17: { pool: ["goliaph", "demon", "demon", "mars", "mars", "basic"], obstacles: 4, barrels: 2, mud: 4, maxUpgrades: 4 },
+    18: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "demon", "demon"], obstacles: 3, barrels: 8, maxUpgrades: 4, fastSpawn: true },
+    19: { pool: ["goliaph", "goliaph", "goliaph", "demon", "demon", "mars"], obstacles: 6, barrels: 3, mud: 2, maxUpgrades: 5 },
+    20: { pool: ["goliaph", "goliaph", "goliaph", "goliaph", "mars", "mars", "mars", "mars"], obstacles: 2, barrels: 6, mud: 3, maxUpgrades: 5 }
 };
 
 const defaultProgress = {
