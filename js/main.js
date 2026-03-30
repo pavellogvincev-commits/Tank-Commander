@@ -29,10 +29,13 @@ const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getCont
 canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
+// ДОБАВЛЕНЫ МАССИВЫ И ТАЙМЕРЫ ДЛЯ АВИАНАЛЕТА
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [], artilleryShells = [], shockwaves = [];
+let airstrikeBeacons = [], airplanes = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
 let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
+let airstrikesActive = false, airstrikeTimer = 30.0;
 
 window.addEventListener('keydown', (e) => {
     if (e.key === '1') { PlayerProgress.points++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
@@ -108,6 +111,35 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     }
 }
 
+// ФУНКЦИЯ ВЫЗОВА АВИАНАЛЕТА
+function spawnAirstrike() {
+    let pX = playerTank.x;
+    let pY = playerTank.y;
+    let angle = Math.random() * Math.PI * 2;
+    let distStep = 160; // Расстояние между сбросами
+
+    // Генерация 5 маяков с разбросом до 100 пкс
+    for (let i = -2; i <= 2; i++) {
+        let bx = pX + Math.cos(angle) * (i * distStep);
+        let by = pY + Math.sin(angle) * (i * distStep);
+        
+        bx += (Math.random() - 0.5) * 200;
+        by += (Math.random() - 0.5) * 200;
+
+        bx = Math.max(20, Math.min(canvas.width - 20, bx));
+        by = Math.max(20, Math.min(canvas.height - 20, by));
+
+        airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
+    }
+
+    // Спавн тени самолета, чтобы она пролетела точно над игроком
+    let startX = pX - Math.cos(angle) * 1200;
+    let startY = pY - Math.sin(angle) * 1200;
+    airplanes.push({ x: startX, y: startY, angle: angle, speed: 1000 });
+    
+    spawnText(canvas.width/2, 100, "ВНИМАНИЕ! АВИАНАЛЕТ!", "#ff3333", 30);
+}
+
 function startLevel(levelNum) {
     if (animFrameId) cancelAnimationFrame(animFrameId);
     gameRunning = false; currentLevelNum = levelNum;
@@ -115,9 +147,12 @@ function startLevel(levelNum) {
     currentEnemyPool = shuffleArray([...config.pool]); enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
     dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0; maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
     
+    // ВКЛЮЧЕНИЕ АВИАНАЛЕТОВ НА 16+ УРОВНЕ
+    airstrikesActive = levelNum >= 16;
+    airstrikeTimer = 30.0;
+    
     arena.generateObstacles(config.obstacles, config.barrels || 0);
     
-    // --- ГЕНЕРАЦИЯ ГРЯЗИ ---
     let mudCount = config.mud || 0;
     arena.mudAreas = [];
     for (let i = 0; i < mudCount; i++) {
@@ -159,6 +194,7 @@ function startLevel(levelNum) {
     playerTank.shieldTimer = 3.0;
 
     enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = []; artilleryShells = []; shockwaves = [];
+    airstrikeBeacons = []; airplanes = [];
     showScreen('game'); lastTime = performance.now(); gameRunning = true; animFrameId = requestAnimationFrame(gameLoop);
 }
 
@@ -203,6 +239,15 @@ function gameLoop(timestamp) {
     if (dropsSpawnedThisMatch < maxDropsForLevel && playerTank.hp > 0 && !levelFinished) {
         dropCheckTimer -= dt;
         if (dropCheckTimer <= 0) { dropCheckTimer = 5.0; if (Math.random() <= currentDropChance) { spawnDrop(); dropsSpawnedThisMatch++; currentDropChance = 0.10; } else { currentDropChance += 0.10; } }
+    }
+    
+    // ТАЙМЕР АВИАНАЛЕТА
+    if (airstrikesActive && playerTank.hp > 0 && !levelFinished) {
+        airstrikeTimer -= dt;
+        if (airstrikeTimer <= 0) {
+            spawnAirstrike();
+            airstrikeTimer = 30.0;
+        }
     }
 
     if (enemiesToSpawn > 0 && playerTank.hp > 0 && !levelFinished) {
@@ -267,6 +312,26 @@ function gameLoop(timestamp) {
             let maxDmg = 60 + (playerTank.mineBonusDamage * 15);
             let mineDamage = Math.floor(minDmg + Math.random() * (maxDmg - minDmg));
             mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 24 }); 
+        }
+    }
+
+    // ОБНОВЛЕНИЕ МАЯКОВ АВИАНАЛЕТА
+    for (let i = airstrikeBeacons.length - 1; i >= 0; i--) {
+        let b = airstrikeBeacons[i];
+        b.timer -= dt;
+        if (b.timer <= 0) {
+            createExplosionDamage(b.x, b.y, 100, 150, 800);
+            airstrikeBeacons.splice(i, 1);
+        }
+    }
+
+    // ОБНОВЛЕНИЕ САМОЛЕТОВ
+    for (let i = airplanes.length - 1; i >= 0; i--) {
+        let ap = airplanes[i];
+        ap.x += Math.cos(ap.angle) * ap.speed * dt;
+        ap.y += Math.sin(ap.angle) * ap.speed * dt;
+        if (ap.x < -1500 || ap.x > canvas.width + 1500 || ap.y < -1500 || ap.y > canvas.height + 1500) {
+            airplanes.splice(i, 1);
         }
     }
 
@@ -351,7 +416,6 @@ function gameLoop(timestamp) {
         
         let isGatlingBullet = (b.ownerTank && b.ownerTank.turretName === "Гатлинг");
         if (b.maxLifeTime === undefined) {
-            // ТОЛЬКО ГАТЛИНГ ИМЕЕТ ЛИМИТ ЖИЗНИ
             b.maxLifeTime = isGatlingBullet ? 0.4 : Infinity;
         }
         
@@ -432,7 +496,6 @@ function gameLoop(timestamp) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     
-    // --- ОТРИСОВКА ГРЯЗИ ---
     if (arena.mudAreas) {
         ctx.save();
         ctx.fillStyle = 'rgba(40, 25, 10, 0.6)';
@@ -443,6 +506,32 @@ function gameLoop(timestamp) {
                 ctx.fill();
             }
         }
+        ctx.restore();
+    }
+
+    // ОТРИСОВКА МАЯКОВ АВИАНАЛЕТА (на земле)
+    for (let b of airstrikeBeacons) {
+        ctx.save();
+        let blink = 0.5 + Math.abs(Math.sin(timestamp / 150)) * 0.5;
+        ctx.strokeStyle = `rgba(255, 0, 0, ${blink})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 150, 0, Math.PI * 2); 
+        ctx.stroke();
+        
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(b.x - 15, b.y); ctx.lineTo(b.x + 15, b.y);
+        ctx.moveTo(b.x, b.y - 15); ctx.lineTo(b.x, b.y + 15);
+        ctx.stroke();
+
+        ctx.fillStyle = `rgba(255, 50, 50, ${blink})`;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.ceil(b.timer), b.x + 20, b.y - 20);
         ctx.restore();
     }
 
@@ -512,6 +601,37 @@ function gameLoop(timestamp) {
             let isWakingUp = e.stunTimer <= 3.0; let blink = isWakingUp ? (Math.floor(timestamp / 150) % 2 === 0) : true;
             if (blink) { ctx.strokeStyle = isWakingUp ? '#ffcc00' : '#00ffcc'; ctx.lineWidth = isWakingUp ? 4 : 2; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(timestamp / 50) * 3, 0, Math.PI * 2); ctx.stroke(); }
         }
+    }
+
+    // ОТРИСОВКА ТЕНИ САМОЛЕТА ПОВЕРХ ВСЕГО
+    for (let ap of airplanes) {
+        ctx.save();
+        ctx.translate(ap.x, ap.y);
+        ctx.rotate(ap.angle);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = '#000';
+        
+        ctx.beginPath();
+        ctx.moveTo(40, 0); 
+        ctx.lineTo(15, 12);
+        ctx.lineTo(0, 50); 
+        ctx.lineTo(-15, 50);
+        ctx.lineTo(-8, 12);
+        ctx.lineTo(-25, 6);
+        ctx.lineTo(-35, 20); 
+        ctx.lineTo(-45, 20);
+        ctx.lineTo(-38, 0); 
+        ctx.lineTo(-45, -20);
+        ctx.lineTo(-35, -20);
+        ctx.lineTo(-25, -6);
+        ctx.lineTo(-8, -12);
+        ctx.lineTo(-15, -50); 
+        ctx.lineTo(0, -50);
+        ctx.lineTo(15, -12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
 
     if (playerTank && playerTank.hp > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(`ХП: ${playerTank.hp} | Броня: Лоб ${playerTank.armor.front.current} | Борт ${playerTank.armor.side.current} | Корма ${playerTank.armor.rear.current}`, 15, 30); }
