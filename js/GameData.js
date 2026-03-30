@@ -31,7 +31,7 @@ export const GameData = {
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 },
         // ОРУДИЕ ПРИЗРАКА
-        "ghost": { name: "Призрак-Лазер", fireRate: 5.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
+        "ghost": { name: "Призрак-Лазер", fireRate: 4.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
     }
 };
 
@@ -65,7 +65,7 @@ export const LevelsConfig = {
     23: { pool: ["goliaph", "goliaph", "scout", "scout", "scout", "scout", "scout"], obstacles: 2, barrels: 2, mud: 1, airstrike: true, fastSpawn: true, maxUpgrades: 5 },
     24: { pool: ["mars", "mars", "mars", "mars", "goliaph", "goliaph"], obstacles: 8, barrels: 8, mud: 4, airstrike: true, maxUpgrades: 5 },
     25: { pool: ["goliaph", "goliaph", "demon", "demon", "demon", "demon", "mars", "mars"], obstacles: 4, barrels: 4, mud: 3, airstrike: true, maxUpgrades: 6 },
-    26: { pool: ["ghost", "scout", "scout"], obstacles: 6, barrels: 2, mud: 0, airstrike: false, maxUpgrades: 6 } // Призрак! Без авиаудара, чтобы насладиться дуэлью
+    26: { pool: ["ghost", "ghost", "ghost"], obstacles: 6, barrels: 2, mud: 0, airstrike: false, maxUpgrades: 6 } // Призрак! Без авиаудара, чтобы насладиться дуэлью
 };
 
 const defaultProgress = {
