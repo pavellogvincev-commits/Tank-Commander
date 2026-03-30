@@ -29,7 +29,6 @@ const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getCont
 canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
-// ДОБАВЛЕНЫ МАССИВЫ И ТАЙМЕРЫ ДЛЯ АВИАНАЛЕТА
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [], artilleryShells = [], shockwaves = [];
 let airstrikeBeacons = [], airplanes = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
@@ -111,31 +110,26 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     }
 }
 
-// ФУНКЦИЯ ВЫЗОВА АВИАНАЛЕТА
+// НОВАЯ ЛОГИКА АВИАНАЛЕТА
 function spawnAirstrike() {
     let pX = playerTank.x;
     let pY = playerTank.y;
     let angle = Math.random() * Math.PI * 2;
-    let distStep = 160; // Расстояние между сбросами
-
-    // Генерация 5 маяков с разбросом до 100 пкс
-    for (let i = -2; i <= 2; i++) {
-        let bx = pX + Math.cos(angle) * (i * distStep);
-        let by = pY + Math.sin(angle) * (i * distStep);
-        
-        bx += (Math.random() - 0.5) * 200;
-        by += (Math.random() - 0.5) * 200;
-
-        bx = Math.max(20, Math.min(canvas.width - 20, bx));
-        by = Math.max(20, Math.min(canvas.height - 20, by));
-
-        airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
-    }
-
-    // Спавн тени самолета, чтобы она пролетела точно над игроком
-    let startX = pX - Math.cos(angle) * 1200;
-    let startY = pY - Math.sin(angle) * 1200;
-    airplanes.push({ x: startX, y: startY, angle: angle, speed: 1000 });
+    let speed = 150;
+    let spawnDist = 1200; 
+    let startX = pX - Math.cos(angle) * spawnDist;
+    let startY = pY - Math.sin(angle) * spawnDist;
+    
+    airplanes.push({
+        x: startX,
+        y: startY,
+        angle: angle,
+        speed: speed,
+        timeAlive: 0,
+        dropsMade: 0,
+        // Самолет скидывает первую бомбу за 1.4 секунды до того, как пролетит над игроком
+        nextDropTime: (spawnDist / speed) - (0.7 * 2) 
+    });
     
     spawnText(canvas.width/2, 100, "ВНИМАНИЕ! АВИАНАЛЕТ!", "#ff3333", 30);
 }
@@ -147,7 +141,6 @@ function startLevel(levelNum) {
     currentEnemyPool = shuffleArray([...config.pool]); enemiesToSpawn = currentEnemyPool.length; enemySpawnTimer = 0; levelFinished = false; firstClearBonus = false; 
     dropCheckTimer = 5.0; currentDropChance = 0.10; dropsSpawnedThisMatch = 0; maxDropsForLevel = config.maxUpgrades - (PlayerProgress.collectedStars[levelNum] || 0);
     
-    // ВКЛЮЧЕНИЕ АВИАНАЛЕТОВ НА 16+ УРОВНЕ
     airstrikesActive = levelNum >= 16;
     airstrikeTimer = 30.0;
     
@@ -241,7 +234,6 @@ function gameLoop(timestamp) {
         if (dropCheckTimer <= 0) { dropCheckTimer = 5.0; if (Math.random() <= currentDropChance) { spawnDrop(); dropsSpawnedThisMatch++; currentDropChance = 0.10; } else { currentDropChance += 0.10; } }
     }
     
-    // ТАЙМЕР АВИАНАЛЕТА
     if (airstrikesActive && playerTank.hp > 0 && !levelFinished) {
         airstrikeTimer -= dt;
         if (airstrikeTimer <= 0) {
@@ -315,23 +307,38 @@ function gameLoop(timestamp) {
         }
     }
 
-    // ОБНОВЛЕНИЕ МАЯКОВ АВИАНАЛЕТА
+    // ЛОГИКА ПОЛЕТА И СБРОСА БОМБ
+    for (let i = airplanes.length - 1; i >= 0; i--) {
+        let ap = airplanes[i];
+        ap.timeAlive += dt;
+        ap.x += Math.cos(ap.angle) * ap.speed * dt;
+        ap.y += Math.sin(ap.angle) * ap.speed * dt;
+        
+        if (ap.dropsMade < 5 && ap.timeAlive >= ap.nextDropTime) {
+            let spreadX = (Math.random() - 0.5) * 100;
+            let spreadY = (Math.random() - 0.5) * 100;
+            let bx = Math.max(20, Math.min(canvas.width - 20, ap.x + spreadX));
+            let by = Math.max(20, Math.min(canvas.height - 20, ap.y + spreadY));
+            
+            airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
+            ap.dropsMade++;
+            ap.nextDropTime += 0.7; // Каждые 0.7 сек сброс
+        }
+        
+        // Удаляем самолет когда он далеко
+        if (ap.x < -2000 || ap.x > canvas.width + 2000 || ap.y < -2000 || ap.y > canvas.height + 2000) {
+            airplanes.splice(i, 1);
+        }
+    }
+
+    // ЛОГИКА ТАЙМЕРОВ МАЯКОВ
     for (let i = airstrikeBeacons.length - 1; i >= 0; i--) {
         let b = airstrikeBeacons[i];
         b.timer -= dt;
         if (b.timer <= 0) {
-            createExplosionDamage(b.x, b.y, 100, 150, 800);
+            // Огромный взрыв: урон 150, радиус 250, сила 1000
+            createExplosionDamage(b.x, b.y, 150, 250, 1000);
             airstrikeBeacons.splice(i, 1);
-        }
-    }
-
-    // ОБНОВЛЕНИЕ САМОЛЕТОВ
-    for (let i = airplanes.length - 1; i >= 0; i--) {
-        let ap = airplanes[i];
-        ap.x += Math.cos(ap.angle) * ap.speed * dt;
-        ap.y += Math.sin(ap.angle) * ap.speed * dt;
-        if (ap.x < -1500 || ap.x > canvas.width + 1500 || ap.y < -1500 || ap.y > canvas.height + 1500) {
-            airplanes.splice(i, 1);
         }
     }
 
@@ -509,14 +516,25 @@ function gameLoop(timestamp) {
         ctx.restore();
     }
 
-    // ОТРИСОВКА МАЯКОВ АВИАНАЛЕТА (на земле)
+    // ОТРИСОВКА МАЯКОВ АВИАНАЛЕТА (Меньший крест, большая зона взрыва)
     for (let b of airstrikeBeacons) {
         ctx.save();
         let blink = 0.5 + Math.abs(Math.sin(timestamp / 150)) * 0.5;
+        
+        // Внешняя зона (радиус 250) - индикатор опасности
+        ctx.strokeStyle = `rgba(255, 50, 0, ${blink * 0.3})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 250, 0, Math.PI * 2); 
+        ctx.stroke();
+        ctx.fillStyle = `rgba(255, 50, 0, ${blink * 0.05})`;
+        ctx.fill();
+
+        // Внутренний крест/мишень (радиус 30)
         ctx.strokeStyle = `rgba(255, 0, 0, ${blink})`;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 150, 0, Math.PI * 2); 
+        ctx.arc(b.x, b.y, 30, 0, Math.PI * 2); 
         ctx.stroke();
         
         ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
@@ -528,7 +546,7 @@ function gameLoop(timestamp) {
         ctx.stroke();
 
         ctx.fillStyle = `rgba(255, 50, 50, ${blink})`;
-        ctx.font = 'bold 24px Arial';
+        ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(Math.ceil(b.timer), b.x + 20, b.y - 20);
@@ -603,13 +621,14 @@ function gameLoop(timestamp) {
         }
     }
 
-    // ОТРИСОВКА ТЕНИ САМОЛЕТА ПОВЕРХ ВСЕГО
+    // ОТРИСОВКА ОГРОМНОЙ ТЕНИ САМОЛЕТА ПОВЕРХ ВСЕГО
     for (let ap of airplanes) {
         ctx.save();
         ctx.translate(ap.x, ap.y);
         ctx.rotate(ap.angle);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = 30;
+        ctx.scale(2.5, 2.5); // Увеличили самолет в 2.5 раза
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 40;
         ctx.shadowColor = '#000';
         
         ctx.beginPath();
