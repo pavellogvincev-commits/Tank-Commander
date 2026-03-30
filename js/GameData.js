@@ -20,14 +20,18 @@ export const GameData = {
         "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 80, h: 60}, hitbox: {w: 65, h: 48} },
         "demon": { name: "Демон", hp: 120, armor: { front: 40, side: 30, rear: 10 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 45} },
         "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 25 }, speed: 20, size: {w: 85, h: 65}, hitbox: {w: 77, h: 54} },
-        "goliaph": { name: "Голиаф", hp: 250, armor: { front: 120, side: 80, rear: 66 }, speed: 15, size: {w: 90, h: 68}, hitbox: {w: 90, h: 50} }
+        "goliaph": { name: "Голиаф", hp: 250, armor: { front: 120, side: 80, rear: 66 }, speed: 15, size: {w: 90, h: 68}, hitbox: {w: 90, h: 50} },
+        // НОВЫЙ ВРАГ: ПРИЗРАК
+        "ghost": { name: "Призрак", hp: 155, armor: { front: 50, side: 50, rear: 35 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 72, h: 52} }
     },
     enemyTurrets: { 
         "basic": { name: "Враг-Пушка", fireRate: 3.5, penetration: 60, burstCount: 1, burstDelay: 0, bulletRadius: 2.5, bulletColor: '#ff5500', shootSound: 'cannon', bulletSpeed: 400 },
         "scout": { name: "Скаут-Автопушка", fireRate: 2.0, penetration: 35, burstCount: 3, burstDelay: 0.15, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 400 },
         "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
-        "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 }
+        "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 },
+        // ОРУДИЕ ПРИЗРАКА
+        "ghost": { name: "Призрак-Лазер", fireRate: 5.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
     }
 };
 
@@ -47,12 +51,21 @@ export const LevelsConfig = {
     13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, mud: 3, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
     15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 3, maxUpgrades: 4, fastSpawn: true },
-    // НОВЫЕ УРОВНИ С АВИАНАЛЕТОМ (Начиная с 16-го)
-    16: { pool: ["demon", "demon", "scout", "scout", "scout", "mars"], obstacles: 5, barrels: 4, maxUpgrades: 4 },
-    17: { pool: ["goliaph", "demon", "demon", "mars", "mars", "basic"], obstacles: 4, barrels: 2, mud: 4, maxUpgrades: 4 },
-    18: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "demon", "demon"], obstacles: 3, barrels: 8, maxUpgrades: 4, fastSpawn: true },
-    19: { pool: ["goliaph", "goliaph", "goliaph", "demon", "demon", "mars"], obstacles: 6, barrels: 3, mud: 2, maxUpgrades: 5 },
-    20: { pool: ["goliaph", "goliaph", "goliaph", "goliaph", "mars", "mars", "mars", "mars"], obstacles: 2, barrels: 6, mud: 3, maxUpgrades: 5 }
+    
+    // АВИАУДАРЫ ТЕПЕРЬ ЗАДАЮТСЯ ФЛАГОМ airstrike: true
+    16: { pool: ["demon", "demon", "scout", "scout", "scout", "mars"], obstacles: 5, barrels: 4, airstrike: true, maxUpgrades: 4 },
+    17: { pool: ["goliaph", "demon", "demon", "mars", "mars", "basic"], obstacles: 4, barrels: 2, mud: 4, airstrike: true, maxUpgrades: 4 },
+    18: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "demon", "demon"], obstacles: 3, barrels: 8, airstrike: true, maxUpgrades: 4, fastSpawn: true },
+    19: { pool: ["goliaph", "goliaph", "goliaph", "demon", "demon", "mars"], obstacles: 6, barrels: 3, mud: 2, airstrike: true, maxUpgrades: 5 },
+    20: { pool: ["goliaph", "goliaph", "goliaph", "goliaph", "mars", "mars", "mars", "mars"], obstacles: 2, barrels: 6, mud: 3, airstrike: true, maxUpgrades: 5 },
+    
+    // НОВЫЕ 5 УРОВНЕЙ И ВЫХОД ПРИЗРАКА
+    21: { pool: ["demon", "mars", "scout", "scout", "scout", "goliaph"], obstacles: 5, barrels: 4, mud: 2, airstrike: true, maxUpgrades: 5 },
+    22: { pool: ["goliaph", "demon", "demon", "basic", "mars", "mars"], obstacles: 4, barrels: 2, mud: 5, airstrike: true, maxUpgrades: 5 },
+    23: { pool: ["goliaph", "goliaph", "scout", "scout", "scout", "scout", "scout"], obstacles: 2, barrels: 2, mud: 1, airstrike: true, fastSpawn: true, maxUpgrades: 5 },
+    24: { pool: ["mars", "mars", "mars", "mars", "goliaph", "goliaph"], obstacles: 8, barrels: 8, mud: 4, airstrike: true, maxUpgrades: 5 },
+    25: { pool: ["goliaph", "goliaph", "demon", "demon", "demon", "demon", "mars", "mars"], obstacles: 4, barrels: 4, mud: 3, airstrike: true, maxUpgrades: 6 },
+    26: { pool: ["ghost", "scout", "scout"], obstacles: 6, barrels: 2, mud: 0, airstrike: false, maxUpgrades: 6 } // Призрак! Без авиаудара, чтобы насладиться дуэлью
 };
 
 const defaultProgress = {
