@@ -229,7 +229,8 @@ window.expandCapacity = function(id, cost) { if (PlayerProgress.points >= cost) 
 
 export function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
-    for (let i = 1; i <= 15; i++) { 
+    // ГЕНЕРИРУЕМ 20 УРОВНЕЙ
+    for (let i = 1; i <= 20; i++) { 
         let btn = document.createElement('button'); let classes = 'level-btn';
         if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (i <= PlayerProgress.unlockedLevel) classes += ' unlocked'; else classes += ' locked'; 
         
