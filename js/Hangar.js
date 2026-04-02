@@ -229,26 +229,38 @@ window.expandCapacity = function(id, cost) { if (PlayerProgress.points >= cost) 
 
 export function generateLevelsGrid() { 
     const grid = document.getElementById('levels-grid'); grid.innerHTML = ''; 
-    // ГЕНЕРАЦИЯ КНОПОК ДО 26 УРОВНЯ
     for (let i = 1; i <= 26; i++) { 
         let btn = document.createElement('button'); let classes = 'level-btn';
-        if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (i <= PlayerProgress.unlockedLevel) classes += ' unlocked'; else classes += ' locked'; 
+        
+        let isUnlocked = (i <= PlayerProgress.unlockedLevel || PlayerProgress.passedLevels.includes(i));
+        if (PlayerProgress.passedLevels.includes(i)) classes += ' passed'; else if (isUnlocked) classes += ' unlocked'; else classes += ' locked'; 
         
         let starsHtml = ''; 
-        let prefix = ''; let suffix = '';
+        let iconsHtml = '';
         if (LevelsConfig[i]) { 
-            if (LevelsConfig[i].fastSpawn) prefix = '⚡';
-            if (LevelsConfig[i].airstrike) suffix = '✈️';
+            if (LevelsConfig[i].fastSpawn) iconsHtml += '<span>⚡</span>';
+            if (LevelsConfig[i].airstrike) iconsHtml += '<span>✈️</span>';
             
             let max = LevelsConfig[i].maxUpgrades; let collected = PlayerProgress.collectedStars[i] || 0; 
-            starsHtml = `<div class="level-stars">`; for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } starsHtml += `</div>`; 
+            starsHtml = `<div class="level-stars" style="margin-top: auto; padding-bottom: 5px;">`; 
+            for(let s=0; s<max; s++) { starsHtml += `<span class="star ${s < collected ? 'gold' : ''}">★</span>`; } 
+            starsHtml += `</div>`; 
         }
         
-        let levelTitle = `${prefix}${i}${suffix}`;
-        
         btn.className = classes; 
-        btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><div style="color:${LevelsConfig[i] && LevelsConfig[i].fastSpawn ? '#ffcc00' : 'inherit'};">${levelTitle}</div>${starsHtml}</div>`; 
-        if (i <= PlayerProgress.unlockedLevel) { btn.onclick = () => { if (onStartLevelCallback) onStartLevelCallback(i); }; }
+        
+        // НОВЫЙ ДИЗАЙН КНОПКИ УРОВНЯ
+        btn.style.position = 'relative';
+        btn.style.display = 'flex';
+        btn.style.flexDirection = 'column';
+        
+        btn.innerHTML = `
+            <div style="position: absolute; top: 4px; left: 8px; font-size: 14px; font-weight: bold; color: ${isUnlocked ? '#fff' : '#666'};">${i}</div>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; font-size: 22px; gap: 4px; margin-top: 15px; color:#ffcc00;">${iconsHtml}</div>
+            ${starsHtml}
+        `;
+        
+        if (isUnlocked) { btn.onclick = () => { if (onStartLevelCallback) onStartLevelCallback(i); }; }
         grid.appendChild(btn); 
     } 
 }
