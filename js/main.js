@@ -18,7 +18,6 @@ const scoutHullImage = new Image(); scoutHullImage.src = 'assets/scout-hull.png'
 const demonHullImage = new Image(); demonHullImage.src = 'assets/demon-hull.png' + noCache; const demonTurretImage = new Image(); demonTurretImage.src = 'assets/demon-turret.png' + noCache;
 const marsHullImage = new Image(); marsHullImage.src = 'assets/mars-hull.png' + noCache; const marsTurretImage = new Image(); marsTurretImage.src = 'assets/mars-turret.png' + noCache;
 const goliaphHullImage = new Image(); goliaphHullImage.src = 'assets/goliaph-hull.png' + noCache; const goliaphTurretImage = new Image(); goliaphTurretImage.src = 'assets/goliaph-turret.png' + noCache;
-// СПРАЙТЫ ПРИЗРАКА
 const ghostHullImage = new Image(); ghostHullImage.src = 'assets/ghost-hull.png' + noCache; const ghostTurretImage = new Image(); ghostTurretImage.src = 'assets/ghost-turret.png' + noCache;
 
 const barrelImage = new Image(); barrelImage.src = 'assets/barrel.png' + noCache;
@@ -31,7 +30,6 @@ const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getCont
 canvas.width = 1000; canvas.height = 700;
 const input = new Input(canvas); const arena = new Arena(canvas.width, canvas.height);
 
-// ДОБАВЛЕН МАССИВ ДЛЯ ЛАЗЕРОВ
 let playerTank, enemies = [], bullets = [], sparks = [], floatingTexts = [], drops = [], mines = [], artilleryShells = [], shockwaves = [], lasers = [];
 let airstrikeBeacons = [], airplanes = [];
 let lastTime = 0, gameRunning = false, currentLevelNum = 1, enemiesToSpawn = 0, enemySpawnTimer = 0, levelFinished = false, animFrameId = null;
@@ -113,12 +111,22 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     }
 }
 
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ЛАЗЕРА ПРИЗРАКА
-function applyLaserDamage(target, dist) {
+// --- ЛОГИКА ЛАЗЕРА ПРИЗРАКА ---
+function getLaserAlpha(dist, maxDist) {
+    let fadeStart = maxDist * 0.8;
+    if (dist <= fadeStart) return 1.0;
+    if (dist >= maxDist) return 0.0;
+    return 1.0 - ((dist - fadeStart) / (maxDist - fadeStart));
+}
+
+function applyLaserDamage(target, dist, maxDist) {
     let maxDmg = 100;
     let dmg = maxDmg;
-    if (dist > 450) {
-        dmg = maxDmg - (maxDmg * 0.9) * ((dist - 450) / 450); // Падает до 10 к 900 пкс
+    let falloffStart = maxDist * 0.5; // С половины длины урон падает
+    
+    if (dist > falloffStart) {
+        let ratio = (dist - falloffStart) / (maxDist - falloffStart);
+        dmg = maxDmg - (maxDmg * 0.9) * ratio; // До 10
     }
     if (dmg < 10) dmg = 10;
     
@@ -131,15 +139,18 @@ function applyLaserDamage(target, dist) {
     playSound(hitSound);
 }
 
-function calculateLaserPath(startX, startY, angle, maxDist, arena) {
+function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
     let curX = startX, curY = startY;
     let vx = Math.cos(angle), vy = Math.sin(angle);
     let dist = 0;
-    let path = [{x: curX, y: curY}];
+    let path = [{x: curX, y: curY, dist: 0}];
     let hitTargets = new Set();
+    let bounces = 0;
     
     while(dist < maxDist) {
-        let step = 2; 
+        let step = 5; 
+        if (dist + step > maxDist) step = maxDist - dist; 
+        
         let nextX = curX + vx * step;
         let nextY = curY + vy * step;
         
@@ -156,30 +167,33 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena) {
             }
         }
         
-        if (bounced) path.push({x: curX, y: curY});
+        if (bounced) {
+            bounces++;
+            path.push({x: curX, y: curY, dist: dist});
+        }
         
         curX = nextX; curY = nextY;
         dist += step;
         
-        // Урон Игроку
+        // Урон по всем, кто попался под луч
         if (playerTank.hp > 0 && !hitTargets.has(playerTank)) {
             if (Math.hypot(curX - playerTank.x, curY - playerTank.y) < playerTank.radius) {
                 hitTargets.add(playerTank);
-                applyLaserDamage(playerTank, dist);
+                applyLaserDamage(playerTank, dist, maxDist);
             }
         }
         
-        // Урон другим врагам (Призрак не жалеет никого)
         for (let e of enemies) {
-            if (e.hp > 0 && e.hullName !== "Призрак" && !hitTargets.has(e)) {
+            if (e.hp > 0 && !hitTargets.has(e)) {
+                // Игнорируем самого себя до первого рикошета, чтобы не сжечь себя изнутри
+                if (e === shooter && bounces === 0) continue; 
                 if (Math.hypot(curX - e.x, curY - e.y) < e.radius) {
                     hitTargets.add(e);
-                    applyLaserDamage(e, dist);
+                    applyLaserDamage(e, dist, maxDist);
                 }
             }
         }
         
-        // Взрыв бочек
         for (let b of arena.barrels) {
             if (!b.isDetonating && !hitTargets.has(b)) {
                 if (Math.hypot(curX - b.x, curY - b.y) < b.radius) {
@@ -193,33 +207,43 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena) {
             }
         }
     }
-    path.push({x: curX, y: curY});
+    path.push({x: curX, y: curY, dist: dist});
     return path;
 }
 
-// Быстрая функция проверки пути для ИИ Призрака
-function checkLaserHit(startX, startY, angle, arena, target) {
+function checkLaserHit(startX, startY, angle, arena, target, shooter) {
     let curX = startX, curY = startY;
     let vx = Math.cos(angle), vy = Math.sin(angle);
     let dist = 0;
-    while(dist < 900) {
-        let step = 5; 
+    let bounces = 0;
+    while(dist < 700) {
+        let step = 10; 
+        if (dist + step > 700) step = 700 - dist;
         let nextX = curX + vx * step;
         let nextY = curY + vy * step;
-        if (nextX <= 0 || nextX >= arena.width) vx *= -1;
-        if (nextY <= 0 || nextY >= arena.height) vy *= -1;
+        let bounced = false;
+        
+        if (nextX <= 0 || nextX >= arena.width) { vx *= -1; bounced = true; }
+        if (nextY <= 0 || nextY >= arena.height) { vy *= -1; bounced = true; }
         for(let obs of arena.obstacles) {
             if (nextX > obs.x && nextX < obs.x + obs.w && nextY > obs.y && nextY < obs.y + obs.h) {
                 if (curX <= obs.x || curX >= obs.x + obs.w) vx *= -1;
                 else vy *= -1;
+                bounced = true;
             }
         }
+        if (bounced) bounces++;
+        
         curX += vx*step; curY += vy*step; dist += step;
-        if (Math.hypot(curX - target.x, curY - target.y) < target.radius + 10) return true;
+        if (Math.hypot(curX - target.x, curY - target.y) < target.radius) {
+            if (target === shooter && bounces === 0) continue;
+            return true;
+        }
     }
     return false;
 }
 
+// --- АВИАНАЛЕТ ---
 function spawnAirstrike() {
     let pX = playerTank.x;
     let pY = playerTank.y;
@@ -476,49 +500,52 @@ function gameLoop(timestamp) {
         if (enemy.hp > 0) {
             enemy.updateAI(dt, arena, playerTank, enemies); 
             
-            // --- КАСТОМНЫЙ ИИ ПРИЗРАКА (НАВЕДЕНИЕ И ОТСКОК) ---
-            if (enemy.hullName === "Призрак") {
-                let bestAngle = null;
-                let targetX = playerTank.x + playerTank.pushVx * 0.5; 
-                let targetY = playerTank.y + playerTank.pushVy * 0.5;
-                let directA = Math.atan2(targetY - enemy.y, targetX - enemy.x);
-                
-                if (checkLaserHit(enemy.x, enemy.y, directA, arena, playerTank)) {
-                    bestAngle = directA;
-                } else {
-                    for(let k = 0; k < 36; k++) {
-                        let a = k * 10 * Math.PI / 180;
-                        if (checkLaserHit(enemy.x, enemy.y, a, arena, playerTank)) { bestAngle = a; break; }
+            // ПРОВЕРКА НА ОГЛУШЕНИЕ ДЛЯ ПРИЗРАКА (ЧТОБЫ ДРОН ЕГО БЛОКИРОВАЛ)
+            let isStunned = (enemy.stunTimer > 0);
+            
+            if (!isStunned) {
+                if (enemy.hullName === "Призрак") {
+                    let bestAngle = null;
+                    let targetX = playerTank.x + playerTank.pushVx * 0.5; 
+                    let targetY = playerTank.y + playerTank.pushVy * 0.5;
+                    let directA = Math.atan2(targetY - enemy.y, targetX - enemy.x);
+                    
+                    if (checkLaserHit(enemy.x, enemy.y, directA, arena, playerTank, enemy)) {
+                        bestAngle = directA;
+                    } else {
+                        for(let k = 0; k < 36; k++) {
+                            let a = k * 10 * Math.PI / 180;
+                            if (checkLaserHit(enemy.x, enemy.y, a, arena, playerTank, enemy)) { bestAngle = a; break; }
+                        }
+                    }
+                    
+                    if (bestAngle !== null) {
+                        let tDiff = bestAngle - enemy.turretAngle;
+                        while (tDiff > Math.PI) tDiff -= Math.PI * 2; while (tDiff < -Math.PI) tDiff += Math.PI * 2;
+                        enemy.turretAngle += Math.sign(tDiff) * enemy.turretRotationSpeed * dt;
                     }
                 }
-                
-                if (bestAngle !== null) {
-                    let tDiff = bestAngle - enemy.turretAngle;
-                    while (tDiff > Math.PI) tDiff -= Math.PI * 2; while (tDiff < -Math.PI) tDiff += Math.PI * 2;
-                    enemy.turretAngle += Math.sign(tDiff) * enemy.turretRotationSpeed * dt;
-                }
-            }
 
-            let eShots = enemy.getShots();
-            for (let j = 0; j < eShots; j++) { 
-                let startX = enemy.x + Math.cos(enemy.turretAngle)*45;
-                let startY = enemy.y + Math.sin(enemy.turretAngle)*45;
-                
-                // ВЫСТРЕЛ ПРИЗРАКА
-                if (enemy.turretName === "Призрак-Лазер") {
-                    let path = calculateLaserPath(startX, startY, enemy.turretAngle, 900, arena);
-                    lasers.push({ path: path, life: 0.4, maxLife: 0.4 });
-                    playSound(shootSound);
-                } else if (enemy.aiType === "Марс") {
-                    let spread = 80; 
-                    let tx = playerTank.x + (Math.random() - 0.5) * spread;
-                    let ty = playerTank.y + (Math.random() - 0.5) * spread;
-                    let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
-                    artilleryShells.push({ startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / enemy.bulletSpeed, totalDist: dist, damage: 100, radius: 100 });
-                    playSound(shootSound);
-                } else {
-                    bullets.push(new Bullet(startX, startY, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor, enemy.bulletSpeed)); 
-                    playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); 
+                let eShots = enemy.getShots();
+                for (let j = 0; j < eShots; j++) { 
+                    let startX = enemy.x + Math.cos(enemy.turretAngle)*45;
+                    let startY = enemy.y + Math.sin(enemy.turretAngle)*45;
+                    
+                    if (enemy.turretName === "Призрак-Лазер") {
+                        let path = calculateLaserPath(startX, startY, enemy.turretAngle, 700, arena, enemy);
+                        lasers.push({ path: path, life: 0.4, maxLife: 0.4 });
+                        playSound(shootSound);
+                    } else if (enemy.aiType === "Марс") {
+                        let spread = 80; 
+                        let tx = playerTank.x + (Math.random() - 0.5) * spread;
+                        let ty = playerTank.y + (Math.random() - 0.5) * spread;
+                        let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
+                        artilleryShells.push({ startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / enemy.bulletSpeed, totalDist: dist, damage: 100, radius: 100 });
+                        playSound(shootSound);
+                    } else {
+                        bullets.push(new Bullet(startX, startY, enemy.turretAngle, enemy, enemy.penetration, enemy.bulletRadius, enemy.bulletColor, enemy.bulletSpeed)); 
+                        playSound(enemy.shootSoundType === 'mg' ? mgShootSound : shootSound); 
+                    }
                 }
             }
         } else { 
@@ -693,25 +720,43 @@ function gameLoop(timestamp) {
 
     arena.draw(ctx, barrelImage);
     
-    // ОТРИСОВКА ЛАЗЕРОВ
+    // --- ОТРИСОВКА ЛАЗЕРОВ С ГРАДИЕНТНЫМ ЗАТУХАНИЕМ ---
     for (let l of lasers) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(l.path[0].x, l.path[0].y);
-        for(let k = 1; k < l.path.length; k++) {
-            ctx.lineTo(l.path[k].x, l.path[k].y);
+        for (let k = 0; k < l.path.length - 1; k++) {
+            let p1 = l.path[k];
+            let p2 = l.path[k+1];
+            if (p1.x === p2.x && p1.y === p2.y) continue; // Защита от DOMException в градиенте
+            
+            let alpha1 = getLaserAlpha(p1.dist, 700) * (l.life / l.maxLife);
+            let alpha2 = getLaserAlpha(p2.dist, 700) * (l.life / l.maxLife);
+            
+            ctx.save();
+            let grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+            grad.addColorStop(0, `rgba(0, 255, 255, ${alpha1})`);
+            grad.addColorStop(1, `rgba(0, 255, 255, ${alpha2})`);
+            
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 6;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00ffff';
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            
+            let gradWhite = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+            gradWhite.addColorStop(0, `rgba(255, 255, 255, ${alpha1})`);
+            gradWhite.addColorStop(1, `rgba(255, 255, 255, ${alpha2})`);
+            
+            ctx.strokeStyle = gradWhite;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            ctx.restore();
         }
-        ctx.strokeStyle = `rgba(0, 255, 255, ${l.life / l.maxLife})`;
-        ctx.lineWidth = 6;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#00ffff';
-        ctx.stroke();
-        
-        ctx.strokeStyle = `rgba(255, 255, 255, ${l.life / l.maxLife})`;
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 0;
-        ctx.stroke();
-        ctx.restore();
     }
 
     for (let sw of shockwaves) {
@@ -775,9 +820,9 @@ function gameLoop(timestamp) {
     for (let e of enemies) {
         e.draw(ctx);
         
-        // --- ВИЗУАЛ ЗАРЯДКИ ЛАЗЕРА ПРИЗРАКА ---
-        if (e.hullName === "Призрак" && e.fireCooldown < 2.0 && e.hp > 0) {
-            let chargeRatio = 1.0 - (e.fireCooldown / 2.0); // От 0 до 1
+        let isStunned = (e.stunTimer > 0);
+        if (e.hullName === "Призрак" && e.fireCooldown < 2.0 && e.hp > 0 && !isStunned) {
+            let chargeRatio = 1.0 - (e.fireCooldown / 2.0); 
             let radius = chargeRatio * 20;
             let barrelX = e.x + Math.cos(e.turretAngle)*45;
             let barrelY = e.y + Math.sin(e.turretAngle)*45;
