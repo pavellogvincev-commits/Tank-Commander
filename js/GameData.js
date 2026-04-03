@@ -10,8 +10,9 @@ export const GameData = {
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        "gatling": { name: "Гатлинг", fireRate: 0.15, reloadTime: 4.5, magazineSize: 55, penetration: 7, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
-            upgrades: { reloadTime: -0.25, magazineSize: 10 } },
+        // ГАТЛИНГ: Базовый fireRate 0.2, Апгрейды переработаны
+        "gatling": { name: "Гатлинг", fireRate: 0.2, reloadTime: 4.5, magazineSize: 55, penetration: 7, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
+            upgrades: { fireRate: -0.02, magazineSize: 5 } },
         "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
             upgrades: { damage: 7, explosionRadius: 10 } }
     },
@@ -21,7 +22,6 @@ export const GameData = {
         "demon": { name: "Демон", hp: 120, armor: { front: 40, side: 30, rear: 10 }, speed: 65, size: {w: 80, h: 60}, hitbox: {w: 66, h: 45} },
         "mars": { name: "Марс", hp: 140, armor: { front: 70, side: 35, rear: 25 }, speed: 20, size: {w: 85, h: 65}, hitbox: {w: 77, h: 54} },
         "goliaph": { name: "Голиаф", hp: 250, armor: { front: 120, side: 80, rear: 66 }, speed: 15, size: {w: 90, h: 68}, hitbox: {w: 90, h: 50} },
-        // НОВЫЙ ВРАГ: ПРИЗРАК
         "ghost": { name: "Призрак", hp: 155, armor: { front: 50, side: 50, rear: 35 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 72, h: 52} }
     },
     enemyTurrets: { 
@@ -30,8 +30,7 @@ export const GameData = {
         "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 },
-        // ОРУДИЕ ПРИЗРАКА
-        "ghost": { name: "Призрак-Лазер", fireRate: 4.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
+        "ghost": { name: "Призрак-Лазер", fireRate: 5.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
     }
 };
 
@@ -42,7 +41,7 @@ export const LevelsConfig = {
     4: { pool: ["demon", "basic", "basic", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
     5: { pool: ["demon", "demon", "scout", "scout", "scout"], obstacles: 2, barrels: 4, maxUpgrades: 2 },
     6: { pool: ["scout", "scout", "scout", "scout", "scout"], obstacles: 5, barrels: 2, maxUpgrades: 2, fastSpawn: true },
-    7: { pool: ["demon", "scout", "basic", "demon", "scout", "basic"], obstacles: 4, barrels: 5, maxUpgrades: 2 },
+    7: { pool: ["demon", "scout", "basic", "demon", "scout", "basic"], obstacles: 4, barrels: 5, maxUpgrades: 2, airstrike: true, },
     8: { pool: ["mars", "basic", "basic", "scout", "scout", "scout"], obstacles: 6, barrels: 3, maxUpgrades: 2 },
     9: { pool: ["scout", "scout", "scout", "scout", "demon", "demon", "mars", "mars"], obstacles: 3, barrels: 6, maxUpgrades: 2, fastSpawn: true },
     10: { pool: ["mars", "mars", "mars", "demon", "demon", "demon", "basic", "basic", "scout", "scout"], obstacles: 5, barrels: 10, maxUpgrades: 3 },
@@ -51,21 +50,17 @@ export const LevelsConfig = {
     13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars"], obstacles: 4, barrels: 5, mud: 3, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
     15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon"], obstacles: 3, barrels: 8, mud: 3, maxUpgrades: 4, fastSpawn: true },
-    
-    // АВИАУДАРЫ ТЕПЕРЬ ЗАДАЮТСЯ ФЛАГОМ airstrike: true
     16: { pool: ["demon", "demon", "scout", "scout", "scout", "mars"], obstacles: 5, barrels: 4, airstrike: true, maxUpgrades: 4 },
     17: { pool: ["goliaph", "demon", "demon", "mars", "mars", "basic"], obstacles: 4, barrels: 2, mud: 4, airstrike: true, maxUpgrades: 4 },
     18: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "demon", "demon"], obstacles: 3, barrels: 8, airstrike: true, maxUpgrades: 4, fastSpawn: true },
     19: { pool: ["goliaph", "goliaph", "goliaph", "demon", "demon", "mars"], obstacles: 6, barrels: 3, mud: 2, airstrike: true, maxUpgrades: 5 },
     20: { pool: ["goliaph", "goliaph", "goliaph", "goliaph", "mars", "mars", "mars", "mars"], obstacles: 2, barrels: 6, mud: 3, airstrike: true, maxUpgrades: 5 },
-    
-    // НОВЫЕ 5 УРОВНЕЙ И ВЫХОД ПРИЗРАКА
     21: { pool: ["demon", "mars", "scout", "scout", "scout", "goliaph"], obstacles: 5, barrels: 4, mud: 2, airstrike: true, maxUpgrades: 5 },
     22: { pool: ["goliaph", "demon", "demon", "basic", "mars", "mars"], obstacles: 4, barrels: 2, mud: 5, airstrike: true, maxUpgrades: 5 },
     23: { pool: ["goliaph", "goliaph", "scout", "scout", "scout", "scout", "scout"], obstacles: 2, barrels: 2, mud: 1, airstrike: true, fastSpawn: true, maxUpgrades: 5 },
     24: { pool: ["mars", "mars", "mars", "mars", "goliaph", "goliaph"], obstacles: 8, barrels: 8, mud: 4, airstrike: true, maxUpgrades: 5 },
     25: { pool: ["goliaph", "goliaph", "demon", "demon", "demon", "demon", "mars", "mars"], obstacles: 4, barrels: 4, mud: 3, airstrike: true, maxUpgrades: 6 },
-    26: { pool: ["ghost", "ghost", "ghost"], obstacles: 6, barrels: 2, mud: 0, airstrike: false, maxUpgrades: 6 } // Призрак! Без авиаудара, чтобы насладиться дуэлью
+    26: { pool: ["ghost", "scout", "scout"], obstacles: 6, barrels: 2, mud: 0, airstrike: false, maxUpgrades: 6 } 
 };
 
 const defaultProgress = {
@@ -77,7 +72,7 @@ const defaultProgress = {
         "leopard": { maxCapacity: 5, usedCapacity: 0, hp: 0, stunDuration: 0, speed: 0 },
         "titan": { maxCapacity: 5, usedCapacity: 0, hp: 0, armor: 0, mineDamage: 0 },
         "scourge": { maxCapacity: 3, usedCapacity: 0, penetration: 0, fireRate: 0 },
-        "gatling": { maxCapacity: 3, usedCapacity: 0, reloadTime: 0, magazineSize: 0 },
+        "gatling": { maxCapacity: 3, usedCapacity: 0, fireRate: 0, magazineSize: 0 }, // Изменено reloadTime на fireRate
         "howitzer": { maxCapacity: 3, usedCapacity: 0, damage: 0, explosionRadius: 0 } 
     }
 };
@@ -90,8 +85,13 @@ export function loadProgress() {
         try {
             let parsed = JSON.parse(saved);
             for (let key in parsed) { PlayerProgress[key] = parsed[key]; }
+            // МИГРАЦИЯ СТАРЫХ СОХРАНЕНИЙ ГАТЛИНГА
             if (PlayerProgress.partStats.gatling.magazineSize === undefined) PlayerProgress.partStats.gatling.magazineSize = 0;
-            if (PlayerProgress.partStats.gatling.reloadTime === undefined) PlayerProgress.partStats.gatling.reloadTime = 0;
+            if (PlayerProgress.partStats.gatling.fireRate === undefined) {
+                // Если у игрока был прокачан reloadTime, перекидываем эти звезды в fireRate
+                PlayerProgress.partStats.gatling.fireRate = PlayerProgress.partStats.gatling.reloadTime || 0;
+                delete PlayerProgress.partStats.gatling.reloadTime;
+            }
             if (PlayerProgress.partStats.titan.mineDamage === undefined) PlayerProgress.partStats.titan.mineDamage = PlayerProgress.partStats.titan.speed || 0;
             if (PlayerProgress.partStats.howitzer === undefined) PlayerProgress.partStats.howitzer = { maxCapacity: 3, usedCapacity: 0, damage: 0, explosionRadius: 0 };
         } catch (e) { console.error("Ошибка загрузки сохранения", e); }
