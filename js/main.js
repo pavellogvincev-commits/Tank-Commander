@@ -111,27 +111,28 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
     }
 }
 
-// --- ЛОГИКА ЛАЗЕРА ПРИЗРАКА ---
 function getLaserAlpha(dist, maxDist) {
     let fadeStart = maxDist * 0.8;
     if (dist <= fadeStart) return 1.0;
     if (dist >= maxDist) return 0.0;
-    return 1.0 - ((dist - fadeStart) / (maxDist - fadeStart));
+    return Math.max(0, 1.0 - ((dist - fadeStart) / (maxDist - fadeStart)));
 }
 
 function applyLaserDamage(target, dist, maxDist) {
     let maxDmg = 100;
     let dmg = maxDmg;
-    let falloffStart = maxDist * 0.5; // С половины длины урон падает
+    let falloffStart = maxDist * 0.5; 
     
+    // ЖЕСТКИЙ ПЕРЕСЧЕТ: если за пределами половины пути, плавно снижаем до 10
     if (dist > falloffStart) {
         let ratio = (dist - falloffStart) / (maxDist - falloffStart);
-        dmg = maxDmg - (maxDmg * 0.9) * ratio; // До 10
+        ratio = Math.max(0, Math.min(1, ratio)); // Ограничиваем от 0 до 1
+        dmg = maxDmg - (maxDmg - 10) * ratio; 
     }
-    if (dmg < 10) dmg = 10;
     
     let variance = Math.random() * (dmg * 0.2) - (dmg * 0.1);
     let finalDamage = Math.round(dmg + variance);
+    if (finalDamage < 1) finalDamage = 1;
     
     target.hp -= finalDamage;
     if (target.hp < 0) target.hp = 0;
@@ -175,7 +176,6 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
         curX = nextX; curY = nextY;
         dist += step;
         
-        // Урон по всем, кто попался под луч
         if (playerTank.hp > 0 && !hitTargets.has(playerTank)) {
             if (Math.hypot(curX - playerTank.x, curY - playerTank.y) < playerTank.radius) {
                 hitTargets.add(playerTank);
@@ -185,7 +185,6 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
         
         for (let e of enemies) {
             if (e.hp > 0 && !hitTargets.has(e)) {
-                // Игнорируем самого себя до первого рикошета, чтобы не сжечь себя изнутри
                 if (e === shooter && bounces === 0) continue; 
                 if (Math.hypot(curX - e.x, curY - e.y) < e.radius) {
                     hitTargets.add(e);
@@ -216,7 +215,7 @@ function checkLaserHit(startX, startY, angle, arena, target, shooter) {
     let vx = Math.cos(angle), vy = Math.sin(angle);
     let dist = 0;
     let bounces = 0;
-    while(dist < 700) {
+    while(dist < 700) { // ИСПРАВЛЕНА ДАЛЬНОСТЬ НА 700
         let step = 10; 
         if (dist + step > 700) step = 700 - dist;
         let nextX = curX + vx * step;
@@ -243,7 +242,6 @@ function checkLaserHit(startX, startY, angle, arena, target, shooter) {
     return false;
 }
 
-// --- АВИАНАЛЕТ ---
 function spawnAirstrike() {
     let pX = playerTank.x;
     let pY = playerTank.y;
@@ -311,7 +309,12 @@ function startLevel(levelNum) {
     if (bTurr.upgrades.damage) calcTurr.damage += (sTurr.damage || 0) * bTurr.upgrades.damage; 
     if (bTurr.upgrades.explosionRadius) calcTurr.explosionRadius += (sTurr.explosionRadius || 0) * bTurr.upgrades.explosionRadius; 
     
-    if (bTurr.upgrades.fireRate) calcTurr.fireRate += (sTurr.fireRate || 0) * bTurr.upgrades.fireRate;
+    // ПРИМЕНЕНИЕ АПГРЕЙДА ГАТЛИНГА С ОГРАНИЧИТЕЛЕМ
+    if (bTurr.upgrades.fireRate) {
+        calcTurr.fireRate += (sTurr.fireRate || 0) * bTurr.upgrades.fireRate;
+        if (calcTurr.fireRate < 0.01) calcTurr.fireRate = 0.01;
+    }
+    
     if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += (sTurr.reloadTime || 0) * bTurr.upgrades.reloadTime;
     if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += (sTurr.magazineSize || 0) * bTurr.upgrades.magazineSize;
     
@@ -426,7 +429,15 @@ function gameLoop(timestamp) {
             } else {
                 let finalAngle = playerTank.turretAngle;
                 if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
-                bullets.push(new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed)); 
+                
+                let newB = new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed);
+                if (playerTank.turretName === "Гатлинг") {
+                    newB.isGatling = true;
+                    newB.startPenetration = playerTank.penetration;
+                    newB.maxLifeTime = 0.3; // УРЕЗАНА ДАЛЬНОСТЬ НА 25%
+                }
+                bullets.push(newB); 
+                
                 playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
             }
         }
@@ -449,8 +460,9 @@ function gameLoop(timestamp) {
         if (ap.dropsMade < 5 && ap.timeAlive >= ap.nextDropTime) {
             let spreadX = (Math.random() - 0.5) * 100;
             let spreadY = (Math.random() - 0.5) * 100;
-            let bx = Math.max(20, Math.min(canvas.width - 20, ap.x + spreadX));
-            let by = Math.max(20, Math.min(canvas.height - 20, ap.y + spreadY));
+            // УБРАНО ОГРАНИЧЕНИЕ ПО КРАЯМ КАРТЫ
+            let bx = ap.x + spreadX;
+            let by = ap.y + spreadY;
             
             airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
             ap.dropsMade++;
@@ -466,7 +478,8 @@ function gameLoop(timestamp) {
         let b = airstrikeBeacons[i];
         b.timer -= dt;
         if (b.timer <= 0) {
-            createExplosionDamage(b.x, b.y, 150, 250, 1000);
+            // РАДИУС ВЗРЫВА СНИЖЕН ДО 200
+            createExplosionDamage(b.x, b.y, 150, 200, 1000);
             airstrikeBeacons.splice(i, 1);
         }
     }
@@ -500,7 +513,6 @@ function gameLoop(timestamp) {
         if (enemy.hp > 0) {
             enemy.updateAI(dt, arena, playerTank, enemies); 
             
-            // ПРОВЕРКА НА ОГЛУШЕНИЕ ДЛЯ ПРИЗРАКА (ЧТОБЫ ДРОН ЕГО БЛОКИРОВАЛ)
             let isStunned = (enemy.stunTimer > 0);
             
             if (!isStunned) {
@@ -577,7 +589,6 @@ function gameLoop(timestamp) {
         }
     }
 
-    // ТАЙМЕРЫ И УДАЛЕНИЕ ЛАЗЕРОВ
     for(let i=lasers.length-1; i>=0; i--) {
         let l = lasers[i];
         l.life -= dt;
@@ -589,15 +600,10 @@ function gameLoop(timestamp) {
         
         if (b.lifeTime === undefined) b.lifeTime = 0;
         
-        let isGatlingBullet = (b.ownerTank && b.ownerTank.turretName === "Гатлинг");
-        if (b.maxLifeTime === undefined) {
-            b.maxLifeTime = isGatlingBullet ? 0.4 : Infinity;
-        }
-        
         b.lifeTime += dt;
-        if (b.lifeTime >= b.maxLifeTime) {
+        if (b.maxLifeTime && b.lifeTime >= b.maxLifeTime) {
             b.toDestroy = true; 
-            sparks.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '255, 200, 0' });
+            if (b.isGatling) sparks.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, size: 2, color: '255, 200, 0' });
             continue; 
         }
 
@@ -691,7 +697,7 @@ function gameLoop(timestamp) {
         ctx.strokeStyle = `rgba(255, 50, 0, ${blink * 0.3})`;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 250, 0, Math.PI * 2); 
+        ctx.arc(b.x, b.y, 200, 0, Math.PI * 2); 
         ctx.stroke();
         ctx.fillStyle = `rgba(255, 50, 0, ${blink * 0.05})`;
         ctx.fill();
@@ -720,12 +726,11 @@ function gameLoop(timestamp) {
 
     arena.draw(ctx, barrelImage);
     
-    // --- ОТРИСОВКА ЛАЗЕРОВ С ГРАДИЕНТНЫМ ЗАТУХАНИЕМ ---
     for (let l of lasers) {
         for (let k = 0; k < l.path.length - 1; k++) {
             let p1 = l.path[k];
             let p2 = l.path[k+1];
-            if (p1.x === p2.x && p1.y === p2.y) continue; // Защита от DOMException в градиенте
+            if (p1.x === p2.x && p1.y === p2.y) continue; 
             
             let alpha1 = getLaserAlpha(p1.dist, 700) * (l.life / l.maxLife);
             let alpha2 = getLaserAlpha(p2.dist, 700) * (l.life / l.maxLife);
