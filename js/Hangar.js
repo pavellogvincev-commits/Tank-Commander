@@ -61,17 +61,16 @@ export function updateHangarUI() {
     let armorS = hData.armor.side + ((sHull.armor || 0) * (hData.upgrades.armor?.side || 0));
     let armorR = hData.armor.rear + ((sHull.armor || 0) * (hData.upgrades.armor?.rear || 0));
     let speedVal = hData.speed + ((sHull.speed || 0) * (hData.upgrades.speed || 0));
+    
+    // Лимит для отображения скорострельности Гатлинга (не ниже 0.01)
     let frVal = tData.fireRate + ((sTurr.fireRate || 0) * (tData.upgrades.fireRate || 0));
+    if (tId === "gatling" && frVal < 0.01) frVal = 0.01;
 
     let statsHtml = `
         <div class="assembly-stat-row"><span>Прочность:</span> <span>${PlayerProgress.hullsHp[hId]} / ${maxHp}</span></div>
         <div class="assembly-stat-row"><span>Броня:</span> <span>${armorF}/${armorS}/${armorR}</span></div>
         <div class="assembly-stat-row"><span>Скорость:</span> <span>${speedVal}</span></div>
     `;
-
-    if (tId !== "gatling") {
-        statsHtml += `<div class="assembly-stat-row"><span>Скорострел.:</span> <span>${frVal.toFixed(2)}с</span></div>`;
-    }
 
     if (tId === "howitzer") {
         let dmgVal = tData.damage + ((sTurr.damage || 0) * (tData.upgrades.damage || 0));
@@ -81,9 +80,11 @@ export function updateHangarUI() {
     } else if (tId === "gatling") {
         let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
         statsHtml += `<div class="assembly-stat-row" style="color:#ff5555;"><span>Урон (сквозь броню):</span> <span style="color:#ff5555;">${penVal}</span></div>`;
+        statsHtml += `<div class="assembly-stat-row"><span>Скорострел.:</span> <span>${frVal.toFixed(2)}с</span></div>`;
     } else {
         let penVal = tData.penetration + ((sTurr.penetration || 0) * (tData.upgrades.penetration || 0));
         statsHtml += `<div class="assembly-stat-row"><span>Пробитие:</span> <span>${penVal}</span></div>`;
+        statsHtml += `<div class="assembly-stat-row"><span>Скорострел.:</span> <span>${frVal.toFixed(2)}с</span></div>`;
     }
 
     if (hId === "titan") {
@@ -95,9 +96,7 @@ export function updateHangarUI() {
     
     if (tId === "gatling") {
         let magVal = tData.magazineSize + ((sTurr.magazineSize || 0) * (tData.upgrades.magazineSize || 0));
-        let relVal = tData.reloadTime + ((sTurr.reloadTime || 0) * (tData.upgrades.reloadTime || 0));
         statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Барабан:</span> <span style="color:#ffffdd;">${magVal}</span></div>`;
-        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Перезарядка:</span> <span style="color:#ffffdd;">${relVal.toFixed(2)}с</span></div>`;
     }
 
     document.getElementById('assembly-stats').innerHTML = statsHtml;
@@ -168,8 +167,11 @@ function showPartDetails(id) {
         if (item.upgrades.damage !== undefined) html += `<div class="upgrade-row"><span>Взрывной урон: <span id="val-damage" class="upgrade-val">${item.damage + ((stats.damage || 0) * item.upgrades.damage)}</span></span></div>`;
         if (item.upgrades.explosionRadius !== undefined) html += `<div class="upgrade-row"><span>Радиус взрыва: <span id="val-explosionRadius" class="upgrade-val">${item.explosionRadius + ((stats.explosionRadius || 0) * item.upgrades.explosionRadius)}</span></span></div>`;
         
-        if (item.upgrades.fireRate !== undefined && id !== "gatling") html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${(item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate)).toFixed(2)}с</span></span></div>`;
-        if (item.upgrades.reloadTime !== undefined) html += `<div class="upgrade-row"><span>Время перезарядки: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + ((stats.reloadTime || 0) * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
+        if (item.upgrades.fireRate !== undefined) {
+            let calcFR = item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate);
+            if (id === "gatling" && calcFR < 0.01) calcFR = 0.01;
+            html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${calcFR.toFixed(2)}с</span></span></div>`;
+        }
         if (item.upgrades.magazineSize !== undefined) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + ((stats.magazineSize || 0) * item.upgrades.magazineSize)}</span></span></div>`;
 
         html += `<p class="ability-text">Особенность: <span>${item.ability || 'Нет'}</span></p>`;
@@ -249,7 +251,6 @@ export function generateLevelsGrid() {
         
         btn.className = classes; 
         
-        // НОВЫЙ ДИЗАЙН КНОПКИ УРОВНЯ
         btn.style.position = 'relative';
         btn.style.display = 'flex';
         btn.style.flexDirection = 'column';
