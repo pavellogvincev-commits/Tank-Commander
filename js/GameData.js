@@ -10,7 +10,7 @@ export const GameData = {
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
             upgrades: { penetration: 6, fireRate: -0.06 } },
-        "gatling": { name: "Гатлинг", fireRate: 0.1, reloadTime: 4.5, magazineSize: 55, penetration: 7, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
+        "gatling": { name: "Гатлинг", fireRate: 0.15, reloadTime: 4.5, magazineSize: 55, penetration: 7, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { reloadTime: -0.25, magazineSize: 10 } },
         "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
             upgrades: { damage: 7, explosionRadius: 10 } }
