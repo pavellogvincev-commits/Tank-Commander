@@ -22,8 +22,17 @@ export function initHangarUI(startLevelFn) {
     };
 
     document.getElementById('heal-btn').onclick = () => {
-        const hullId = PlayerProgress.currentAssembly.hullId; const maxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * (GameData.hulls[hullId].upgrades.hp || 0));
-        if (PlayerProgress.points >= 1 && PlayerProgress.hullsHp[hullId] < maxHp) { PlayerProgress.points -= 1; PlayerProgress.hullsHp[hullId] = Math.min(maxHp, PlayerProgress.hullsHp[hullId] + Math.floor(maxHp * 0.2)); updateHangarUI(); }
+        const hullId = PlayerProgress.currentAssembly.hullId; 
+        const maxHp = GameData.hulls[hullId].hp + (PlayerProgress.partStats[hullId].hp * (GameData.hulls[hullId].upgrades.hp || 0));
+        
+        // РЕМОНТ: Охотник чинится на 40%, остальные на 20%
+        let healPercent = (hullId === "hunter") ? 0.4 : 0.2;
+        
+        if (PlayerProgress.points >= 1 && PlayerProgress.hullsHp[hullId] < maxHp) { 
+            PlayerProgress.points -= 1; 
+            PlayerProgress.hullsHp[hullId] = Math.min(maxHp, PlayerProgress.hullsHp[hullId] + Math.floor(maxHp * healPercent)); 
+            updateHangarUI(); 
+        }
     };
     document.getElementById('to-levels-btn').onclick = () => { generateLevelsGrid(); showScreen('levels'); };
     document.getElementById('back-to-hangar-btn').onclick = () => { showScreen('hangar'); updateHangarUI(); };
@@ -62,9 +71,9 @@ export function updateHangarUI() {
     let armorR = hData.armor.rear + ((sHull.armor || 0) * (hData.upgrades.armor?.rear || 0));
     let speedVal = hData.speed + ((sHull.speed || 0) * (hData.upgrades.speed || 0));
     
-    // Лимит для отображения скорострельности Гатлинга (не ниже 0.01)
     let frVal = tData.fireRate + ((sTurr.fireRate || 0) * (tData.upgrades.fireRate || 0));
-    if (tId === "gatling" && frVal < 0.01) frVal = 0.01;
+    // ЛИМИТ ГАТЛИНГА 0.02
+    if (tId === "gatling" && frVal < 0.02) frVal = 0.02;
 
     let statsHtml = `
         <div class="assembly-stat-row"><span>Прочность:</span> <span>${PlayerProgress.hullsHp[hId]} / ${maxHp}</span></div>
@@ -96,7 +105,9 @@ export function updateHangarUI() {
     
     if (tId === "gatling") {
         let magVal = tData.magazineSize + ((sTurr.magazineSize || 0) * (tData.upgrades.magazineSize || 0));
+        let relVal = tData.reloadTime + ((sTurr.reloadTime || 0) * (tData.upgrades.reloadTime || 0));
         statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Барабан:</span> <span style="color:#ffffdd;">${magVal}</span></div>`;
+        statsHtml += `<div class="assembly-stat-row" style="color:#ffffdd;"><span>Перезарядка:</span> <span style="color:#ffffdd;">${relVal.toFixed(2)}с</span></div>`;
     }
 
     document.getElementById('assembly-stats').innerHTML = statsHtml;
@@ -169,9 +180,10 @@ function showPartDetails(id) {
         
         if (item.upgrades.fireRate !== undefined) {
             let calcFR = item.fireRate + ((stats.fireRate || 0) * item.upgrades.fireRate);
-            if (id === "gatling" && calcFR < 0.01) calcFR = 0.01;
+            if (id === "gatling" && calcFR < 0.02) calcFR = 0.02;
             html += `<div class="upgrade-row"><span>Перезарядка: <span id="val-fireRate" class="upgrade-val">${calcFR.toFixed(2)}с</span></span></div>`;
         }
+        if (item.upgrades.reloadTime !== undefined) html += `<div class="upgrade-row"><span>Время перезарядки: <span id="val-reloadTime" class="upgrade-val">${(item.reloadTime + ((stats.reloadTime || 0) * item.upgrades.reloadTime)).toFixed(2)}с</span></span></div>`;
         if (item.upgrades.magazineSize !== undefined) html += `<div class="upgrade-row"><span>Боезапас: <span id="val-magazineSize" class="upgrade-val">${item.magazineSize + ((stats.magazineSize || 0) * item.upgrades.magazineSize)}</span></span></div>`;
 
         html += `<p class="ability-text">Особенность: <span>${item.ability || 'Нет'}</span></p>`;
