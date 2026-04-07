@@ -153,12 +153,10 @@ export class Tank {
             }
         }
 
-        // --- ЛОГИКА ГРЯЗИ (Замедление на 40%) ---
         let inMud = false;
         if (arena.mudAreas) {
             for (let m of arena.mudAreas) {
                 let dist = Math.sqrt(Math.pow(m.x - this.x, 2) + Math.pow(m.y - this.y, 2));
-                // Если центр танка наехал на лужу
                 if (dist < m.radius + this.radius / 2) { 
                     inMud = true; 
                     break; 
@@ -167,7 +165,7 @@ export class Tank {
         }
 
         let actualSpeed = isPushingBarrel ? this.speed * 0.9 : this.speed;
-        if (inMud) actualSpeed *= 0.6; // Ездит на 40% медленнее
+        if (inMud) actualSpeed *= 0.6; 
 
         let vx = Math.cos(this.hullAngle) * actualSpeed + this.pushVx; 
         let vy = Math.sin(this.hullAngle) * actualSpeed + this.pushVy;
@@ -273,16 +271,13 @@ export class Tank {
                 
                 if (this.shieldTimer > 0) return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'ricochet', damage: 0 };
 
-                let isGatling = bullet.ownerTank && bullet.ownerTank.turretName === "Гатлинг";
-                
-                if (isGatling) {
+                // ГАТЛИНГ ПРОБИВАЕТ ДАЖЕ ПОСЛЕ РИКОШЕТА
+                if (bullet.isGatling) {
                     let life = bullet.lifeTime || 0;
-                    let maxLife = bullet.maxLifeTime || 0.4;
-                    let ratio = life / maxLife;
-                    if (ratio > 1) ratio = 1;
-                    if (ratio < 0) ratio = 0;
+                    let maxLife = bullet.maxLifeTime || 0.3;
+                    let ratio = Math.max(0, Math.min(1, life / maxLife));
                     
-                    let maxDmg = bullet.penetration; 
+                    let maxDmg = bullet.startPenetration || 9; 
                     let minDmg = 1;                  
                     
                     let currentDmg = maxDmg - (maxDmg - minDmg) * ratio;
