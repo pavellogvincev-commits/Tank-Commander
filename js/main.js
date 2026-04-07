@@ -119,14 +119,14 @@ function getLaserAlpha(dist, maxDist) {
 }
 
 function applyLaserDamage(target, dist, maxDist) {
-    let maxDmg = 100;
+    let maxDmg = 60; // БАЗОВЫЙ УРОН ПРИЗРАКА 60
     let dmg = maxDmg;
     let falloffStart = maxDist * 0.5; 
     
-    // ЖЕСТКИЙ ПЕРЕСЧЕТ: если за пределами половины пути, плавно снижаем до 10
+    // ЖЕСТКАЯ ФОРМУЛА С ОГРАНИЧИТЕЛЕМ
     if (dist > falloffStart) {
         let ratio = (dist - falloffStart) / (maxDist - falloffStart);
-        ratio = Math.max(0, Math.min(1, ratio)); // Ограничиваем от 0 до 1
+        ratio = Math.max(0, Math.min(1, ratio)); 
         dmg = maxDmg - (maxDmg - 10) * ratio; 
     }
     
@@ -140,12 +140,12 @@ function applyLaserDamage(target, dist, maxDist) {
     playSound(hitSound);
 }
 
+// НОВЫЙ АЛГОРИТМ РАСЧЕТА ПУТИ: РИКОШЕТ ОТ ТАНКОВ И СТЕН
 function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
     let curX = startX, curY = startY;
     let vx = Math.cos(angle), vy = Math.sin(angle);
     let dist = 0;
     let path = [{x: curX, y: curY, dist: 0}];
-    let hitTargets = new Set();
     let bounces = 0;
     
     while(dist < maxDist) {
@@ -155,56 +155,66 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
         let nextX = curX + vx * step;
         let nextY = curY + vy * step;
         
-        let bounced = false;
-        if (nextX <= 0 || nextX >= arena.width) { vx *= -1; bounced = true; nextX = curX + vx*step; }
-        if (nextY <= 0 || nextY >= arena.height) { vy *= -1; bounced = true; nextY = curY + vy*step; }
+        let hitSomething = false;
+
+        if (nextX <= 0 || nextX >= arena.width) { vx *= -1; hitSomething = true; nextX = curX; }
+        if (nextY <= 0 || nextY >= arena.height) { vy *= -1; hitSomething = true; nextY = curY; }
         
-        for(let obs of arena.obstacles) {
-            if (nextX > obs.x && nextX < obs.x + obs.w && nextY > obs.y && nextY < obs.y + obs.h) {
-                if (curX <= obs.x || curX >= obs.x + obs.w) vx *= -1;
-                else vy *= -1;
-                bounced = true;
-                nextX = curX + vx*step; nextY = curY + vy*step;
+        if (!hitSomething) {
+            for(let obs of arena.obstacles) {
+                if (nextX > obs.x && nextX < obs.x + obs.w && nextY > obs.y && nextY < obs.y + obs.h) {
+                    if (curX <= obs.x || curX >= obs.x + obs.w) vx *= -1;
+                    else vy *= -1;
+                    hitSomething = true;
+                    nextX = curX; nextY = curY;
+                    break;
+                }
+            }
+        }
+
+        // РИКОШЕТ ОТ ТАНКОВ И НАНЕСЕНИЕ УРОНА
+        if (!hitSomething) {
+            let allTanks = (playerTank && playerTank.hp > 0) ? [playerTank, ...enemies] : enemies;
+            for (let t of allTanks) {
+                if (t.hp <= 0) continue;
+                // Игнор стрелка до первого отскока, чтобы он не сжег себя изнутри
+                if (t === shooter && bounces === 0 && dist < 50) continue;
+                
+                let distToTank = Math.hypot(nextX - t.x, nextY - t.y);
+                if (distToTank < t.radius) {
+                    applyLaserDamage(t, dist, maxDist);
+                    
+                    let nx = (nextX - t.x) / (distToTank || 1);
+                    let ny = (nextY - t.y) / (distToTank || 1);
+                    let dot = vx * nx + vy * ny;
+                    vx -= 2 * dot * nx;
+                    vy -= 2 * dot * ny;
+                    
+                    nextX = t.x + nx * (t.radius + 2);
+                    nextY = t.y + ny * (t.radius + 2);
+                    hitSomething = true;
+                    break;
+                }
+            }
+        }
+
+        for (let b of arena.barrels) {
+            if (!b.isDetonating && Math.hypot(nextX - b.x, nextY - b.y) < b.radius) {
+                b.isDetonating = true;
+                setTimeout(() => {
+                    let idx = arena.barrels.indexOf(b);
+                    if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 100, 150, 600); }
+                }, 100);
             }
         }
         
-        if (bounced) {
+        if (hitSomething) {
             bounces++;
             path.push({x: curX, y: curY, dist: dist});
         }
         
         curX = nextX; curY = nextY;
         dist += step;
-        
-        if (playerTank.hp > 0 && !hitTargets.has(playerTank)) {
-            if (Math.hypot(curX - playerTank.x, curY - playerTank.y) < playerTank.radius) {
-                hitTargets.add(playerTank);
-                applyLaserDamage(playerTank, dist, maxDist);
-            }
-        }
-        
-        for (let e of enemies) {
-            if (e.hp > 0 && !hitTargets.has(e)) {
-                if (e === shooter && bounces === 0) continue; 
-                if (Math.hypot(curX - e.x, curY - e.y) < e.radius) {
-                    hitTargets.add(e);
-                    applyLaserDamage(e, dist, maxDist);
-                }
-            }
-        }
-        
-        for (let b of arena.barrels) {
-            if (!b.isDetonating && !hitTargets.has(b)) {
-                if (Math.hypot(curX - b.x, curY - b.y) < b.radius) {
-                    hitTargets.add(b);
-                    b.isDetonating = true;
-                    setTimeout(() => {
-                        let idx = arena.barrels.indexOf(b);
-                        if (idx !== -1) { arena.barrels.splice(idx, 1); createExplosionDamage(b.x, b.y, 100, 150, 600); }
-                    }, 100);
-                }
-            }
-        }
     }
     path.push({x: curX, y: curY, dist: dist});
     return path;
@@ -215,28 +225,54 @@ function checkLaserHit(startX, startY, angle, arena, target, shooter) {
     let vx = Math.cos(angle), vy = Math.sin(angle);
     let dist = 0;
     let bounces = 0;
-    while(dist < 700) { // ИСПРАВЛЕНА ДАЛЬНОСТЬ НА 700
+    while(dist < 700) { 
         let step = 10; 
         if (dist + step > 700) step = 700 - dist;
         let nextX = curX + vx * step;
         let nextY = curY + vy * step;
         let bounced = false;
         
-        if (nextX <= 0 || nextX >= arena.width) { vx *= -1; bounced = true; }
-        if (nextY <= 0 || nextY >= arena.height) { vy *= -1; bounced = true; }
-        for(let obs of arena.obstacles) {
-            if (nextX > obs.x && nextX < obs.x + obs.w && nextY > obs.y && nextY < obs.y + obs.h) {
-                if (curX <= obs.x || curX >= obs.x + obs.w) vx *= -1;
-                else vy *= -1;
-                bounced = true;
+        if (nextX <= 0 || nextX >= arena.width) { vx *= -1; bounced = true; nextX = curX; }
+        if (nextY <= 0 || nextY >= arena.height) { vy *= -1; bounced = true; nextY = curY; }
+        
+        if (!bounced) {
+            for(let obs of arena.obstacles) {
+                if (nextX > obs.x && nextX < obs.x + obs.w && nextY > obs.y && nextY < obs.y + obs.h) {
+                    if (curX <= obs.x || curX >= obs.x + obs.w) vx *= -1;
+                    else vy *= -1;
+                    bounced = true;
+                    nextX = curX; nextY = curY;
+                    break;
+                }
             }
         }
+
+        if (!bounced) {
+            for (let e of enemies) {
+                if (e === target || e.hp <= 0) continue;
+                if (e === shooter && bounces === 0 && dist < 50) continue;
+                
+                let distToTank = Math.hypot(nextX - e.x, nextY - e.y);
+                if (distToTank < e.radius) {
+                    let nx = (nextX - e.x) / (distToTank || 1);
+                    let ny = (nextY - e.y) / (distToTank || 1);
+                    let dot = vx * nx + vy * ny;
+                    vx -= 2 * dot * nx;
+                    vy -= 2 * dot * ny;
+                    nextX = e.x + nx * (e.radius + 2);
+                    nextY = e.y + ny * (e.radius + 2);
+                    bounced = true;
+                    break;
+                }
+            }
+        }
+
         if (bounced) bounces++;
-        
-        curX += vx*step; curY += vy*step; dist += step;
+        curX = nextX; curY = nextY; dist += step;
+
         if (Math.hypot(curX - target.x, curY - target.y) < target.radius) {
-            if (target === shooter && bounces === 0) continue;
-            return true;
+            if (target === shooter && bounces === 0 && dist < 50) { /* ignore */ }
+            else return true;
         }
     }
     return false;
@@ -309,10 +345,9 @@ function startLevel(levelNum) {
     if (bTurr.upgrades.damage) calcTurr.damage += (sTurr.damage || 0) * bTurr.upgrades.damage; 
     if (bTurr.upgrades.explosionRadius) calcTurr.explosionRadius += (sTurr.explosionRadius || 0) * bTurr.upgrades.explosionRadius; 
     
-    // ПРИМЕНЕНИЕ АПГРЕЙДА ГАТЛИНГА С ОГРАНИЧИТЕЛЕМ
     if (bTurr.upgrades.fireRate) {
         calcTurr.fireRate += (sTurr.fireRate || 0) * bTurr.upgrades.fireRate;
-        if (calcTurr.fireRate < 0.01) calcTurr.fireRate = 0.01;
+        if (turretId === "gatling" && calcTurr.fireRate < 0.02) calcTurr.fireRate = 0.02;
     }
     
     if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += (sTurr.reloadTime || 0) * bTurr.upgrades.reloadTime;
@@ -431,13 +466,13 @@ function gameLoop(timestamp) {
                 if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
                 
                 let newB = new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed);
+                // ПРИКРЕПЛЯЕМ МЕТКУ К САМОЙ ПУЛЕ
                 if (playerTank.turretName === "Гатлинг") {
                     newB.isGatling = true;
                     newB.startPenetration = playerTank.penetration;
-                    newB.maxLifeTime = 0.3; // УРЕЗАНА ДАЛЬНОСТЬ НА 25%
+                    newB.maxLifeTime = 0.3; // Урезано на 25%
                 }
                 bullets.push(newB); 
-                
                 playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
             }
         }
@@ -460,11 +495,15 @@ function gameLoop(timestamp) {
         if (ap.dropsMade < 5 && ap.timeAlive >= ap.nextDropTime) {
             let spreadX = (Math.random() - 0.5) * 100;
             let spreadY = (Math.random() - 0.5) * 100;
-            // УБРАНО ОГРАНИЧЕНИЕ ПО КРАЯМ КАРТЫ
+            
             let bx = ap.x + spreadX;
             let by = ap.y + spreadY;
             
-            airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
+            // Если бомба за краем экрана, она просто не спавнится
+            if (bx >= 0 && bx <= canvas.width && by >= 0 && by <= canvas.height) {
+                airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
+            }
+            
             ap.dropsMade++;
             ap.nextDropTime += 0.7; 
         }
@@ -478,8 +517,7 @@ function gameLoop(timestamp) {
         let b = airstrikeBeacons[i];
         b.timer -= dt;
         if (b.timer <= 0) {
-            // РАДИУС ВЗРЫВА СНИЖЕН ДО 200
-            createExplosionDamage(b.x, b.y, 150, 200, 1000);
+            createExplosionDamage(b.x, b.y, 150, 200, 1000); // Радиус снижен до 200
             airstrikeBeacons.splice(i, 1);
         }
     }
