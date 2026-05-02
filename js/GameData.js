@@ -1,7 +1,7 @@
 export const GameData = {
     hulls: { 
         "hunter": { name: "Охотник", hp: 150, armor: { front: 50, side: 30, rear: 20 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52}, ability: "Нет", cost: 0, 
-            upgrades: { hp: 15, armor: { front: 5, side: 3, rear: 2 }, speed: 5 } },
+            upgrades: { hp: 20, armor: { front: 7, side: 5, rear: 3 }, speed: 8 } },
         "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 80, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "ЭМИ-Дрон (12 сек)", cost: 15,
             upgrades: { hp: 10, stunDuration: 1, speed: 7 } },
         "titan": { name: "Титан", hp: 200, armor: { front: 65, side: 40, rear: 35 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (6 шт)", cost: 15,
@@ -9,7 +9,7 @@ export const GameData = {
     },
     turrets: { 
         "scourge": { name: "Плеть", fireRate: 2.0, penetration: 80, burstCount: 1, burstDelay: 0, bulletRadius: 3, bulletColor: '#ffcc00', shootSound: 'cannon', bulletSpeed: 500, cost: 0, ability: "Нет",
-            upgrades: { penetration: 6, fireRate: -0.06 } },
+            upgrades: { penetration: 8, fireRate: -0.08 } },
         // ГАТЛИНГ: Урон 9, Скорострел 0.16
         "gatling": { name: "Гатлинг", fireRate: 0.16, reloadTime: 4.5, magazineSize: 55, penetration: 9, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { fireRate: -0.02, magazineSize: 5 } },
@@ -31,7 +31,7 @@ export const GameData = {
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 },
         // ПРИЗРАК: Перезарядка 4.0
-        "ghost": { name: "Призрак-Лазер", fireRate: 4.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
+        "ghost": { name: "Призрак-Лазер", fireRate: 3.0, penetration: 100, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
     }
 };
 
