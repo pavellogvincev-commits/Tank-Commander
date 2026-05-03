@@ -14,7 +14,7 @@ export const GameData = {
         "gatling": { name: "Гатлинг", fireRate: 0.16, reloadTime: 4.5, magazineSize: 55, penetration: 9, spread: 0.1, bulletRadius: 1.5, bulletColor: '#ffffdd', shootSound: 'mg', bulletSpeed: 800, cost: 10, ability: "Игнорирует броню",
             upgrades: { fireRate: -0.02, magazineSize: 5 } },
         "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
-            upgrades: { damage: 7, explosionRadius: 10 } }
+            upgrades: { damage: 12, explosionRadius: 20 } }
     },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
