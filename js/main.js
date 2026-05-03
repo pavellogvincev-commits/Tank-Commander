@@ -118,29 +118,51 @@ function getLaserAlpha(dist, maxDist) {
     return Math.max(0, 1.0 - ((dist - fadeStart) / (maxDist - fadeStart)));
 }
 
-function applyLaserDamage(target, dist, maxDist) {
-    let maxDmg = 60; // БАЗОВЫЙ УРОН ПРИЗРАКА 60
-    let dmg = maxDmg;
+// НОВАЯ МЕХАНИКА ЛАЗЕРА: Учитывает броню как обычный снаряд
+function applyLaserDamage(target, hitX, hitY, dist, maxDist) {
+    let basePen = 90; // Базовое пробитие лазера
+    let pen = basePen;
     let falloffStart = maxDist * 0.5; 
     
-    // ЖЕСТКАЯ ФОРМУЛА С ОГРАНИЧИТЕЛЕМ
+    // Затухание луча (снижение пробития с дальностью)
     if (dist > falloffStart) {
         let ratio = (dist - falloffStart) / (maxDist - falloffStart);
         ratio = Math.max(0, Math.min(1, ratio)); 
-        dmg = maxDmg - (maxDmg - 10) * ratio; 
+        pen = basePen - (basePen - 10) * ratio; 
     }
     
-    let variance = Math.random() * (dmg * 0.2) - (dmg * 0.1);
-    let finalDamage = Math.round(dmg + variance);
-    if (finalDamage < 1) finalDamage = 1;
-    
-    target.hp -= finalDamage;
-    if (target.hp < 0) target.hp = 0;
-    spawnText(target.x, target.y - 20, `-${finalDamage}`, '#00ffff', 25);
-    playSound(hitSound);
+    // Определяем зону попадания (относительно поворота корпуса цели)
+    let angleToHit = Math.atan2(hitY - target.y, hitX - target.x);
+    let relAngle = angleToHit - target.hullAngle;
+    while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+    while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+    let hitZone = 'side';
+    if (Math.abs(relAngle) < Math.PI / 4) hitZone = 'front';
+    else if (Math.abs(relAngle) > 3 * Math.PI / 4) hitZone = 'rear';
+
+    // Получаем текущую броню в этой зоне и снимаем 1 единицу
+    let currentArmor = target.armor[hitZone].current;
+    target.armor[hitZone].current = Math.max(0, target.armor[hitZone].current - 1); 
+
+    // Расчет урона: пробивает ли лазер броню?
+    if (pen > currentArmor) {
+        let rawDmg = pen - currentArmor;
+        let variance = Math.random() * (rawDmg * 0.2) - (rawDmg * 0.1);
+        let finalDamage = Math.floor(rawDmg + variance);
+        if (finalDamage < 1) finalDamage = 1;
+        
+        target.hp -= finalDamage;
+        if (target.hp < 0) target.hp = 0;
+        spawnText(target.x, target.y - 20, `-${finalDamage}`, '#00ffff', 25);
+        playSound(hitSound);
+    } else {
+        // Броня оказалась толще, чем мощность лазера (урон заблокирован)
+        spawnText(target.x, target.y - 20, `БЛОК`, '#aaaaaa', 15);
+        playSound(bounceSound);
+    }
 }
 
-// НОВЫЙ АЛГОРИТМ РАСЧЕТА ПУТИ: РИКОШЕТ ОТ ТАНКОВ И СТЕН
 function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
     let curX = startX, curY = startY;
     let vx = Math.cos(angle), vy = Math.sin(angle);
@@ -172,17 +194,16 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
             }
         }
 
-        // РИКОШЕТ ОТ ТАНКОВ И НАНЕСЕНИЕ УРОНА
         if (!hitSomething) {
             let allTanks = (playerTank && playerTank.hp > 0) ? [playerTank, ...enemies] : enemies;
             for (let t of allTanks) {
                 if (t.hp <= 0) continue;
-                // Игнор стрелка до первого отскока, чтобы он не сжег себя изнутри
                 if (t === shooter && bounces === 0 && dist < 50) continue;
                 
                 let distToTank = Math.hypot(nextX - t.x, nextY - t.y);
                 if (distToTank < t.radius) {
-                    applyLaserDamage(t, dist, maxDist);
+                    // ТЕПЕРЬ ПЕРЕДАЕМ ТОЧНЫЕ КООРДИНАТЫ ПОПАДАНИЯ
+                    applyLaserDamage(t, nextX, nextY, dist, maxDist);
                     
                     let nx = (nextX - t.x) / (distToTank || 1);
                     let ny = (nextY - t.y) / (distToTank || 1);
@@ -466,11 +487,10 @@ function gameLoop(timestamp) {
                 if (playerTank.spread > 0) finalAngle += (Math.random() - 0.5) * playerTank.spread;
                 
                 let newB = new Bullet(playerTank.x + Math.cos(playerTank.turretAngle)*45, playerTank.y + Math.sin(playerTank.turretAngle)*45, finalAngle, playerTank, playerTank.penetration, playerTank.bulletRadius, playerTank.bulletColor, playerTank.bulletSpeed);
-                // ПРИКРЕПЛЯЕМ МЕТКУ К САМОЙ ПУЛЕ
                 if (playerTank.turretName === "Гатлинг") {
                     newB.isGatling = true;
                     newB.startPenetration = playerTank.penetration;
-                    newB.maxLifeTime = 0.3; // Урезано на 25%
+                    newB.maxLifeTime = 0.3; 
                 }
                 bullets.push(newB); 
                 playSound(playerTank.shootSoundType === 'mg' ? mgShootSound : shootSound); 
@@ -499,7 +519,6 @@ function gameLoop(timestamp) {
             let bx = ap.x + spreadX;
             let by = ap.y + spreadY;
             
-            // Если бомба за краем экрана, она просто не спавнится
             if (bx >= 0 && bx <= canvas.width && by >= 0 && by <= canvas.height) {
                 airstrikeBeacons.push({ x: bx, y: by, timer: 4.0 });
             }
@@ -517,7 +536,7 @@ function gameLoop(timestamp) {
         let b = airstrikeBeacons[i];
         b.timer -= dt;
         if (b.timer <= 0) {
-            createExplosionDamage(b.x, b.y, 150, 200, 1000); // Радиус снижен до 200
+            createExplosionDamage(b.x, b.y, 150, 200, 1000); 
             airstrikeBeacons.splice(i, 1);
         }
     }
