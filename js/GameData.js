@@ -1,7 +1,7 @@
 export const GameData = {
     hulls: { 
         "hunter": { name: "Охотник", hp: 150, armor: { front: 50, side: 30, rear: 20 }, speed: 50, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52}, ability: "Нет", cost: 0, 
-            upgrades: { hp: 20, armor: { front: 7, side: 5, rear: 3 }, speed: 8 } },
+            upgrades: { hp: 20, armor: { front: 6, side: 5, rear: 3 }, speed: 8 } },
         "leopard": { name: "Леопард", hp: 120, armor: { front: 30, side: 30, rear: 30 }, speed: 80, size: {w: 80, h: 60}, hitbox: {w: 66, h: 46}, ability: "ЭМИ-Дрон (12 сек)", cost: 15,
             upgrades: { hp: 10, stunDuration: 1, speed: 7 } },
         "titan": { name: "Титан", hp: 200, armor: { front: 65, side: 40, rear: 35 }, speed: 44, size: {w: 80, h: 60}, hitbox: {w: 74, h: 54}, ability: "Мина-паук (6 шт)", cost: 15,
