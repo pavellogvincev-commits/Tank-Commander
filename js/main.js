@@ -37,10 +37,27 @@ let firstClearBonus = false, currentEnemyPool = [];
 let dropCheckTimer = 5.0; let currentDropChance = 0.10; let dropsSpawnedThisMatch = 0; let maxDropsForLevel = 0;
 let airstrikesActive = false, airstrikeTimer = 30.0;
 
+// УПРАВЛЕНИЕ АКТИВНЫМ МОДУЛЕМ (ПРОБЕЛ)
 window.addEventListener('keydown', (e) => {
     if (e.key === '1') { PlayerProgress.points++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
     if (e.key === '2') { PlayerProgress.inventory.hullUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
     if (e.key === '3') { PlayerProgress.inventory.turretUpgrades++; if(screens.hangar.style.display === 'flex') updateHangarUI(); saveProgress(); }
+    
+    if (e.code === 'Space') {
+        if (gameRunning && playerTank && playerTank.hp > 0) {
+            let healed = playerTank.useActiveModule();
+            if (healed > 0) spawnText(playerTank.x, playerTank.y - 40, `+${healed}`, '#00ff00', 25);
+        }
+    }
+});
+
+// УПРАВЛЕНИЕ АКТИВНЫМ МОДУЛЕМ (ПРАВАЯ КНОПКА МЫШИ)
+window.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); 
+    if (gameRunning && playerTank && playerTank.hp > 0) {
+        let healed = playerTank.useActiveModule();
+        if (healed > 0) spawnText(playerTank.x, playerTank.y - 40, `+${healed}`, '#00ff00', 25);
+    }
 });
 
 function spawnText(x, y, text, color, size = 20, noOutline = false) { floatingTexts.push({ x, y, text, color, size, life: 1.5, maxLife: 1.5, vy: -30, noOutline }); }
@@ -48,7 +65,8 @@ function spawnSparks(x, y, nx, ny) { let count = 5 + Math.floor(Math.random() * 
 function spawnExplosion(x, y) { playSound(explodeSound); let colors = ['255, 50, 0', '255, 150, 0', '100, 100, 100', '40, 40, 40']; for (let i = 0; i < 100; i++) { let a = Math.random() * Math.PI * 2; let s = 50 + Math.random() * 350; sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 1.5+Math.random()*2.0, maxLife: 3.5, size: 10+Math.random()*25, color: colors[Math.floor(Math.random()*colors.length)] }); } }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 
-function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
+// ДОБАВЛЕН ПАРАМЕТР source ДЛЯ ВАМПИРИЗМА
+function createExplosionDamage(x, y, maxDmg, radius, basePushForce, source = null) {
     spawnExplosion(x, y); 
     playSound(explodeSound);
     shockwaves.push({ x: x, y: y, currentRadius: 0, maxRadius: radius, alpha: 1.0 });
@@ -63,7 +81,14 @@ function createExplosionDamage(x, y, maxDmg, radius, basePushForce) {
 
             if (distToEdge <= radius) {
                 let res = t.applyExplosionDamage(x, y, maxDmg, radius);
-                if (res.hit && res.damage > 0) { spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); }
+                if (res.hit && res.damage > 0) { 
+                    spawnText(t.x, t.y - 20, `-${res.damage}`, '#ff3333'); 
+                    // ВАМПИРИЗМ ОТ ВЗРЫВА
+                    if (source === playerTank && t !== playerTank) {
+                        let heal = playerTank.addVampireHeal(res.damage);
+                        if (heal > 0) spawnText(playerTank.x, playerTank.y - 30, `+${heal}`, '#00ff00', 15);
+                    }
+                }
                 
                 let armorSum = t.armor.front.max + t.armor.side.max + t.armor.rear.max;
                 let massMultiplier = 100 / (100 + armorSum); 
@@ -118,20 +143,17 @@ function getLaserAlpha(dist, maxDist) {
     return Math.max(0, 1.0 - ((dist - fadeStart) / (maxDist - fadeStart)));
 }
 
-// НОВАЯ МЕХАНИКА ЛАЗЕРА: Учитывает броню как обычный снаряд
 function applyLaserDamage(target, hitX, hitY, dist, maxDist) {
-    let basePen = 90; // Базовое пробитие лазера
+    let basePen = 90; 
     let pen = basePen;
     let falloffStart = maxDist * 0.5; 
     
-    // Затухание луча (снижение пробития с дальностью)
     if (dist > falloffStart) {
         let ratio = (dist - falloffStart) / (maxDist - falloffStart);
         ratio = Math.max(0, Math.min(1, ratio)); 
         pen = basePen - (basePen - 10) * ratio; 
     }
     
-    // Определяем зону попадания (относительно поворота корпуса цели)
     let angleToHit = Math.atan2(hitY - target.y, hitX - target.x);
     let relAngle = angleToHit - target.hullAngle;
     while (relAngle > Math.PI) relAngle -= Math.PI * 2;
@@ -141,11 +163,9 @@ function applyLaserDamage(target, hitX, hitY, dist, maxDist) {
     if (Math.abs(relAngle) < Math.PI / 4) hitZone = 'front';
     else if (Math.abs(relAngle) > 3 * Math.PI / 4) hitZone = 'rear';
 
-    // Получаем текущую броню в этой зоне и снимаем 1 единицу
     let currentArmor = target.armor[hitZone].current;
     target.armor[hitZone].current = Math.max(0, target.armor[hitZone].current - 1); 
 
-    // Расчет урона: пробивает ли лазер броню?
     if (pen > currentArmor) {
         let rawDmg = pen - currentArmor;
         let variance = Math.random() * (rawDmg * 0.2) - (rawDmg * 0.1);
@@ -157,7 +177,6 @@ function applyLaserDamage(target, hitX, hitY, dist, maxDist) {
         spawnText(target.x, target.y - 20, `-${finalDamage}`, '#00ffff', 25);
         playSound(hitSound);
     } else {
-        // Броня оказалась толще, чем мощность лазера (урон заблокирован)
         spawnText(target.x, target.y - 20, `БЛОК`, '#aaaaaa', 15);
         playSound(bounceSound);
     }
@@ -202,7 +221,6 @@ function calculateLaserPath(startX, startY, angle, maxDist, arena, shooter) {
                 
                 let distToTank = Math.hypot(nextX - t.x, nextY - t.y);
                 if (distToTank < t.radius) {
-                    // ТЕПЕРЬ ПЕРЕДАЕМ ТОЧНЫЕ КООРДИНАТЫ ПОПАДАНИЯ
                     applyLaserDamage(t, nextX, nextY, dist, maxDist);
                     
                     let nx = (nextX - t.x) / (distToTank || 1);
@@ -348,7 +366,11 @@ function startLevel(levelNum) {
         });
     }
     
-    const hullId = PlayerProgress.currentAssembly.hullId; const turretId = PlayerProgress.currentAssembly.turretId;
+    // СБОРКА ТАНКА (включая модуль)
+    const hullId = PlayerProgress.currentAssembly.hullId; 
+    const turretId = PlayerProgress.currentAssembly.turretId;
+    const moduleId = PlayerProgress.currentAssembly.moduleId || "none";
+    
     let bHull = GameData.hulls[hullId]; let sHull = PlayerProgress.partStats[hullId];
     let calcHull = JSON.parse(JSON.stringify(bHull)); 
     
@@ -374,7 +396,9 @@ function startLevel(levelNum) {
     if (bTurr.upgrades.reloadTime) calcTurr.reloadTime += (sTurr.reloadTime || 0) * bTurr.upgrades.reloadTime;
     if (bTurr.upgrades.magazineSize) calcTurr.magazineSize += (sTurr.magazineSize || 0) * bTurr.upgrades.magazineSize;
     
-    playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull);
+    let bMod = GameData.modules[moduleId];
+    
+    playerTank = new Tank(500, 350, playerImages.hulls[hullId], playerImages.turrets[turretId], calcHull, calcTurr, PlayerProgress.hullsHp[hullId], hullId, sHull, bMod);
     playerTank.shieldTimer = 3.0;
 
     enemies = []; bullets = []; sparks = []; floatingTexts = []; drops = []; mines = []; artilleryShells = []; shockwaves = []; lasers = [];
@@ -480,7 +504,8 @@ function gameLoop(timestamp) {
                 let ty = input.getMouseY() + spreadY;
                 
                 let dist = Math.sqrt(Math.pow(tx - startX, 2) + Math.pow(ty - startY, 2));
-                artilleryShells.push({ startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / playerTank.bulletSpeed, totalDist: dist, damage: playerTank.artilleryDamage, radius: playerTank.artilleryRadius });
+                // ДОБАВЛЕН ВЛАДЕЛЕЦ АРТ-СНАРЯДА (owner: playerTank)
+                artilleryShells.push({ owner: playerTank, startX, startY, tx, ty, x: startX, y: startY, time: 0, maxTime: dist / playerTank.bulletSpeed, totalDist: dist, damage: playerTank.artilleryDamage, radius: playerTank.artilleryRadius });
                 playSound(shootSound);
             } else {
                 let finalAngle = playerTank.turretAngle;
@@ -502,7 +527,8 @@ function gameLoop(timestamp) {
             let minDmg = 30 + (playerTank.mineBonusDamage * 8);
             let maxDmg = 60 + (playerTank.mineBonusDamage * 15);
             let mineDamage = Math.floor(minDmg + Math.random() * (maxDmg - minDmg));
-            mines.push({ x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 24 }); 
+            // ДОБАВЛЕН ВЛАДЕЛЕЦ МИНЫ (owner: playerTank)
+            mines.push({ owner: playerTank, x: playerTank.x, y: playerTank.y, damage: mineDamage, radius: 10, speed: 24 }); 
         }
     }
 
@@ -561,7 +587,20 @@ function gameLoop(timestamp) {
             let angle = Math.atan2(nearest.y - m.y, nearest.x - m.x); let vx = Math.cos(angle) * m.speed * dt; let vy = Math.sin(angle) * m.speed * dt;
             let colX = arena.checkCollision(m.x + vx, m.y, m.radius); let colY = arena.checkCollision(m.x, m.y + vy, m.radius);
             if (!colX) m.x += vx; if (!colY) m.y += vy;
-            if (minDist < m.radius + nearest.radius) { nearest.hp -= m.damage; spawnText(nearest.x, nearest.y - 30, `-${m.damage}`, '#ff3333'); spawnExplosion(m.x, m.y); mines.splice(i, 1); continue; }
+            if (minDist < m.radius + nearest.radius) { 
+                nearest.hp -= m.damage; 
+                spawnText(nearest.x, nearest.y - 30, `-${m.damage}`, '#ff3333'); 
+                
+                // ВАМПИРИЗМ ОТ МИН
+                if (m.owner === playerTank) {
+                    let heal = playerTank.addVampireHeal(m.damage);
+                    if (heal > 0) spawnText(playerTank.x, playerTank.y - 30, `+${heal}`, '#00ff00', 15);
+                }
+
+                spawnExplosion(m.x, m.y); 
+                mines.splice(i, 1); 
+                continue; 
+            }
         }
     }
 
@@ -629,7 +668,7 @@ function gameLoop(timestamp) {
     for (let i = artilleryShells.length - 1; i >= 0; i--) {
         let s = artilleryShells[i]; s.time += dt;
         if (s.time >= s.maxTime) {
-            createExplosionDamage(s.tx, s.ty, s.damage, s.radius, 600);
+            createExplosionDamage(s.tx, s.ty, s.damage, s.radius, 600, s.owner);
             artilleryShells.splice(i, 1);
         } else {
             let progress = s.time / s.maxTime; s.x = s.startX + (s.tx - s.startX) * progress; s.y = s.startY + (s.ty - s.startY) * progress;
@@ -709,6 +748,13 @@ function gameLoop(timestamp) {
                     if (hit.type === 'penetration') { 
                         b.toDestroy = true; 
                         spawnText(hit.x, hit.y - 20, `-${hit.damage}`, '#ff3333', 20); 
+
+                        // ВАМПИРИЗМ ОТ ПУЛЬ (ТОЛЬКО ЕСЛИ ВЛАДЕЛЕЦ - ИГРОК)
+                        if (b.ownerTank === playerTank) {
+                            let heal = playerTank.addVampireHeal(hit.damage);
+                            if (heal > 0) spawnText(playerTank.x, playerTank.y - 30, `+${heal}`, '#00ff00', 15);
+                        }
+
                         playSound(hitSound); 
                     } else { 
                         b.x = b.prevX; b.y = b.prevY; b.bounce(hit.nx, hit.ny); b.isDecaying = true; b.ownerTank = null; b.lastHitTarget = enemy; 
