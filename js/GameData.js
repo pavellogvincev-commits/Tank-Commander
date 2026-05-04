@@ -15,6 +15,12 @@ export const GameData = {
         "howitzer": { name: "Гаубица", fireRate: 4.0, damage: 90, explosionRadius: 100, spread: 55, bulletRadius: 4.0, bulletColor: '#222222', shootSound: 'cannon', bulletSpeed: 300, cost: 10, ability: "Стрельба навесом",
             upgrades: { damage: 12, explosionRadius: 20 } }
     },
+    // НОВЫЙ РАЗДЕЛ: МОДУЛИ
+    modules: {
+        "none": { name: "Нет модуля", cost: 0, ability: "Слот пуст", type: "none" },
+        "repair": { name: "Ремкомплект", cost: 7, ability: "Восстанавливает 25% ХП (Пробел / ПКМ)", cooldown: 60, type: "active" },
+        "vampire": { name: "Нановампиризм", cost: 10, ability: "Восстанавливает 10% от нанесенного урона", type: "passive" }
+    },
     enemyHulls: { 
         "basic": { name: "Враг-Базовый", hp: 100, armor: { front: 60, side: 30, rear: 15 }, speed: 45, size: {w: 80, h: 60}, hitbox: {w: 70, h: 52} },
         "scout": { name: "Скаут", hp: 90, armor: { front: 40, side: 40, rear: 40 }, speed: 60, size: {w: 80, h: 60}, hitbox: {w: 65, h: 48} },
@@ -29,7 +35,6 @@ export const GameData = {
         "demon": { name: "Демон-Пушка", fireRate: 5.0, penetration: 120, burstCount: 1, burstDelay: 0, bulletRadius: 3.5, bulletColor: '#ff0000', shootSound: 'cannon', bulletSpeed: 800 },
         "mars": { name: "Артиллерия", fireRate: 5.0, penetration: 0, burstCount: 1, burstDelay: 0, bulletRadius: 5.0, bulletColor: '#333333', shootSound: 'cannon', bulletSpeed: 200 },
         "goliaph": { name: "Голиаф-Пушка", fireRate: 3.5, penetration: 88, burstCount: 1, burstDelay: 0, bulletRadius: 4.0, bulletColor: '#ff3300', shootSound: 'cannon', bulletSpeed: 450 },
-        // ПРИЗРАК: Перезарядка 3.0, Пробитие 90
         "ghost": { name: "Призрак-Лазер", fireRate: 3.0, penetration: 90, burstCount: 1, burstDelay: 0, bulletRadius: 0, bulletColor: '#00ffff', shootSound: 'cannon', bulletSpeed: 0 }
     }
 };
@@ -50,7 +55,7 @@ export const LevelsConfig = {
     13: { pool: ["goliaph", "goliaph", "basic", "basic", "mars", "mars", "demon", "demon"], obstacles: 4, barrels: 5, mud: 3, airstrike: true, maxUpgrades: 3 },
     14: { pool: ["demon", "demon", "demon", "ghost", "goliaph", "goliaph", "scout", "scout", "scout"], obstacles: 7, barrels: 6, maxUpgrades: 3 },
     15: { pool: ["goliaph", "goliaph", "goliaph", "mars", "mars", "demon", "demon", "ghost", "ghost", "ghost"], obstacles: 3, barrels: 8, mud: 3, maxUpgrades: 4, fastSpawn: true },
-    16: { pool: ["ghost", "ghost", "ghost","ghost", "ghost", "ghost","ghost", "ghost"], obstacles: 5, barrels: 4, airstrike: true, maxUpgrades: 4 },
+    16: { pool: ["demon", "demon", "scout", "scout", "scout", "mars"], obstacles: 5, barrels: 4, airstrike: true, maxUpgrades: 4 },
     17: { pool: ["goliaph", "demon", "demon", "mars", "mars", "basic"], obstacles: 4, barrels: 2, mud: 4, airstrike: true, maxUpgrades: 4 },
     18: { pool: ["scout", "scout", "scout", "scout", "scout", "scout", "demon", "demon"], obstacles: 3, barrels: 8, airstrike: true, maxUpgrades: 4, fastSpawn: true },
     19: { pool: ["goliaph", "goliaph", "goliaph", "demon", "demon", "mars"], obstacles: 6, barrels: 3, mud: 2, airstrike: true, maxUpgrades: 5 },
@@ -65,8 +70,9 @@ export const LevelsConfig = {
 
 const defaultProgress = {
     points: 0, unlockedLevel: 1, passedLevels: [], collectedStars: {},
-    inventory: { hullUpgrades: 0, turretUpgrades: 0 }, unlockedHulls: ["hunter"], unlockedTurrets: ["scourge"],
-    currentAssembly: { hullId: "hunter", turretId: "scourge" }, hullsHp: { "hunter": 150, "leopard": 120, "titan": 200 },
+    inventory: { hullUpgrades: 0, turretUpgrades: 0 }, 
+    unlockedHulls: ["hunter"], unlockedTurrets: ["scourge"], unlockedModules: ["none"],
+    currentAssembly: { hullId: "hunter", turretId: "scourge", moduleId: "none" }, hullsHp: { "hunter": 150, "leopard": 120, "titan": 200 },
     partStats: {
         "hunter": { maxCapacity: 5, usedCapacity: 0, hp: 0, armor: 0, speed: 0 },
         "leopard": { maxCapacity: 5, usedCapacity: 0, hp: 0, stunDuration: 0, speed: 0 },
@@ -85,6 +91,10 @@ export function loadProgress() {
         try {
             let parsed = JSON.parse(saved);
             for (let key in parsed) { PlayerProgress[key] = parsed[key]; }
+            // МИГРАЦИЯ ДЛЯ МОДУЛЕЙ СТАРЫХ ИГРОКОВ
+            if (!PlayerProgress.unlockedModules) PlayerProgress.unlockedModules = ["none"];
+            if (!PlayerProgress.currentAssembly.moduleId) PlayerProgress.currentAssembly.moduleId = "none";
+            
             if (PlayerProgress.partStats.gatling.magazineSize === undefined) PlayerProgress.partStats.gatling.magazineSize = 0;
             if (PlayerProgress.partStats.gatling.fireRate === undefined) {
                 PlayerProgress.partStats.gatling.fireRate = PlayerProgress.partStats.gatling.reloadTime || 0;
