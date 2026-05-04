@@ -1,5 +1,6 @@
 export class Tank {
-    constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null, hullId = null, hullStatLevels = null) {
+    // В КОНСТРУКТОР ДОБАВЛЕНЫ moduleStats
+    constructor(x, y, hullImg, turretImg, hullStats, turretStats, startingHp = null, hullId = null, hullStatLevels = null, moduleStats = null) {
         this.x = x; this.y = y; this.hullImg = hullImg; this.turretImg = turretImg;
         this.hullWidth = hullStats.size.w; this.hullHeight = hullStats.size.h;
         this.turretWidth = hullStats.size.w; this.turretHeight = hullStats.size.h;
@@ -33,6 +34,13 @@ export class Tank {
 
         this.shieldTimer = 0; this.hullName = hullStats.name;
         
+        // --- МОДУЛИ ---
+        this.moduleName = moduleStats ? moduleStats.name : 'none';
+        this.moduleCooldown = moduleStats && moduleStats.cooldown ? moduleStats.cooldown : 0;
+        this.moduleTimer = 0;
+        this.vampireBuffer = 0;
+        // --------------
+
         this.droneState = (this.hullName === "Леопард") ? 'ready' : 'none';
         this.droneAngle = 0; this.droneCooldown = 0; this.droneTarget = null; this.droneX = 0; this.droneY = 0; this.droneExplodeRequest = false;
         this.droneStunTime = 7 + (hullStatLevels ? (hullStatLevels.stunDuration || 0) : 0);
@@ -41,6 +49,35 @@ export class Tank {
         this.maxMines = 6;
         this.minesPlaced = 0;
         this.mineBonusDamage = hullStatLevels ? (hullStatLevels.mineDamage || 0) : 0;
+    }
+
+    // МЕТОД ДЛЯ АКТИВАЦИИ РЕМКОМПЛЕКТА
+    useActiveModule() {
+        if (this.moduleName === "Ремкомплект" && this.moduleTimer <= 0) {
+            if (this.hp < this.maxHp) {
+                let healAmount = Math.floor(this.maxHp * 0.25);
+                this.hp += healAmount;
+                if (this.hp > this.maxHp) this.hp = this.maxHp;
+                this.moduleTimer = this.moduleCooldown;
+                return healAmount;
+            }
+        }
+        return 0;
+    }
+
+    // МЕТОД ДЛЯ НАКПОЛЕНИЯ ВАМПИРИЗМА
+    addVampireHeal(damageDealt) {
+        if (this.moduleName === "Нановампиризм") {
+            this.vampireBuffer += damageDealt * 0.10;
+            if (this.vampireBuffer >= 1.0) {
+                let heal = Math.floor(this.vampireBuffer);
+                this.vampireBuffer -= heal;
+                this.hp += heal;
+                if (this.hp > this.maxHp) this.hp = this.maxHp;
+                return heal;
+            }
+        }
+        return 0;
     }
 
     updateSmoke(dt) {
@@ -88,6 +125,8 @@ export class Tank {
 
     update(dt, input, arena, enemies) {
         if (this.shieldTimer > 0) this.shieldTimer -= dt;
+        if (this.moduleTimer > 0) this.moduleTimer -= dt; // КУЛДАУН МОДУЛЯ
+
         this.updateWeapons(dt); this.updateSmoke(dt); 
 
         if (this.hullName === "Леопард") {
@@ -271,7 +310,6 @@ export class Tank {
                 
                 if (this.shieldTimer > 0) return { hit: true, zone: hitZone, x: px, y: py, nx: worldNx, ny: worldNy, type: 'ricochet', damage: 0 };
 
-                // ГАТЛИНГ ПРОБИВАЕТ ДАЖЕ ПОСЛЕ РИКОШЕТА
                 if (bullet.isGatling) {
                     let life = bullet.lifeTime || 0;
                     let maxLife = bullet.maxLifeTime || 0.3;
@@ -338,6 +376,15 @@ export class Tank {
 
         let barWidth = 40; let hpPercent = this.hp / this.maxHp; let yOffset = this.y - this.hullHeight / 2 - 20;
         
+        // ПОЛОСКА МОДУЛЯ (ЕСЛИ ЕСТЬ КУЛДАУН)
+        if (this.moduleCooldown > 0) {
+            let modPercent = 1 - (this.moduleTimer / this.moduleCooldown);
+            if (modPercent < 0) modPercent = 0; if (modPercent > 1) modPercent = 1;
+            ctx.fillStyle = '#222'; ctx.fillRect(this.x - barWidth / 2, yOffset - 4, barWidth, 3);
+            ctx.fillStyle = modPercent >= 1 ? '#00ffcc' : '#008888'; 
+            ctx.fillRect(this.x - barWidth / 2, yOffset - 4, barWidth * modPercent, 3);
+        }
+
         ctx.fillStyle = 'red'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth, 4);
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - barWidth / 2, yOffset, barWidth * hpPercent, 4);
 
